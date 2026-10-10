@@ -84,6 +84,8 @@ export type AnalyticsEvent =
   | 'tts_voice_selected'
   | 'tts_voice_loaded'
   | 'tts_spoken'
+  // T78 transient audio focus for short learning clips
+  | 'learning_audio_focus'
   | 'tts_piper_fallback'
   | 'dev_tts_speak'
   // T12 ASR model manager + pronunciation practice

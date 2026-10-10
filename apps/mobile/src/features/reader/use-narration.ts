@@ -7,6 +7,7 @@ import { SETTING_KEYS } from '@/db/repositories/settings';
 import type { AudioTrackRow } from '@/db/repositories/content';
 import type { ClassificationEventProps } from '@/features/library/categories';
 import { track as trackEvent } from '@/services/analytics';
+import { createSliceFocus } from '@/services/learning-focus';
 
 import {
   activeSentenceAt,
@@ -455,12 +456,17 @@ export function useNarration({
   );
 
   // ---- word segments (popup speaker, work item 7) -------------------------
+  // T78: each slice holds transient focus (pauses other apps); narration keeps its own mode.
+  const segmentFocusRef = React.useRef(createSliceFocus('word-popup'));
+  const segmentSeqRef = React.useRef(0);
   const stopSegment = React.useCallback(() => {
     if (segmentTimerRef.current) {
       clearTimeout(segmentTimerRef.current);
       segmentTimerRef.current = null;
     }
     segmentPlayerRef.current?.pause();
+    segmentSeqRef.current += 1;
+    segmentFocusRef.current.release();
   }, []);
 
   const segments = React.useMemo<WordSegmentPlayer>(
@@ -486,10 +492,18 @@ export function useNarration({
         // Small lead-in/out so clipped consonants don't get chopped.
         const startMs = Math.max(0, stamp.startMs - 40);
         const endMs = stamp.endMs + 60;
-        void seg.seekTo(startMs / 1000).then(() => {
-          seg.play();
-          segmentTimerRef.current = setTimeout(() => seg.pause(), endMs - startMs);
-        });
+        const seq = segmentSeqRef.current;
+        void segmentFocusRef.current
+          .acquire()
+          .then(() => (seq === segmentSeqRef.current ? seg.seekTo(startMs / 1000) : undefined))
+          .then(() => {
+            if (seq !== segmentSeqRef.current) return;
+            seg.play();
+            segmentTimerRef.current = setTimeout(() => {
+              seg.pause();
+              segmentFocusRef.current.release();
+            }, endMs - startMs);
+          });
         trackEvent('word_segment_played', { sentenceId, tokenIndex });
       },
     }),

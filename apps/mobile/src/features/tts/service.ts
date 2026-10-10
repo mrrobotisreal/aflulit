@@ -4,6 +4,7 @@ import SherpaSpeech from '../../../modules/sherpa-speech';
 import { repos } from '@/db';
 import { SETTING_KEYS } from '@/db/repositories/settings';
 import { track } from '@/services/analytics';
+import { holdLearningFocus, reportFocus, type FocusHandle } from '@/services/learning-focus';
 import { setSpeechService, type SpeakOptions } from '@/services/speech';
 
 import { getVoice, parseTtsVoiceSetting, SYSTEM_VOICE_ID } from './catalog';
@@ -49,14 +50,34 @@ async function ensureVoiceLoaded(voiceId: string): Promise<void> {
 }
 
 let systemSpeechGeneration = 0;
+let systemFocus: FocusHandle | null = null;
 
-function speakSystem(text: string, rate: number): void {
+function releaseSystemFocus(): void {
+  systemFocus?.release();
+  systemFocus = null;
+}
+
+/**
+ * T78: expo-speech takes no audio focus of its own, so the clip brackets
+ * itself with a transient hold — requested before `Speech.speak`, abandoned
+ * on done / stopped / error and in `stopSpeaking`.
+ */
+async function speakSystem(text: string, rate: number): Promise<void> {
   const generation = ++systemSpeechGeneration;
   const finish = () => {
-    if (generation === systemSpeechGeneration) useTtsStore.getState().setSystemSpeaking(false);
+    if (generation !== systemSpeechGeneration) return;
+    releaseSystemFocus();
+    useTtsStore.getState().setSystemSpeaking(false);
   };
   Speech.stop();
+  releaseSystemFocus();
   useTtsStore.getState().setSystemSpeaking(true);
+  const handle = await holdLearningFocus('tts', 'system');
+  if (generation !== systemSpeechGeneration) {
+    handle.release(); // superseded or stopped while waiting for focus
+    return;
+  }
+  systemFocus = handle;
   try {
     Speech.speak(text, {
       language: 'ru-RU',
@@ -85,6 +106,7 @@ export async function speakWithInfo(text: string, opts?: SpeakOptions): Promise<
     try {
       await ensureVoiceLoaded(voiceId);
       const result = await SherpaSpeech.speak(text, rate);
+      if (result.focus) reportFocus('tts', 'piper', result.focus, result.firstAudioMs ?? 0);
       track('tts_spoken', {
         engine: 'piper',
         voiceId,
@@ -102,7 +124,7 @@ export async function speakWithInfo(text: string, opts?: SpeakOptions): Promise<
     }
   }
 
-  speakSystem(text, rate);
+  await speakSystem(text, rate);
   track('tts_spoken', { engine: 'system', chars: text.length });
   return { engine: 'system' };
 }
@@ -110,6 +132,7 @@ export async function speakWithInfo(text: string, opts?: SpeakOptions): Promise<
 export async function stopSpeaking(): Promise<void> {
   const generation = ++systemSpeechGeneration;
   SherpaSpeech.stop();
+  releaseSystemFocus();
   await Speech.stop();
   if (generation === systemSpeechGeneration) useTtsStore.getState().setSystemSpeaking(false);
 }

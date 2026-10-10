@@ -1,6 +1,7 @@
 import { createAudioPlayer, type AudioPlayer } from 'expo-audio';
 import * as React from 'react';
 
+import { createSliceFocus } from '@/services/learning-focus';
 import { getSpeechService } from '@/services/speech';
 
 import type { ListeningAudio } from './audio-source';
@@ -22,8 +23,12 @@ const SEGMENT_LEAD_OUT_MS = 60;
 export function useListeningAudio(audio: ListeningAudio) {
   const playerRef = React.useRef<AudioPlayer | null>(null);
   const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const focusRef = React.useRef(createSliceFocus('listening-quiz'));
+  const playSeqRef = React.useRef(0);
 
   const stop = React.useCallback(() => {
+    playSeqRef.current += 1;
+    focusRef.current.release();
     if (timerRef.current) {
       clearTimeout(timerRef.current);
       timerRef.current = null;
@@ -48,10 +53,22 @@ export function useListeningAudio(audio: ListeningAudio) {
       player.setPlaybackRate(rate, 'high');
       const startMs = Math.max(0, audio.startMs - SEGMENT_LEAD_IN_MS);
       const sliceMs = audio.endMs + SEGMENT_LEAD_OUT_MS - startMs;
-      void player.seekTo(startMs / 1000).then(() => {
-        player.play();
-        timerRef.current = setTimeout(() => player.pause(), Math.ceil(sliceMs / rate));
-      });
+      const seq = playSeqRef.current;
+      // T78: pause other apps (transient focus) before the first sample.
+      void focusRef.current
+        .acquire()
+        .then(() => (seq === playSeqRef.current ? player.seekTo(startMs / 1000) : undefined))
+        .then(() => {
+          if (seq !== playSeqRef.current) return;
+          player.play();
+          timerRef.current = setTimeout(
+            () => {
+              player.pause();
+              focusRef.current.release();
+            },
+            Math.ceil(sliceMs / rate),
+          );
+        });
     },
     [audio, stop],
   );
