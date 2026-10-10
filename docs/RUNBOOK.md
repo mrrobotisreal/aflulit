@@ -778,6 +778,46 @@ history and exam date (`torfl.examDateA2`). Design
   «Delete exam fixture» removes them. `__DEV__` route `/dev-exam-capture`
   re-captures the A2 grading fixtures through the app's own AI path.
 
+### 9.10 Speaking flow + instruction language (T77)
+
+**You start, you stop.** Nothing in `features/torfl/` opens the mic by itself or
+stops a recording on silence (a source-scan test, `no-endpointing.test.ts`,
+forbids importing the M17 endpointer; M17 scenarios keep theirs).
+
+- Mock tasks 1 / 2: the examiner line (or situation) plays, the item then WAITS
+  in engine phase `ready` (no timer, no auto-advance; persisted, so a kill
+  resumes in `ready`). The mic opens on `TAP_REC` (tap the mic; a long press
+  also starts). The recording ends only on «Готово», the task cap (A1 30 s /
+  40 s, A2 45 s / 60 s from the level profile, a countdown shows in the last
+  10 s; the engine's `phaseDeadlineAt` + the recorder's own clock both stop it)
+  or the part / subtest budget. A pause, however long, stops nothing.
+- Task 3: prep ends (the 8:00 / 10:00 deadline or «Готов») in `ready-answer`;
+  the fixed 2:00 / 5:00 answer window starts at the tap on «Начать ответ».
+- Practice (`/torfl/speak`), «Билеты» and the mock use the same recorder hook
+  (no endpointer); «Мои ответы» rehearsal is the pronunciation recorder, which
+  never endpointed.
+- Analytics: `exam_speaking_rec_started {task, waitMs}`,
+  `exam_speaking_rec_stopped {task, reason: done|cap|deadline|skip, durationMs}`,
+  `torfl_instruction_lang_toggled {to, screen}` (all with `level`).
+
+**RU | EN instructions.** The header toggle on the instruction, speaking,
+writing, «Билеты», practice and debrief screens flips every INSTRUCTION string
+(`features/torfl/copy.ts`, `{ ru, en }`, + `speaking/timing-copy.ts`);
+examiner lines, situations, topics, passages and scripts are never translated.
+Persisted as `torfl.prefs.instructionLang` (`'ru'` default; the old
+`showEnglishInstructions` boolean just heals away). `instruction-copy.test.ts`
+fails when a Cyrillic literal appears in those screens outside the copy table.
+
+**Dev WAV injection (S25 / agents).** In a `__DEV__` build, if
+`files/dev-exam.wav` exists (16 kHz mono 16-bit PCM; push with
+`adb push` to `/data/local/tmp` then `run-as <pkg> cp` into `files/`), the exam
+recorder skips the mic and uses it as the recording on stop (the real
+transcribe / stash / grade path runs). Delete the file afterwards.
+
+**ISS-004.** An exam with no objective item (the `sp-*` / `sp-letters` drill
+sets) routes its start button to `/torfl/speak`, «Билеты» or `/torfl/writing`
+(`practice-route.ts`), never to the empty drill runner.
+
 ### 9.8 Dev tools
 
 Settings → Developer → **DB debug**: import the `a1-exam-fixture` (a 5-subtest
