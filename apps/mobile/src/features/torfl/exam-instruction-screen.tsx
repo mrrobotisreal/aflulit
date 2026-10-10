@@ -7,19 +7,22 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '@/components/ui/text';
 import { useAppTheme } from '@/theme/use-app-theme';
 
-import { formatMinutes } from './hub-model';
+import { fmtMinutes, instructionCopy, type Lang } from './copy';
+import { LangToggle } from './lang-toggle';
+import type { TorflLevel } from './level-profile';
 import { SUBTEST_LABELS } from './topics';
 
 /**
  * The subtest instruction screen (T71, TORFL §8.2): the official RU
- * instruction (the EN line under it when `showEnglishInstructions`), the
+ * instruction (T77: RU ⇄ EN by the header toggle, pref `instructionLang`), the
  * time / items / dictionary facts, and «Начать субтест» — which starts the
  * clock (`BEGIN`). Nothing is timed until this button is pressed.
  */
 export function ExamInstructionScreen({
   subtest,
   itemCount,
-  showEnglish,
+  lang,
+  level = 'A1',
   durationOverrideSec,
   blocked,
   blockedAction,
@@ -30,7 +33,8 @@ export function ExamInstructionScreen({
 }: {
   subtest: ExamSubtest;
   itemCount: number;
-  showEnglish: boolean;
+  lang: Lang;
+  level?: TorflLevel;
   /** DEV only: the `?devDurationSec=` override, shown so the tester knows. */
   durationOverrideSec?: number;
   /** A reason the subtest cannot start (listening audio not downloaded / no ASR model / mic denied). */
@@ -46,18 +50,20 @@ export function ExamInstructionScreen({
   const { tokens } = useAppTheme();
   const insets = useSafeAreaInsets();
   const label = SUBTEST_LABELS[subtest.kind];
+  const c = instructionCopy(lang);
   return (
     <View className="flex-1 bg-bg" style={{ paddingTop: insets.top + 8 }}>
-      <View className="flex-row items-center px-4">
+      <View className="flex-row items-center justify-between px-4">
         <Pressable
           onPress={onQuit}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel="Выйти"
+          accessibilityLabel={c.leave}
           className="h-10 w-10 items-center justify-center rounded-full active:bg-surface-2"
         >
           <Ionicons name="close" size={22} color={tokens.textMuted} />
         </Pressable>
+        <LangToggle screen="instruction" level={level} />
       </View>
       <ScrollView contentContainerClassName="gap-5 px-5 pb-40 pt-4">
         <View className="h-14 w-14 items-center justify-center rounded-full bg-accent-soft">
@@ -72,40 +78,37 @@ export function ExamInstructionScreen({
           </Text>
         </View>
         <View className="gap-2 rounded-2xl border border-border bg-surface px-4 py-4">
-          <Text className="font-reading text-lg leading-8">{subtest.instructions.ru}</Text>
-          {showEnglish ? (
-            <Text variant="muted" className="font-reading-italic leading-6">
-              {subtest.instructions.en}
-            </Text>
-          ) : null}
+          <Text className="font-reading text-lg leading-8" testID="instruction-text">
+            {subtest.instructions[lang]}
+          </Text>
         </View>
         <View className="gap-2.5 rounded-xl border border-border bg-surface px-4 py-3.5">
           <Fact
             icon="time-outline"
             text={
               durationOverrideSec !== undefined
-                ? `ТЕСТ: ${durationOverrideSec} с (вместо ${formatMinutes(subtest.durationMin)})`
-                : `Время: ${formatMinutes(subtest.durationMin)}`
+                ? c.timeFactOverride(durationOverrideSec, fmtMinutes(lang, subtest.durationMin))
+                : c.timeFact(fmtMinutes(lang, subtest.durationMin))
             }
           />
-          <Fact icon="list-outline" text={`Заданий: ${itemCount}`} />
+          <Fact icon="list-outline" text={c.itemsFact(itemCount)} />
           <Fact
             icon={subtest.dictionary ? 'book-outline' : 'close-circle-outline'}
-            text={subtest.dictionary ? 'Словарь можно (нажми на слово)' : 'Без словаря'}
+            text={subtest.dictionary ? c.dictOn : c.dictOff}
           />
           {subtest.kind === 'listening' && (
-            <Fact
-              icon="headset-outline"
-              text={`Каждый текст звучит ${subtest.audioPlays ?? 2} раза. Назад нельзя.`}
-            />
+            <Fact icon="headset-outline" text={c.listeningFact(subtest.audioPlays ?? 2)} />
           )}
           {subtest.kind === 'speaking' && (
-            <Fact icon="mic-outline" text="Каждый ответ записывается; подсказок и повторов нет." />
+            <>
+              <Fact icon="mic-outline" text={c.speakingFact} />
+              <Fact icon="hand-left-outline" text={c.micFact} />
+            </>
           )}
           {(extraFacts ?? []).map((f) => (
             <Fact key={f} icon="chevron-forward-outline" text={f} />
           ))}
-          <Fact icon="eye-off-outline" text="Проверки ответов не будет — результат после сдачи." />
+          <Fact icon="eye-off-outline" text={c.noCheckFact} />
         </View>
         {blocked ? (
           <View
@@ -146,7 +149,7 @@ export function ExamInstructionScreen({
           className={`items-center rounded-full px-5 py-3.5 ${blocked ? 'bg-surface-2' : 'bg-accent active:opacity-80'}`}
         >
           <Text className={`font-ui-bold ${blocked ? 'text-text-muted' : 'text-bg'}`}>
-            Начать субтест
+            {c.beginSubtest}
           </Text>
         </Pressable>
         {blocked ? (
@@ -156,7 +159,7 @@ export function ExamInstructionScreen({
             testID="instruction-skip"
             className="items-center py-2"
           >
-            <Text className="font-ui-medium text-accent">Пропустить этот субтест</Text>
+            <Text className="font-ui-medium text-accent">{c.skipSubtest}</Text>
           </Pressable>
         ) : null}
       </View>

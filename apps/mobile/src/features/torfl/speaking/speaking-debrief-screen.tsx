@@ -21,7 +21,10 @@ import { cn } from '@/lib/cn';
 import { trackTorfl } from '@/services/analytics';
 import { useAppTheme } from '@/theme/use-app-theme';
 
+import { instructionCopy, numLocale } from '../copy';
 import { fileExists } from '../drill/drill-item';
+import { useInstructionLang } from '../instruction-lang';
+import { LangToggle } from '../lang-toggle';
 import { requestGrading, useGradingQueue } from '../grading/queue';
 import { TASK_LABEL, speakingCriterionLabel } from '../grading/speaking';
 import { loadRefAudio, type ExamAudio } from '../items/exam-audio';
@@ -60,6 +63,8 @@ export function SpeakingDebriefScreen({ attemptId }: { attemptId: string }) {
   const exam = useExam(attempt.data?.packId, attempt.data?.examId);
   const scenarios = useScenarios();
   const clips = useClipPlayer();
+  const lang = useInstructionLang();
+  const c = instructionCopy(lang);
   const [error, setError] = React.useState<string | null>(null);
   // T74 (§8.5): the attempt's recordings on disk + its media-bundle ledger entry → the media line.
   const [bundle, setBundle] = React.useState<ExamBundleEntry | null>(null);
@@ -127,7 +132,7 @@ export function SpeakingDebriefScreen({ attemptId }: { attemptId: string }) {
   if (!a || !e || !subtest) {
     return (
       <View className="flex-1 items-center justify-center gap-3 bg-bg px-8">
-        <QueryError message="Говорение не найдено." onRetry={() => router.back()} />
+        <QueryError message={c.speakingNotFound} onRetry={() => router.back()} />
       </View>
     );
   }
@@ -142,7 +147,7 @@ export function SpeakingDebriefScreen({ attemptId }: { attemptId: string }) {
     setError(null);
     try {
       const ok = await requestGrading(responseId);
-      if (!ok) setError('Нечего оценивать — ответ пустой.');
+      if (!ok) setError(c.nothingToGrade);
     } catch (err) {
       setError(
         friendlyAiMessage(err instanceof AiError ? err : new AiError('unknown', String(err))),
@@ -157,18 +162,19 @@ export function SpeakingDebriefScreen({ attemptId }: { attemptId: string }) {
           onPress={() => router.back()}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel="Назад"
+          accessibilityLabel={c.back}
           className="h-10 w-10 items-center justify-center rounded-full active:bg-surface-2"
         >
           <Ionicons name="chevron-back" size={22} color={tokens.text} />
         </Pressable>
         <View className="flex-1">
-          <Text className="font-reading-bold text-xl">Говорение · разбор</Text>
+          <Text className="font-reading-bold text-xl">{c.debriefTitle}</Text>
           <Text variant="caption" testID="speaking-debrief-pct">
-            {pct !== null ? `${pct.toLocaleString('ru-RU')} %` : '—'}
-            {provisional ? ' · предварительно' : gradedBy === 'ai' ? ' · оценка ИИ' : ''}
+            {pct !== null ? `${pct.toLocaleString(numLocale(lang))} %` : '—'}
+            {provisional ? c.provisional : gradedBy === 'ai' ? c.aiGraded : ''}
           </Text>
         </View>
+        <LangToggle screen="debrief" level={torflLevelOf(e?.level)} />
         <PinButton
           attemptId={a.id}
           pinned={a.pinned}
@@ -198,33 +204,33 @@ export function SpeakingDebriefScreen({ attemptId }: { attemptId: string }) {
           />
           <Text variant="caption" className="flex-1">
             {downloading
-              ? 'Скачиваю записи…'
+              ? c.downloading
               : localFiles > 0
-                ? `Записи на устройстве · ${formatKb(runDirBytes(a.id, 'exam'))}${
+                ? `${c.recordsOnDevice(formatKb(runDirBytes(a.id, 'exam')))}${
                     bundle?.state === 'uploaded'
-                      ? ' · в резервной копии'
+                      ? c.inBackup
                       : bundle?.state === 'pending'
-                        ? ' · копия ждёт связи'
+                        ? c.backupWaiting
                         : bundle?.state === 'failed'
-                          ? ' · копия не загрузилась'
+                          ? c.backupFailed
                           : ''
-                  }${a.pinned ? ' · закреплена' : ''}`
+                  }${a.pinned ? c.pinned : ''}`
                 : bundle?.state === 'uploaded'
-                  ? 'Записи в резервной копии'
+                  ? c.recordsInBackup
                   : entries.some((e) => e.answer)
-                    ? 'Записи удалены (не было резервной копии)'
-                    : 'Записей нет'}
+                    ? c.recordsDeleted
+                    : c.noRecords}
           </Text>
           {localFiles === 0 && bundle?.state === 'uploaded' && !downloading ? (
             <Pressable
               onPress={download}
               accessibilityRole="button"
-              accessibilityLabel="Скачать запись"
+              accessibilityLabel={c.downloadA11y}
               testID="speaking-download"
               className="rounded-full bg-accent px-3 py-1.5 active:opacity-80"
             >
               <Text variant="caption" className="text-bg">
-                Скачать запись
+                {c.downloadBtn}
               </Text>
             </Pressable>
           ) : null}
@@ -301,6 +307,8 @@ export function EntryCard({
   onModelStory: (storyId: string) => void;
 }) {
   const { tokens } = useAppTheme();
+  const lang = useInstructionLang();
+  const c = instructionCopy(lang);
   const { item, answer, response, details, criteria } = entry;
   const status = response?.gradingStatus ?? null;
   const waiting = status === 'pending-ai' && !inFlight;
@@ -348,23 +356,30 @@ export function EntryCard({
     item.kind === 'speaking-monologue'
       ? item.topicTitle.ru
       : item.kind === 'speaking-situation'
-        ? (item.situation?.ru ?? 'Ситуация')
-        : (promptAudio.data?.transcript.map((s) => s.ru).join(' ') ?? 'Вопрос экзаменатора');
+        ? (item.situation?.ru ?? c.situation)
+        : (promptAudio.data?.transcript.map((s) => s.ru).join(' ') ?? c.examinerQuestion);
 
   const verdictLine = (() => {
-    if (!details) return entry.unchosen ? 'Тема не выбрана' : 'Без ответа';
+    if (!details) return entry.unchosen ? c.topicNotChosen : c.noAnswer;
     if (details.task === 3) {
-      return `Вопросов раскрыто ${details.covered} из ${details.total} · предложений ≈ ${details.sentences} (нужно ${details.minSentences}) · ${details.words} слов${details.wpm > 0 ? ` · ${Math.round(details.wpm)} сл/мин` : ''}`;
+      return c.verdictTask3(
+        details.covered,
+        details.total,
+        details.sentences,
+        details.minSentences,
+        details.words,
+        details.wpm,
+      );
     }
     const v =
       details.verdict === 'matched'
-        ? '✓ по заданию'
+        ? c.verdictMatched
         : details.nearMiss
-          ? '≈ почти'
+          ? c.verdictNear
           : details.verdict === 'no-speech'
-            ? 'тишина'
-            : '✗ мимо';
-    return `${v} · ${details.fullAnswer ? 'полный ответ' : `короткий ответ (${details.contentTokens} из ${details.minTokens} слов)`}${details.transcriptUsed === 'assist' ? ' · по Whisper' : ''}`;
+            ? c.verdictSilent
+            : c.verdictMiss;
+    return `${v} · ${details.fullAnswer ? c.verdictFull : c.verdictShort(details.contentTokens, details.minTokens)}${details.transcriptUsed === 'assist' ? c.viaWhisper : ''}`;
   })();
 
   return (
@@ -375,13 +390,13 @@ export function EntryCard({
       <View className="flex-row items-start gap-2">
         <View className="flex-1 gap-0.5">
           <Text variant="caption">
-            {TASK_LABEL[entry.task].ru} · {entry.number}
+            {TASK_LABEL[entry.task][lang]} · {entry.number}
           </Text>
           <Text className="font-reading text-lg leading-7">{title}</Text>
         </View>
         {entry.pct !== null ? (
           <Text className="font-ui-bold" testID={`speaking-entry-pct-${item.id}`}>
-            {entry.pct.toLocaleString('ru-RU')} %
+            {entry.pct.toLocaleString(numLocale(lang))} %
           </Text>
         ) : null}
       </View>
@@ -398,7 +413,7 @@ export function EntryCard({
             size={14}
             color={tokens.accent}
           />
-          <Text className="font-ui-medium text-sm text-accent">Экзаменатор</Text>
+          <Text className="font-ui-medium text-sm text-accent">{c.examiner}</Text>
         </Pressable>
       ) : null}
 
@@ -413,7 +428,7 @@ export function EntryCard({
             disabled={!playable}
             accessibilityRole="button"
             accessibilityLabel={
-              isPlaying ? 'Pause your recording' : playable ? 'Play your recording' : 'No recording'
+              isPlaying ? 'Pause your recording' : playable ? 'Play your recording' : c.noRecording
             }
             testID={`speaking-play-${item.id}`}
             className={cn(
@@ -429,7 +444,7 @@ export function EntryCard({
           </Pressable>
           <View className="flex-1">
             <Text className="font-ui-medium text-sm">
-              {answer ? `Твой ответ · ${formatDuration(answer.durationMs)}` : 'Нет записи'}
+              {answer ? c.yourAnswer(formatDuration(answer.durationMs)) : c.noRecording}
             </Text>
             <Text variant="caption">{verdictLine}</Text>
           </View>
@@ -443,7 +458,7 @@ export function EntryCard({
             ))}
           </View>
         ) : answer ? (
-          <Text variant="caption">Ничего не распознано.</Text>
+          <Text variant="caption">{c.nothingRecognised}</Text>
         ) : null}
         {showAssist ? <Text variant="caption">Whisper: {assist}</Text> : null}
       </View>
@@ -451,7 +466,7 @@ export function EntryCard({
       {/* the model answer */}
       {entry.modelLine ? (
         <View className="gap-1 rounded-xl border border-border bg-bg p-3">
-          <Text variant="caption">Образец ответа</Text>
+          <Text variant="caption">{c.modelAnswer}</Text>
           <Text className="font-reading text-base leading-6">{entry.modelLine}</Text>
         </View>
       ) : item.kind === 'speaking-monologue' && item.model ? (
@@ -463,7 +478,7 @@ export function EntryCard({
             className="flex-1 flex-row items-center gap-3 rounded-xl border border-border bg-bg px-3 py-2.5 active:bg-surface-2"
           >
             <Ionicons name="reader-outline" size={16} color={tokens.accent} />
-            <Text className="flex-1 font-ui-medium text-sm">Образец монолога</Text>
+            <Text className="flex-1 font-ui-medium text-sm">{c.modelMonologue}</Text>
             <Ionicons name="chevron-forward" size={14} color={tokens.textMuted} />
           </Pressable>
           {modelAudio.data ? (
@@ -482,21 +497,21 @@ export function EntryCard({
       {/* criteria */}
       {response ? (
         <View className="overflow-hidden rounded-xl border border-border">
-          {criteria.map((c, i) => (
+          {criteria.map((cr, i) => (
             <View
-              key={c.id}
+              key={cr.id}
               className={cn('gap-0.5 px-3 py-2', i > 0 && 'border-t border-border')}
-              testID={`speaking-criterion-${item.id}-${c.id}`}
+              testID={`speaking-criterion-${item.id}-${cr.id}`}
             >
               <View className="flex-row items-center gap-2">
                 <Text className="flex-1 font-ui-medium text-sm">
-                  {speakingCriterionLabel(c.id).ru}
+                  {speakingCriterionLabel(cr.id)[lang]}
                 </Text>
-                <Text className={cn('font-ui-bold text-sm', c.pending && 'text-text-muted')}>
-                  {c.pending ? '—' : c.score.toLocaleString('ru-RU')} / {c.max}
+                <Text className={cn('font-ui-bold text-sm', cr.pending && 'text-text-muted')}>
+                  {cr.pending ? '—' : cr.score.toLocaleString(numLocale(lang))} / {cr.max}
                 </Text>
               </View>
-              {c.comment ? <Text variant="caption">{c.comment}</Text> : null}
+              {cr.comment ? <Text variant="caption">{cr.comment}</Text> : null}
             </View>
           ))}
         </View>
@@ -507,17 +522,16 @@ export function EntryCard({
         inFlight ? (
           <View className="flex-row items-center gap-2">
             <ActivityIndicator size="small" color={tokens.accent} />
-            <Text variant="caption">ИИ оценивает…</Text>
+            <Text variant="caption">{c.aiGrading}</Text>
           </View>
         ) : waiting ? (
-          <Text variant="caption">Ждёт связи: ИИ оценит, когда появится интернет.</Text>
+          <Text variant="caption">{c.waitingNet}</Text>
         ) : status === 'ai-failed' ? (
           <Text variant="caption" className="text-danger">
-            Оценка ИИ не удалась{response.grading?.error ? ` (${response.grading.error.code})` : ''}
-            .
+            {c.aiFailed(response.grading?.error ? response.grading.error.code : null)}
           </Text>
         ) : status === 'provisional' ? (
-          <Text variant="caption">Пока только офлайн-критерии; ИИ оценит грамматику.</Text>
+          <Text variant="caption">{c.offlineOnly}</Text>
         ) : null
       ) : null}
 
@@ -549,7 +563,7 @@ export function EntryCard({
             className="flex-row items-center gap-1.5 rounded-full bg-accent px-4 py-2 active:opacity-80"
           >
             <Ionicons name="refresh" size={14} color={tokens.bg} />
-            <Text className="font-ui-medium text-sm text-bg">Повторить оценку</Text>
+            <Text className="font-ui-medium text-sm text-bg">{c.retryGrade}</Text>
           </Pressable>
         ) : null}
         <Pressable
@@ -564,7 +578,7 @@ export function EntryCard({
             color={tokens.accent}
           />
           <Text className="font-ui-medium text-sm text-accent">
-            {entry.task === 3 ? 'Билеты' : 'Практиковать'}
+            {entry.task === 3 ? c.ticketsBtn : c.practiseBtn}
           </Text>
         </Pressable>
       </View>

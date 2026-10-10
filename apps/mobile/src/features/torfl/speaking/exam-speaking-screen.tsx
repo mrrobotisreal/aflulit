@@ -16,8 +16,11 @@ import { cn } from '@/lib/cn';
 import { trackTorfl } from '@/services/analytics';
 import { useAppTheme } from '@/theme/use-app-theme';
 
+import { instructionCopy, type Lang } from '../copy';
+import { useInstructionLang } from '../instruction-lang';
+import { LangToggle } from '../lang-toggle';
 import { fileExists } from '../drill/drill-item';
-import { monologueWindows, type ExamRunState } from '../engine/exam-machine';
+import { monologueWindows, speakingCapMsFor, type ExamRunState } from '../engine/exam-machine';
 import { formatClock, timerTone } from '../engine/rules';
 import { TASK_LABEL, speakingTaskOf } from '../grading/speaking';
 import { loadRefAudio, type ExamAudio } from '../items/exam-audio';
@@ -25,13 +28,7 @@ import { useExamAudio } from '../items/use-exam-audio';
 import type { ExamSpeakingState } from '../model';
 import type { TorflLevel } from '../level-profile';
 import { WritingLookupSheet } from '../writing/lookup-sheet';
-import {
-  chooseLine,
-  recordingLine,
-  sentencesLine,
-  startAnswerLine,
-  task3Fact,
-} from './timing-copy';
+import { chooseLine, minutesLang, sentencesLine, task3Fact } from './timing-copy';
 import type { ExamRecorder } from './use-exam-recorder';
 
 const TIMER_TONE_CLASS = {
@@ -48,14 +45,17 @@ const ANSWER_WARN_MS = 10_000;
  * speaking subtest, rendered from `state.speaking`:
  *
  * - **task 1 / 2** — the part instruction, the examiner line plays ONCE on
- *   entry (task 2 also shows the situation text), the mic opens when it
- *   ends (the recorder hook drives the level ring; tap = stop early, the
- *   endpointer / cap stop it otherwise), «Пропустить».
+ *   entry (task 2 also shows the situation text), then the item WAITS in
+ *   `ready` (T77: no timer, no auto-open) until the candidate taps the mic;
+ *   a recording ends only on «Готово» or the task cap (a countdown shows in
+ *   the last 10 s) — never on a pause. «Пропустить».
  * - **task 3** — `choose`: two topic cards; `prep`: the chosen topic's
  *   questions, a notes field (local only — never graded, never persisted),
  *   lookup (decision 8) and the 8:00 clock, «Готов» ends prep early;
- *   `answer`: the fixed 2:00 window with the mic ring, a 10 s warning,
- *   «Закончить».
+ *   `ready-answer`: «Начать ответ» (the window starts at his tap);
+ *   `answer`: the fixed window with the mic ring, a 10 s warning, «Готово».
+ * - **T77:** every INSTRUCTION string flips RU ⇄ EN with the header toggle;
+ *   examiner lines, situations, topics and questions stay Russian.
  * - the top bar shows the subtest timer; the part / window clock sits in
  *   the body (both wall-clock, from the engine).
  *
@@ -74,6 +74,7 @@ export function ExamSpeakingScreen({
   onAudioEnded,
   onChoose,
   onPrepDone,
+  onTapRec,
   onSkip,
   onStopEarly,
   onQuit,
@@ -93,13 +94,17 @@ export function ExamSpeakingScreen({
   onAudioEnded: () => void;
   onChoose: (itemId: string) => void;
   onPrepDone: () => void;
+  /** T77: the candidate tapped the mic / «Начать ответ». */
+  onTapRec: () => void;
   onSkip: () => void;
-  /** The candidate ended a recording by hand (tap / «Закончить»). */
+  /** The candidate ended a recording by hand («Готово»). */
   onStopEarly: () => void;
   onQuit: () => void;
 }) {
   const { tokens } = useAppTheme();
   const insets = useSafeAreaInsets();
+  const lang = useInstructionLang();
+  const c = instructionCopy(lang);
   const sp = run.speaking;
   const tone = timerTone(remainingMs);
   void attemptId;
@@ -128,7 +133,7 @@ export function ExamSpeakingScreen({
           onPress={onQuit}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel="Выйти из экзамена"
+          accessibilityLabel={c.quitExam}
           testID="speaking-quit"
           className="h-10 w-10 items-center justify-center rounded-full active:bg-surface-2"
         >
@@ -136,16 +141,17 @@ export function ExamSpeakingScreen({
         </Pressable>
         <View className="flex-1">
           <Text className="font-ui-medium" numberOfLines={1}>
-            Говорение · {TASK_LABEL[sp.task as 1 | 2 | 3].ru}
+            {c.speaking} · {TASK_LABEL[sp.task as 1 | 2 | 3][lang]}
           </Text>
           <Text variant="caption" className="text-xs">
-            {sp.itemId ? `Задание ${position} из ${total}` : 'Выбор темы'}
+            {sp.itemId ? c.taskOf(position, total) : c.chooseTopic}
           </Text>
         </View>
+        <LangToggle screen="speaking" level={level} />
         <Text
           className={cn('font-ui-bold text-lg tabular-nums', TIMER_TONE_CLASS[tone])}
           testID="exam-timer"
-          accessibilityLabel={`Осталось ${formatClock(remainingMs)}`}
+          accessibilityLabel={c.timeLeftA11y(formatClock(remainingMs))}
         >
           {formatClock(remainingMs)}
         </Text>
@@ -161,8 +167,10 @@ export function ExamSpeakingScreen({
           windowMs={windowMs}
           recorder={recorder}
           lookup={lookup}
+          lang={lang}
           onChoose={onChoose}
           onPrepDone={onPrepDone}
+          onTapRec={onTapRec}
           onSkip={onSkip}
           onStopEarly={onStopEarly}
           bottom={insets.bottom}
@@ -174,9 +182,12 @@ export function ExamSpeakingScreen({
           part={part!}
           item={item}
           sp={sp}
+          level={level}
+          lang={lang}
           windowMs={windowMs}
           recorder={recorder}
           onAudioEnded={onAudioEnded}
+          onTapRec={onTapRec}
           onSkip={onSkip}
           onStopEarly={onStopEarly}
           bottom={insets.bottom}
@@ -193,9 +204,12 @@ function TurnBody({
   part,
   item,
   sp,
+  level,
+  lang,
   windowMs,
   recorder,
   onAudioEnded,
+  onTapRec,
   onSkip,
   onStopEarly,
   bottom,
@@ -204,14 +218,18 @@ function TurnBody({
   part: ExamSubtest['parts'][number];
   item: SpeakingTurnItem;
   sp: ExamSpeakingState;
+  level: TorflLevel;
+  lang: Lang;
   windowMs: number;
   recorder: ExamRecorder;
   onAudioEnded: () => void;
+  onTapRec: () => void;
   onSkip: () => void;
   onStopEarly: () => void;
   bottom: number;
 }) {
   const { tokens } = useAppTheme();
+  const c = instructionCopy(lang);
   const [audio, setAudio] = React.useState<ExamAudio | null | undefined>(undefined);
 
   // The examiner's line / the situation: one story ref → audio span (TTS fallback is allowed here —
@@ -240,7 +258,7 @@ function TurnBody({
   }, [onAudioEnded]);
   const controls = useExamAudio(audio ?? null, { onEnded });
 
-  // Play once on entry (the tester says it once). A missing story → no audio → the mic opens at once.
+  // Play once on entry (the tester says it once). A missing story → no audio → straight to `ready`.
   const playedRef = React.useRef(false);
   React.useEffect(() => {
     if (sp.phase !== 'prompt' || playedRef.current) return;
@@ -256,24 +274,29 @@ function TurnBody({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audio, sp.phase]);
 
-  // Entering `prompt` after a RESUME replays (the prompt is allowed to play again after a kill —
-  // the candidate never heard its end).
+  // T77: `ready` = the prompt ended, the item waits (no timer) for his tap; `recording` = the mic is
+  // open until «Готово» / the task cap. The cap clock is `windowMs` (the engine's phase deadline).
+  const waiting = sp.phase === 'ready';
   const recording = sp.phase === 'recording' && recorder.phase === 'recording';
   const processing = sp.phase === 'processing' || recorder.phase === 'processing';
   const micState: MicVisualState = recording
     ? 'recording'
     : processing
       ? 'processing'
-      : sp.phase === 'recording'
+      : waiting
         ? 'ready'
         : 'disabled';
+  const capSec = Math.round(speakingCapMsFor(level, sp.task as 1 | 2) / 1000);
+  const capLeftSec = Math.ceil(windowMs / 1000);
+  const warn = recording && capLeftSec <= 10;
+  const elapsed = formatClock(recorder.elapsedMs);
   const windowTone = timerTone(windowMs + 240_000); // the part clock: amber under 1:00 only
 
   return (
     <>
       <ScrollView className="flex-1" contentContainerClassName="gap-4 px-4 pb-6 pt-2">
         <Text variant="caption" className="px-1" testID="part-instructions">
-          {part.instructions.ru}
+          {part.instructions[lang]}
         </Text>
         <View
           className="gap-3 rounded-2xl border border-border bg-surface px-4 py-4"
@@ -291,19 +314,19 @@ function TurnBody({
               <Text className="font-ui-medium">
                 {sp.phase === 'prompt'
                   ? controls.playing
-                    ? 'Экзаменатор говорит…'
-                    : 'Слушай экзаменатора'
+                    ? c.examinerSpeaking
+                    : c.listenExaminer
                   : recording
-                    ? 'Говори'
+                    ? c.recordingHeading
                     : processing
-                      ? 'Записываю ответ…'
-                      : 'Ответ'}
+                      ? c.savingHeading
+                      : waiting
+                        ? c.readyHeading
+                        : c.answerHeading}
               </Text>
               <Text variant="caption">
-                {item.kind === 'speaking-reply'
-                  ? 'Вопрос звучит один раз. Ответь полным предложением.'
-                  : 'Прочитай ситуацию и начни диалог первым.'}
-                {audio?.synthetic ? ' · синтез' : ''}
+                {item.kind === 'speaking-reply' ? c.replyCaption : c.situationCaption}
+                {audio?.synthetic ? c.synthetic : ''}
               </Text>
             </View>
           </View>
@@ -314,10 +337,24 @@ function TurnBody({
           ) : null}
         </View>
         <View className="flex-row items-center justify-between px-1">
-          <Text variant="caption">Время на задание</Text>
-          <Text className={cn('font-ui-bold tabular-nums', TIMER_TONE_CLASS[windowTone])}>
-            {formatClock(windowMs)}
-          </Text>
+          {recording ? (
+            <>
+              <Text variant="caption">{c.recordingCap(capSec)}</Text>
+              <Text
+                className={cn('font-ui-bold tabular-nums', warn ? 'text-danger' : 'text-text')}
+                testID="speaking-rec-clock"
+              >
+                {warn ? c.secondsLeft(Math.max(0, capLeftSec)) : elapsed}
+              </Text>
+            </>
+          ) : waiting || sp.phase === 'prompt' ? (
+            <>
+              <Text variant="caption">{c.partClock}</Text>
+              <Text className={cn('font-ui-bold tabular-nums', TIMER_TONE_CLASS[windowTone])}>
+                {formatClock(windowMs)}
+              </Text>
+            </>
+          ) : null}
         </View>
       </ScrollView>
       <View
@@ -329,37 +366,47 @@ function TurnBody({
           level={recorder.level}
           holdPrimary={false}
           onTap={() => {
-            if (recording) onStopEarly();
+            if (waiting) onTapRec();
+            else if (recording) onStopEarly();
           }}
-          onHoldStart={() => undefined}
-          onHoldEnd={() => {
-            if (recording) onStopEarly();
+          // A long press only STARTS (never stops on release): you start, you stop.
+          onHoldStart={() => {
+            if (waiting) onTapRec();
           }}
+          onHoldEnd={() => undefined}
         />
         <Text variant="caption" testID="speaking-mic-hint">
           {recording
-            ? `Нажми, чтобы закончить · до ${Math.round((sp.task === 2 ? 40_000 : 30_000) / 1000)} с`
+            ? c.recordingHint
             : processing
-              ? 'Распознаю…'
-              : 'Микрофон откроется сам'}
+              ? c.recognising
+              : waiting
+                ? c.tapMicHint
+                : c.listenExaminer}
         </Text>
-        {!processing ? (
+        {recording ? (
+          <Pressable
+            onPress={onStopEarly}
+            accessibilityRole="button"
+            testID="speaking-finish"
+            className="min-w-[160px] items-center rounded-full bg-accent px-6 py-3 active:opacity-80"
+          >
+            <Text className="font-ui-bold text-bg">{c.done}</Text>
+          </Pressable>
+        ) : null}
+        {!processing && !recording ? (
           <Pressable
             onPress={() =>
-              Alert.alert(
-                'Пропустить задание?',
-                'Ответа не будет — задание засчитается как пустое.',
-                [
-                  { text: 'Вернуться', style: 'cancel' },
-                  { text: 'Пропустить', style: 'destructive', onPress: onSkip },
-                ],
-              )
+              Alert.alert(c.skipTaskTitle, c.skipTaskBody, [
+                { text: c.returnBtn, style: 'cancel' },
+                { text: c.skipTask, style: 'destructive', onPress: onSkip },
+              ])
             }
             accessibilityRole="button"
             testID="speaking-skip"
             className="py-1"
           >
-            <Text className="font-ui-medium text-text-muted">Пропустить →</Text>
+            <Text className="font-ui-medium text-text-muted">{c.skipArrow}</Text>
           </Pressable>
         ) : null}
       </View>
@@ -378,8 +425,10 @@ function MonologueBody({
   windowMs,
   recorder,
   lookup,
+  lang,
   onChoose,
   onPrepDone,
+  onTapRec,
   onSkip,
   onStopEarly,
   bottom,
@@ -392,13 +441,16 @@ function MonologueBody({
   windowMs: number;
   recorder: ExamRecorder;
   lookup: boolean;
+  lang: Lang;
   onChoose: (itemId: string) => void;
   onPrepDone: () => void;
+  onTapRec: () => void;
   onSkip: () => void;
   onStopEarly: () => void;
   bottom: number;
 }) {
   const { tokens } = useAppTheme();
+  const c = instructionCopy(lang);
   const [notes, setNotes] = React.useState('');
   const [lookupOpen, setLookupOpen] = React.useState(false);
   void packId;
@@ -412,6 +464,7 @@ function MonologueBody({
             topics.length,
             monologueWindows(level, topics[0] ?? {}).prepSec,
             monologueWindows(level, topics[0] ?? {}).answerSec,
+            lang,
           )}
         </Text>
         {topics.map((t) => (
@@ -425,22 +478,22 @@ function MonologueBody({
             <Text className="font-reading-bold text-xl">{t.topicTitle.ru}</Text>
             <Text variant="caption">{t.topicTitle.en}</Text>
             <Text variant="caption">
-              {t.questions.length} вопрос(ов) · {t.minSentences}–{t.maxSentences} предложений
+              {c.topicStats(t.questions.length, t.minSentences, t.maxSentences)}
             </Text>
           </Pressable>
         ))}
         <Pressable
           onPress={() =>
-            Alert.alert('Пропустить монолог?', 'Задание 3 засчитается как пустое.', [
-              { text: 'Вернуться', style: 'cancel' },
-              { text: 'Пропустить', style: 'destructive', onPress: onSkip },
+            Alert.alert(c.skipMonologueTitle, c.skipMonologueBody, [
+              { text: c.returnBtn, style: 'cancel' },
+              { text: c.skipTask, style: 'destructive', onPress: onSkip },
             ])
           }
           accessibilityRole="button"
           testID="speaking-skip"
           className="items-center py-2"
         >
-          <Text className="font-ui-medium text-text-muted">Пропустить →</Text>
+          <Text className="font-ui-medium text-text-muted">{c.skipArrow}</Text>
         </Pressable>
       </ScrollView>
     );
@@ -458,7 +511,7 @@ function MonologueBody({
           keyboardShouldPersistTaps="handled"
         >
           <View className="flex-row items-center justify-between px-1">
-            <Text variant="caption">Подготовка</Text>
+            <Text variant="caption">{c.preparation}</Text>
             <Text
               className={cn('font-ui-bold text-lg tabular-nums', TIMER_TONE_CLASS[tone])}
               testID="speaking-prep-clock"
@@ -477,11 +530,13 @@ function MonologueBody({
                 </Text>
               ))}
             </View>
-            <Text variant="caption">{sentencesLine(item.minSentences, item.maxSentences)}</Text>
+            <Text variant="caption">
+              {sentencesLine(item.minSentences, item.maxSentences, lang)}
+            </Text>
           </View>
           <View className="gap-2">
             <View className="flex-row items-center justify-between px-1">
-              <Text variant="caption">Заметки (не оцениваются)</Text>
+              <Text variant="caption">{c.notesNotGraded}</Text>
               {lookup ? (
                 <Pressable
                   onPress={() => setLookupOpen(true)}
@@ -490,7 +545,7 @@ function MonologueBody({
                   className="flex-row items-center gap-1.5 rounded-full border border-border px-3 py-1.5 active:bg-surface-2"
                 >
                   <Ionicons name="book-outline" size={14} color={tokens.accent} />
-                  <Text className="font-ui-medium text-sm text-accent">Словарь</Text>
+                  <Text className="font-ui-medium text-sm text-accent">{c.dictionary}</Text>
                 </Pressable>
               ) : null}
             </View>
@@ -499,7 +554,7 @@ function MonologueBody({
               onChangeText={setNotes}
               multiline
               textAlignVertical="top"
-              placeholder="Ключевые слова, план ответа…"
+              placeholder={c.notesPlaceholder}
               placeholderTextColor={tokens.textMuted}
               testID="speaking-notes"
               className="min-h-[140px] rounded-2xl border border-border bg-surface px-4 py-3 font-reading text-base leading-6 text-text"
@@ -513,11 +568,11 @@ function MonologueBody({
           <Pressable
             onPress={() =>
               Alert.alert(
-                'Начать ответ?',
-                startAnswerLine(monologueWindows(level, item).answerSec),
+                c.prepConfirmTitle,
+                c.prepConfirmBody(minutesLang(monologueWindows(level, item).answerSec, lang)),
                 [
-                  { text: 'Ещё подготовлюсь', style: 'cancel' },
-                  { text: 'Готов', onPress: onPrepDone },
+                  { text: c.morePrep, style: 'cancel' },
+                  { text: c.ready, onPress: onPrepDone },
                 ],
               )
             }
@@ -525,7 +580,7 @@ function MonologueBody({
             testID="speaking-prep-done"
             className="items-center rounded-full bg-accent px-5 py-3.5 active:opacity-80"
           >
-            <Text className="font-ui-bold text-bg">Готов — отвечать</Text>
+            <Text className="font-ui-bold text-bg">{c.prepDone}</Text>
           </Pressable>
         </View>
         <WritingLookupSheet
@@ -539,21 +594,28 @@ function MonologueBody({
     );
   }
 
-  // answer / processing
+  // ready-answer / answer / processing
+  const waiting = sp.phase === 'ready-answer';
   const recording = sp.phase === 'answer' && recorder.phase === 'recording';
   const processing = sp.phase === 'processing' || recorder.phase === 'processing';
-  const warn = sp.phase === 'answer' && windowMs <= ANSWER_WARN_MS;
+  const answerSec = monologueWindows(level, item ?? {}).answerSec;
+  const warn = recording && windowMs <= ANSWER_WARN_MS;
   return (
     <>
       <ScrollView className="flex-1" contentContainerClassName="gap-4 px-4 pb-6 pt-2">
         <View className="flex-row items-center justify-between px-1">
-          <Text variant="caption">Ответ</Text>
-          <Text
-            className={cn('font-ui-bold text-lg tabular-nums', warn ? 'text-danger' : 'text-text')}
-            testID="speaking-answer-clock"
-          >
-            {formatClock(windowMs)}
-          </Text>
+          <Text variant="caption">{waiting ? c.startAnswer : c.answer}</Text>
+          {recording ? (
+            <Text
+              className={cn(
+                'font-ui-bold text-lg tabular-nums',
+                warn ? 'text-danger' : 'text-text',
+              )}
+              testID="speaking-answer-clock"
+            >
+              {formatClock(windowMs)}
+            </Text>
+          ) : null}
         </View>
         <View className="gap-3 rounded-2xl border border-border bg-surface px-4 py-4">
           <Text className="font-reading-bold text-2xl">{item.topicTitle.ru}</Text>
@@ -565,15 +627,20 @@ function MonologueBody({
             ))}
           </View>
         </View>
+        {waiting ? (
+          <Text className="px-1" testID="speaking-ready-answer">
+            {c.startAnswerHint(minutesLang(answerSec, lang))}
+          </Text>
+        ) : null}
         {warn ? (
           <Text className="px-1 font-ui-medium text-danger" testID="speaking-answer-warning">
-            Осталось 10 секунд — заканчивай мысль.
+            {c.warn10}
           </Text>
         ) : null}
         {notes.trim().length > 0 ? (
           <View className="rounded-2xl border border-border bg-surface-2 px-4 py-3">
             <Text variant="caption" className="mb-1">
-              Твои заметки
+              {c.yourNotes}
             </Text>
             <Text className="font-reading leading-6">{notes}</Text>
           </View>
@@ -584,33 +651,47 @@ function MonologueBody({
         style={{ paddingBottom: bottom + 12 }}
       >
         <MicButton
-          state={recording ? 'recording' : processing ? 'processing' : 'disabled'}
+          state={
+            recording ? 'recording' : processing ? 'processing' : waiting ? 'ready' : 'disabled'
+          }
           level={recorder.level}
           holdPrimary={false}
-          onTap={() => undefined}
-          onHoldStart={() => undefined}
+          onTap={() => {
+            if (waiting) onTapRec();
+            else if (recording) onStopEarly();
+          }}
+          onHoldStart={() => {
+            if (waiting) onTapRec();
+          }}
           onHoldEnd={() => undefined}
         />
-        <Text variant="caption">
+        <Text variant="caption" testID="speaking-mic-hint">
           {recording
-            ? recordingLine(monologueWindows(level, item ?? {}).answerSec)
+            ? c.recordingHint
             : processing
-              ? 'Распознаю…'
-              : 'Запись'}
+              ? c.recognising
+              : waiting
+                ? c.tapMic
+                : c.recordLabel}
         </Text>
+        {waiting ? (
+          <Pressable
+            onPress={onTapRec}
+            accessibilityRole="button"
+            testID="speaking-start-answer"
+            className="min-w-[200px] items-center rounded-full bg-accent px-6 py-3.5 active:opacity-80"
+          >
+            <Text className="font-ui-bold text-bg">{c.startAnswer}</Text>
+          </Pressable>
+        ) : null}
         {recording ? (
           <Pressable
-            onPress={() =>
-              Alert.alert('Закончить ответ?', 'Запись остановится, вернуться нельзя.', [
-                { text: 'Продолжить', style: 'cancel' },
-                { text: 'Закончить', style: 'destructive', onPress: onStopEarly },
-              ])
-            }
+            onPress={onStopEarly}
             accessibilityRole="button"
             testID="speaking-finish"
-            className="rounded-full border border-border px-5 py-2 active:bg-surface-2"
+            className="min-w-[160px] items-center rounded-full bg-accent px-6 py-3 active:opacity-80"
           >
-            <Text className="font-ui-medium">Закончить</Text>
+            <Text className="font-ui-bold text-bg">{c.done}</Text>
           </Pressable>
         ) : null}
       </View>
@@ -619,7 +700,12 @@ function MonologueBody({
 }
 
 /** The speaking part instruction + item count for the instruction screen's facts (T73). */
-export function speakingFacts(subtest: ExamSubtest, level: TorflLevel = 'A1'): string[] {
+export function speakingFacts(
+  subtest: ExamSubtest,
+  level: TorflLevel = 'A1',
+  lang: Lang = 'ru',
+): string[] {
+  const c = instructionCopy(lang);
   const out: string[] = [];
   for (const part of subtest.parts) {
     const first = part.items[0];
@@ -634,12 +720,11 @@ export function speakingFacts(subtest: ExamSubtest, level: TorflLevel = 'A1'): s
           part.items.filter((i) => i.kind === 'speaking-monologue').length,
           monologueWindows(level, m).prepSec,
           monologueWindows(level, m).answerSec,
+          lang,
         ),
       );
     } else {
-      out.push(
-        `Задание ${task}: ${part.items.length} ${task === 1 ? 'вопрос(ов) экзаменатора' : 'ситуаций'}, ${min} мин. Ответ записывается сразу.`,
-      );
+      out.push(c.taskFact(task, part.items.length, min));
     }
   }
   return out;

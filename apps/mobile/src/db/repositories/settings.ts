@@ -198,8 +198,8 @@ export const SETTING_KEYS = {
   scenarioAssistModel: 'scenario.assistModel',
   /**
    * «ТРКИ» prefs (M18, TORFL_EXAM_PREP §4.4; declared in T68, healed by
-   * `features/torfl/settings-core.ts`): { v: 1, showEnglishInstructions:
-   * true, drillTimer: 'off' | 'exam-pace' ('off'), breakBetweenSubtests:
+   * `features/torfl/settings-core.ts`): { v: 1, instructionLang:
+   * 'ru' | 'en' ('ru'; T77 replaced showEnglishInstructions), drillTimer: 'off' | 'exam-pace' ('off'), breakBetweenSubtests:
    * true, allowLookupInMockReading: true } — field-by-field healing.
    */
   torflPrefs: 'torfl.prefs',

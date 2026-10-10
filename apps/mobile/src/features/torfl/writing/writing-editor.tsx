@@ -16,7 +16,10 @@ import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/cn';
 import { useAppTheme } from '@/theme/use-app-theme';
 
+import { instructionCopy, RU_CONTENT } from '../copy';
 import { formatClock, timerTone } from '../engine/rules';
+import { useInstructionLang } from '../instruction-lang';
+import { LangToggle } from '../lang-toggle';
 import type { TorflLevel } from '../level-profile';
 import { WritingLookupSheet } from './lookup-sheet';
 import {
@@ -84,6 +87,8 @@ export function WritingEditor({
 }) {
   const { tokens } = useAppTheme();
   const insets = useSafeAreaInsets();
+  const lang = useInstructionLang();
+  const c = instructionCopy(lang);
   const [text, setText] = React.useState(initialText);
   const [lookupOpen, setLookupOpen] = React.useState(false);
   const [lookupQuery, setLookupQuery] = React.useState('');
@@ -140,7 +145,7 @@ export function WritingEditor({
           onPress={onQuit}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel={mode === 'mock' ? 'Выйти из экзамена' : 'Назад'}
+          accessibilityLabel={mode === 'mock' ? c.quitExam : c.back}
           testID="writing-quit"
           className="h-10 w-10 items-center justify-center rounded-full active:bg-surface-2"
         >
@@ -152,11 +157,11 @@ export function WritingEditor({
         </Pressable>
         <View className="flex-1">
           <Text className="font-ui-medium" numberOfLines={1}>
-            {heading ?? 'Письмо'}
-            {mode === 'practice' ? ' · тренировка' : ''}
+            {heading ?? c.writing}
+            {mode === 'practice' ? c.practiceSuffix : ''}
           </Text>
           <Text variant="caption" className="text-xs" testID="writing-counters">
-            {countersLine(counters, item.topic)}
+            {countersLine(counters, item.topic, lang)}
           </Text>
         </View>
         {remainingMs !== undefined ? (
@@ -169,12 +174,13 @@ export function WritingEditor({
         ) : (
           <Ionicons name="infinite-outline" size={20} color={tokens.textMuted} />
         )}
+        <LangToggle screen={mode === 'mock' ? 'writing' : 'practice-writing'} level={level} />
         {lookup && (
           <Pressable
             onPress={openLookup}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="Словарь"
+            accessibilityLabel={c.dictionary}
             testID="writing-lookup-button"
             className="h-10 w-10 items-center justify-center rounded-full active:bg-surface-2"
           >
@@ -222,13 +228,15 @@ export function WritingEditor({
             ))}
           </View>
           <Text variant="caption" className="mt-1">
-            Не менее {item.minSentences} предложений
+            {c.minSentences(item.minSentences)}
             {item.minQuestions > 0
-              ? `, ${item.minQuestions}${item.maxQuestions ? `–${item.maxQuestions}` : ''} ${
-                  item.minQuestions === 1 && !item.maxQuestions ? 'вопрос' : 'вопроса(ов)'
-                }`
+              ? c.questionsNeeded(
+                  item.minQuestions,
+                  item.maxQuestions ?? null,
+                  item.minQuestions === 1 && !item.maxQuestions,
+                )
               : ''}
-            .{lookup ? ' Можно пользоваться словарём.' : ''}
+            .{lookup ? c.dictAllowedSuffix : ''}
           </Text>
         </View>
 
@@ -239,7 +247,7 @@ export function WritingEditor({
               <Ionicons name="chatbubble-ellipses-outline" size={14} color={tokens.accent} />
             </View>
             <Text variant="caption" className="font-ui-medium">
-              Сообщение другу
+              {c.messageToFriend}
             </Text>
           </View>
         )}
@@ -255,7 +263,7 @@ export function WritingEditor({
           autoCapitalize="sentences"
           autoCorrect={false}
           spellCheck={false}
-          placeholder="Привет, …"
+          placeholder={RU_CONTENT.letterPlaceholder}
           placeholderTextColor={tokens.textMuted}
           testID="writing-input"
           accessibilityLabel={isNoteTopic(item.topic) ? 'The message' : 'The letter'}
@@ -265,9 +273,7 @@ export function WritingEditor({
           )}
           style={{ fontFamily: 'Literata_400Regular', fontSize: 18, lineHeight: 29 }}
         />
-        <Text variant="caption">
-          Включи русскую клавиатуру. Счётчики считают предложения по точкам и вопросительным знакам.
-        </Text>
+        <Text variant="caption">{c.keyboardHint}</Text>
 
         {footer}
       </ScrollView>
@@ -296,7 +302,7 @@ export function WritingEditor({
               empty && mode === 'practice' ? 'text-text-muted' : 'text-bg',
             )}
           >
-            Сдать
+            {c.submit}
           </Text>
         </Pressable>
       </View>

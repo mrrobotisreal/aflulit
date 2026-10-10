@@ -14,10 +14,18 @@ import type { AiRunProfile } from '@/features/ai/run-profile';
 export const DRILL_TIMERS = ['off', 'exam-pace'] as const;
 export type DrillTimer = (typeof DRILL_TIMERS)[number];
 
+export const INSTRUCTION_LANGS = ['ru', 'en'] as const;
+export type InstructionLang = (typeof INSTRUCTION_LANGS)[number];
+
 export interface TorflPrefs {
   v: 1;
-  /** EN under the official RU instruction screens. */
-  showEnglishInstructions: boolean;
+  /**
+   * T77: the language of every INSTRUCTION string (what to do / buttons / status lines) on the
+   * TORFL screens — 'ru' (the real test, default) or 'en'. Examiner questions, situations,
+   * topics, passages and scripts are content and are never translated. Replaces the T68
+   * `showEnglishInstructions` boolean (any stored value just heals to the 'ru' default).
+   */
+  instructionLang: InstructionLang;
   /** Drills untimed ('off') or with the 34 s/item exam pace bar. */
   drillTimer: DrillTimer;
   /** The optional break screen between subtests of a full mock. */
@@ -28,14 +36,14 @@ export interface TorflPrefs {
 
 export const DEFAULT_TORFL_PREFS: TorflPrefs = {
   v: 1,
-  showEnglishInstructions: true,
+  instructionLang: 'ru',
   drillTimer: 'off',
   breakBetweenSubtests: true,
   allowLookupInMockReading: true,
 };
 
 const PrefFieldSchemas = {
-  showEnglishInstructions: z.boolean(),
+  instructionLang: z.enum(INSTRUCTION_LANGS),
   drillTimer: z.enum(DRILL_TIMERS),
   breakBetweenSubtests: z.boolean(),
   allowLookupInMockReading: z.boolean(),
@@ -59,7 +67,7 @@ export function parseTorflPrefs(raw: unknown): TorflPrefs {
   };
   return {
     v: 1,
-    showEnglishInstructions: pick('showEnglishInstructions'),
+    instructionLang: pick('instructionLang'),
     drillTimer: pick('drillTimer'),
     breakBetweenSubtests: pick('breakBetweenSubtests'),
     allowLookupInMockReading: pick('allowLookupInMockReading'),

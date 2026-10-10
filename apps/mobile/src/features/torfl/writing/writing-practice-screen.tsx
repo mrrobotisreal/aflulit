@@ -26,7 +26,10 @@ import { trackTorfl } from '@/services/analytics';
 import { logError } from '@/services/error-log';
 import { useAppTheme } from '@/theme/use-app-theme';
 
+import { instructionCopy, numLocale, type Lang } from '../copy';
 import { applySelfCheck } from '../grading/self-check';
+import { useInstructionLang } from '../instruction-lang';
+import { LangToggle } from '../lang-toggle';
 import { torflLevelOf, type TorflLevel } from '../level-profile';
 import { pumpGradingQueue, requestGrading, storyText, useGradingQueue } from '../grading/queue';
 import {
@@ -64,6 +67,8 @@ export function WritingPracticeScreen() {
     itemId: string;
   }>();
   const exam = useExam(packId, examId);
+  const lang = useInstructionLang();
+  const c = instructionCopy(lang);
   const [phase, setPhase] = React.useState<Phase>({ kind: 'editing' });
   const [draft, setDraft] = React.useState('');
   const gradedVersion = useGradingQueue((s) => s.gradedVersion);
@@ -147,10 +152,10 @@ export function WritingPracticeScreen() {
         if (online) void pumpGradingQueue();
       } catch (err) {
         logError('manual', err);
-        Alert.alert('Не удалось сохранить письмо', 'Попробуй ещё раз.');
+        Alert.alert(c.wSaveFailTitle, c.wSaveFailBody);
       }
     },
-    [exam.data, item, located, packId, examId],
+    [exam.data, item, located, packId, examId, c],
   );
 
   if (exam.isPending) {
@@ -163,7 +168,7 @@ export function WritingPracticeScreen() {
   if (!exam.data || !item || !located) {
     return (
       <View className="flex-1 items-center justify-center gap-3 bg-bg px-8">
-        <QueryError message="Задание не найдено." onRetry={() => router.back()} />
+        <QueryError message={c.taskNotFound} onRetry={() => router.back()} />
       </View>
     );
   }
@@ -178,9 +183,9 @@ export function WritingPracticeScreen() {
         subtestKind="writing"
         onDraft={setDraft}
         onSubmit={(text) => {
-          Alert.alert('Сдать письмо?', 'Оценка появится сразу; ИИ оценит, когда будет связь.', [
-            { text: 'Вернуться', style: 'cancel' },
-            { text: 'Сдать', onPress: () => void submit(text) },
+          Alert.alert(c.wPracticeSubmitTitle, c.wPracticeSubmitBody, [
+            { text: c.cancelReturn, style: 'cancel' },
+            { text: c.submit, onPress: () => void submit(text) },
           ]);
         }}
         onQuit={() => router.back()}
@@ -196,6 +201,7 @@ export function WritingPracticeScreen() {
       modelLetter={model.data ?? null}
       packId={packId}
       level={torflLevelOf(exam.data?.level)}
+      lang={lang}
       meta={
         exam.data && response.data
           ? writingTaskOf(exam.data, response.data.subtestId, response.data.itemId)
@@ -220,6 +226,7 @@ function PracticeResult({
   modelLetter,
   packId,
   level,
+  lang,
   meta,
   top,
   bottom,
@@ -234,6 +241,7 @@ function PracticeResult({
   packId: string;
   /** T75 (THE LEVEL RULE): the exam's level for this result's analytics. */
   level: TorflLevel;
+  lang: Lang;
   /** T75: the writing item's task + topic for `exam_writing_scored` (self-check). */
   meta: { task: number; topic: string };
   top: number;
@@ -244,6 +252,7 @@ function PracticeResult({
 }) {
   const { tokens } = useAppTheme();
   const router = useRouter();
+  const c = instructionCopy(lang);
   const [selfOpen, setSelfOpen] = React.useState(false);
   const sending = useGradingQueue((s) => s.sending);
   const status = response?.gradingStatus ?? 'provisional';
@@ -266,22 +275,23 @@ function PracticeResult({
           onPress={onDone}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel="Назад"
+          accessibilityLabel={c.back}
           className="h-10 w-10 items-center justify-center rounded-full active:bg-surface-2"
         >
           <Ionicons name="chevron-back" size={22} color={tokens.text} />
         </Pressable>
         <View className="flex-1">
-          <Text className="font-reading-bold text-xl">Письмо · тренировка</Text>
+          <Text className="font-reading-bold text-xl">{c.wPracticeTitle}</Text>
           <Text variant="caption" testID="practice-pct">
-            {pct.toLocaleString('ru-RU')} %
+            {pct.toLocaleString(numLocale(lang))} %
             {status === 'scored'
-              ? ' · оценка ИИ'
+              ? c.aiGraded
               : status === 'self-graded'
-                ? ' · самопроверка'
-                : ' · предварительно'}
+                ? c.selfChecked
+                : c.provisional}
           </Text>
         </View>
+        <LangToggle screen="practice-writing" level={level} />
       </View>
       <ScrollView
         contentContainerClassName="gap-5 px-4"
@@ -291,22 +301,22 @@ function PracticeResult({
           {inFlight ? (
             <View className="flex-row items-center gap-2">
               <ActivityIndicator size="small" color={tokens.accent} />
-              <Text variant="muted">ИИ оценивает письмо…</Text>
+              <Text variant="muted">{c.wAiGrading}</Text>
             </View>
           ) : status === 'ai-failed' ? (
-            <Text className="font-ui-medium text-danger">
-              Оценка ИИ не удалась — предварительная осталась.
-            </Text>
+            <Text className="font-ui-medium text-danger">{c.wAiFailed}</Text>
           ) : status === 'provisional' ? (
-            <Text variant="muted">
-              Пока только офлайн-критерии. ИИ оценит, когда будет связь и ключ.
-            </Text>
+            <Text variant="muted">{c.wProvisional}</Text>
           ) : null}
           <Text variant="caption">
-            Пункты: {offline.details.pointsCovered} из {offline.details.pointsTotal} · предложений{' '}
-            {offline.details.sentences} · вопросов {offline.details.questions}
-            {offline.details.greeting ? ' · приветствие ✓' : ' · без приветствия'}
-            {offline.details.signOff ? ' · прощание ✓' : ' · без прощания'}
+            {c.wPoints(
+              offline.details.pointsCovered,
+              offline.details.pointsTotal,
+              offline.details.sentences,
+              offline.details.questions,
+              !!offline.details.greeting,
+              !!offline.details.signOff,
+            )}
           </Text>
           {(status === 'ai-failed' || status === 'provisional' || waiting) &&
             !inFlight &&
@@ -319,7 +329,7 @@ function PracticeResult({
                   className="flex-row items-center gap-1.5 rounded-full bg-accent px-4 py-2 active:opacity-80"
                 >
                   <Ionicons name="refresh" size={14} color={tokens.bg} />
-                  <Text className="font-ui-medium text-sm text-bg">Повторить оценку</Text>
+                  <Text className="font-ui-medium text-sm text-bg">{c.retryGrade}</Text>
                 </Pressable>
                 <Pressable
                   onPress={() => setSelfOpen(true)}
@@ -328,7 +338,7 @@ function PracticeResult({
                   className="flex-row items-center gap-1.5 rounded-full border border-accent px-4 py-2 active:bg-accent-soft"
                 >
                   <Ionicons name="checkbox-outline" size={14} color={tokens.accent} />
-                  <Text className="font-ui-medium text-sm text-accent">Самопроверка</Text>
+                  <Text className="font-ui-medium text-sm text-accent">{c.selfCheck}</Text>
                 </Pressable>
               </View>
             )}
@@ -336,20 +346,20 @@ function PracticeResult({
 
         {criteria.length > 0 && (
           <View className="overflow-hidden rounded-2xl border border-border bg-surface">
-            {criteria.map((c, i) => (
+            {criteria.map((cr, i) => (
               <View
-                key={c.id}
+                key={cr.id}
                 className={`gap-0.5 px-4 py-2.5 ${i > 0 ? 'border-t border-border' : ''}`}
               >
                 <View className="flex-row items-center gap-2">
                   <Text className="flex-1 font-ui-medium text-sm">
-                    {criterionLabel(c.id, item.topic).ru}
+                    {criterionLabel(cr.id, item.topic)[lang]}
                   </Text>
-                  <Text className={`font-ui-bold text-sm ${c.pending ? 'text-text-muted' : ''}`}>
-                    {c.pending ? '—' : c.score.toLocaleString('ru-RU')} / {c.max}
+                  <Text className={`font-ui-bold text-sm ${cr.pending ? 'text-text-muted' : ''}`}>
+                    {cr.pending ? '—' : cr.score.toLocaleString(numLocale(lang))} / {cr.max}
                   </Text>
                 </View>
-                {c.comment ? <Text variant="caption">{c.comment}</Text> : null}
+                {cr.comment ? <Text variant="caption">{cr.comment}</Text> : null}
               </View>
             ))}
           </View>
@@ -402,9 +412,9 @@ function PracticeResult({
           >
             <Ionicons name="reader-outline" size={18} color={tokens.accent} />
             <View className="flex-1">
-              <Text className="font-ui-medium">Образец письма</Text>
+              <Text className="font-ui-medium">{c.modelLetter}</Text>
               <Text variant="caption" numberOfLines={3}>
-                {modelLetter ?? 'Открыть в читалке'}
+                {modelLetter ?? c.openInReader}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color={tokens.textMuted} />
@@ -418,7 +428,7 @@ function PracticeResult({
             testID="practice-again"
             className="flex-1 items-center rounded-full border border-border px-5 py-3 active:bg-surface-2"
           >
-            <Text className="font-ui-medium">Ещё раз</Text>
+            <Text className="font-ui-medium">{c.again}</Text>
           </Pressable>
           <Pressable
             onPress={onDone}
@@ -426,7 +436,7 @@ function PracticeResult({
             testID="practice-done"
             className="flex-1 items-center rounded-full bg-accent px-5 py-3 active:opacity-80"
           >
-            <Text className="font-ui-bold text-bg">Готово</Text>
+            <Text className="font-ui-bold text-bg">{c.done}</Text>
           </Pressable>
         </View>
       </ScrollView>

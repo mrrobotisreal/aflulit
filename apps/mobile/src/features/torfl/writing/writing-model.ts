@@ -110,15 +110,16 @@ export function writingChecklist(item: Pick<WritingItem, 'bullets'>, text: strin
  * «Предложений: 7 / ≥ 10 · Вопросов: 1 / 2–5». A note (`write-note`, T76)
  * has no question quota: «Предложений: 3 / ≥ 5».
  */
-export function countersLine(c: WritingCounters, topic?: string): string {
+export function countersLine(c: WritingCounters, topic?: string, lang: 'ru' | 'en' = 'ru'): string {
+  const [sent, quest] = lang === 'ru' ? ['Предложений', 'Вопросов'] : ['Sentences', 'Questions'];
   if (isNoteTopic(topic) && c.minQuestions === 0 && c.maxQuestions === null) {
-    return `Предложений: ${c.sentences} / ≥ ${c.minSentences}`;
+    return `${sent}: ${c.sentences} / ≥ ${c.minSentences}`;
   }
   const q =
     c.maxQuestions !== null
       ? `${c.questions} / ${c.minQuestions}–${c.maxQuestions}`
       : `${c.questions} / ≥ ${c.minQuestions}`;
-  return `Предложений: ${c.sentences} / ≥ ${c.minSentences} · Вопросов: ${q}`;
+  return `${sent}: ${c.sentences} / ≥ ${c.minSentences} · ${quest}: ${q}`;
 }
 
 /** The word under / around a caret or selection inside `text` (for the dictionary pre-fill). */

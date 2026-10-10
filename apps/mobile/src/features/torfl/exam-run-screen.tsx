@@ -24,6 +24,8 @@ import { torflLevelOf } from './level-profile';
 import { ExamWritingScreen } from './exam-writing-screen';
 import { ExamSpeakingScreen, speakingFacts } from './speaking/exam-speaking-screen';
 import { speakingGateMessage } from './speaking/gates';
+import { instructionCopy } from './copy';
+import { useInstructionLang } from './instruction-lang';
 
 /**
  * The mock runner route body (T71) — `/exam/run/[attemptId]`, full-screen,
@@ -45,6 +47,8 @@ export function ExamRunScreen() {
   const { tokens } = useAppTheme();
   const run = useExamRun(attemptId, devDurationSec);
   const gates = useHubGates();
+  const lang = useInstructionLang();
+  const c = instructionCopy(lang);
   // A mock never plays the ambient bed while the candidate listens or speaks; reading/lexgram keep the quiet education bed.
   const state = run.state;
   const subtest =
@@ -62,14 +66,14 @@ export function ExamRunScreen() {
   }, [speakingIntro, gates.mic]);
 
   const quit = React.useCallback(() => {
-    Alert.alert('Выйти из экзамена?', 'Прогресс сохранится, таймер продолжит идти по часам.', [
-      { text: 'Продолжить', style: 'cancel' },
+    Alert.alert(c.quitTitle, c.quitBody, [
+      { text: c.quitContinue, style: 'cancel' },
       {
-        text: 'Сохранить и выйти',
+        text: c.quitSave,
         onPress: () => router.back(),
       },
       {
-        text: 'Завершить попытку',
+        text: c.quitAbandon,
         style: 'destructive',
         onPress: () => {
           run.send({ type: 'ABANDON' });
@@ -77,7 +81,7 @@ export function ExamRunScreen() {
         },
       },
     ]);
-  }, [router, run]);
+  }, [router, run, c]);
 
   React.useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -98,7 +102,7 @@ export function ExamRunScreen() {
     return (
       <View className="flex-1 items-center justify-center gap-3 bg-bg px-8">
         <QueryError
-          message={run.load.status === 'error' ? run.load.message : 'Не удалось открыть экзамен.'}
+          message={run.load.status === 'error' ? run.load.message : c.openFail}
           onRetry={() => router.back()}
         />
         <Pressable
@@ -106,7 +110,7 @@ export function ExamRunScreen() {
           accessibilityRole="button"
           className="rounded-full border border-border bg-surface px-5 py-2 active:bg-surface-2"
         >
-          <Text className="text-accent">Назад</Text>
+          <Text className="text-accent">{c.back}</Text>
         </Pressable>
       </View>
     );
@@ -115,7 +119,7 @@ export function ExamRunScreen() {
     return (
       <View className="flex-1 items-center justify-center gap-3 bg-bg" testID="exam-finishing">
         <ActivityIndicator color={tokens.accent} />
-        <Text variant="muted">Считаем результат…</Text>
+        <Text variant="muted">{c.countingResult}</Text>
       </View>
     );
   }
@@ -153,29 +157,26 @@ export function ExamRunScreen() {
     const missing =
       def.kind === 'listening' && run.listening !== null && run.audioMissing.length > 0;
     const checking = def.kind === 'listening' && run.listening === null;
-    const speakingBlocked = def.kind === 'speaking' ? speakingGateMessage(gates) : null;
+    const speakingBlocked = def.kind === 'speaking' ? speakingGateMessage(gates, lang) : null;
     return (
       <ExamInstructionScreen
         subtest={def}
         itemCount={itemTotal(def)}
-        showEnglish={run.prefs.showEnglishInstructions}
+        lang={lang}
+        level={torflLevelOf(run.exam?.level)}
         durationOverrideSec={devDurationOverrideSec(
           devDurationSec,
           typeof __DEV__ !== 'undefined' && __DEV__,
         )}
         extraFacts={
-          def.kind === 'speaking' ? speakingFacts(def, torflLevelOf(run.exam?.level)) : undefined
+          def.kind === 'speaking'
+            ? speakingFacts(def, torflLevelOf(run.exam?.level), lang)
+            : undefined
         }
-        blocked={
-          missing
-            ? 'Скачай аудио по Wi-Fi: без файла экзамен не звучит. Подключись к Wi-Fi, синхронизируй пакет и вернись.'
-            : checking
-              ? 'Проверяем аудио…'
-              : speakingBlocked
-        }
+        blocked={missing ? c.audioMissing : checking ? c.checkingAudio : speakingBlocked}
         blockedAction={
           speakingBlocked && gates.gate === 'asr-missing'
-            ? { label: 'Открыть настройки речи', onPress: () => router.push('/settings') }
+            ? { label: c.openSpeechSettings, onPress: () => router.push('/settings') }
             : undefined
         }
         onBegin={() => run.send({ type: 'BEGIN', now: Date.now() })}
@@ -201,6 +202,7 @@ export function ExamRunScreen() {
         onAudioEnded={() => run.send({ type: 'AUDIO_ENDED', now: Date.now() })}
         onChoose={(itemId) => run.send({ type: 'CHOOSE_TOPIC', itemId, now: Date.now() })}
         onPrepDone={() => run.send({ type: 'PREP_DONE', now: Date.now() })}
+        onTapRec={() => run.send({ type: 'TAP_REC', now: Date.now() })}
         onSkip={() => run.send({ type: 'SKIP_ITEM', now: Date.now() })}
         onStopEarly={() => run.recorder.stop('done')}
         onQuit={quit}

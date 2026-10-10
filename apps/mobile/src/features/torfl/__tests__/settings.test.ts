@@ -56,7 +56,7 @@ describe('torfl.prefs healing', () => {
   it('defaults match TORFL §4.4', () => {
     expect(DEFAULT_TORFL_PREFS).toEqual({
       v: 1,
-      showEnglishInstructions: true,
+      instructionLang: 'ru',
       drillTimer: 'off',
       breakBetweenSubtests: true,
       allowLookupInMockReading: true,
@@ -71,7 +71,7 @@ describe('torfl.prefs healing', () => {
     expect(
       parseTorflPrefs({
         v: 7,
-        showEnglishInstructions: false,
+        instructionLang: 'en',
         drillTimer: 'turbo',
         breakBetweenSubtests: 'yes',
         allowLookupInMockReading: false,
@@ -79,11 +79,30 @@ describe('torfl.prefs healing', () => {
       }),
     ).toEqual({
       v: 1,
-      showEnglishInstructions: false,
+      instructionLang: 'en',
       drillTimer: 'off',
       breakBetweenSubtests: true,
       allowLookupInMockReading: false,
     });
+  });
+
+  it('T77: a legacy showEnglishInstructions row heals to instructionLang ru (other fields kept)', () => {
+    expect(
+      parseTorflPrefs({
+        v: 1,
+        showEnglishInstructions: true,
+        drillTimer: 'exam-pace',
+        breakBetweenSubtests: false,
+        allowLookupInMockReading: true,
+      }),
+    ).toEqual({
+      v: 1,
+      instructionLang: 'ru',
+      drillTimer: 'exam-pace',
+      breakBetweenSubtests: false,
+      allowLookupInMockReading: true,
+    });
+    expect(parseTorflPrefs({ instructionLang: 'de' }).instructionLang).toBe('ru');
   });
 
   it('a valid value passes through untouched', () => {
@@ -93,13 +112,13 @@ describe('torfl.prefs healing', () => {
 
   it('accessor reads healed and writes merged patches', async () => {
     expect(await getTorflPrefs()).toEqual(DEFAULT_TORFL_PREFS);
-    settingsStore.set('torfl.prefs', { drillTimer: 99, showEnglishInstructions: false });
+    settingsStore.set('torfl.prefs', { drillTimer: 99, instructionLang: 'en' });
     expect(await getTorflPrefs()).toMatchObject({
       drillTimer: 'off',
-      showEnglishInstructions: false,
+      instructionLang: 'en',
     });
     const next = await setTorflPrefs({ drillTimer: 'exam-pace' });
-    expect(next).toMatchObject({ drillTimer: 'exam-pace', showEnglishInstructions: false });
+    expect(next).toMatchObject({ drillTimer: 'exam-pace', instructionLang: 'en' });
     expect(settingsStore.get('torfl.prefs')).toEqual(next);
   });
 });

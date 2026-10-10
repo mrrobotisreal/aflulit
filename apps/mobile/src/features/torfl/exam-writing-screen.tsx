@@ -5,7 +5,9 @@ import { Alert, Pressable, View } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/cn';
 
+import { instructionCopy } from './copy';
 import type { ExamRunState } from './engine/exam-machine';
+import { useInstructionLang } from './instruction-lang';
 import type { TorflLevel } from './level-profile';
 import { dictionaryAllowed } from './engine/rules';
 import type { ExamAnswer } from './model';
@@ -47,6 +49,8 @@ export function ExamWritingScreen({
   onQuit: () => void;
 }) {
   const items = writingItemsOf(subtest);
+  const lang = useInstructionLang();
+  const c = instructionCopy(lang);
   const [active, setActive] = React.useState(0);
   const item = items[Math.min(active, items.length - 1)];
   if (!item) return null;
@@ -71,7 +75,7 @@ export function ExamWritingScreen({
             onPress={() => setActive(i)}
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
-            accessibilityLabel={`Задание ${i + 1}`}
+            accessibilityLabel={c.writingTask(i + 1)}
             testID={`writing-tab-${i + 1}`}
             className={cn(
               'flex-1 items-center rounded-full border px-3 py-2',
@@ -79,10 +83,10 @@ export function ExamWritingScreen({
             )}
           >
             <Text className={cn('font-ui-medium text-sm', on ? 'text-accent' : 'text-text')}>
-              Задание {i + 1}
+              {c.writingTask(i + 1)}
             </Text>
             <Text variant="caption" className="text-xs" testID={`writing-tab-${i + 1}-count`}>
-              {n > 0 ? `${n} предл.` : 'пусто'}
+              {n > 0 ? c.sentencesShort(n) : c.empty}
             </Text>
           </Pressable>
         );
@@ -101,7 +105,7 @@ export function ExamWritingScreen({
       subtestKind="writing"
       level={level}
       header={stepper}
-      heading={multi ? `Письмо · задание ${idx + 1}` : undefined}
+      heading={multi ? `${c.writing} · ${c.writingTask(idx + 1).toLowerCase()}` : undefined}
       onDraft={(text) => onAnswer(item.id, { kind: 'writing', text })}
       onSubmit={(text) => {
         onAnswer(item.id, { kind: 'writing', text });
@@ -109,18 +113,14 @@ export function ExamWritingScreen({
         const allEmpty = texts.every((t) => t.trim().length === 0);
         const counts = texts.map((t) => sentenceSplit(t).sentences.length);
         const detail = multi
-          ? `\n${items.map((_, i) => `Задание ${i + 1}: ${counts[i]} предл.`).join(' · ')}.`
+          ? `\n${items.map((_, i) => `${c.writingTask(i + 1)}: ${c.sentencesShort(counts[i]!)}`).join(' · ')}.`
           : '';
         Alert.alert(
-          multi ? 'Сдать письменную работу?' : 'Сдать письмо?',
-          allEmpty
-            ? multi
-              ? 'Оба задания пусты — субтест будет оценён в 0 %.'
-              : 'Письмо пустое — субтест будет оценён в 0 %.'
-            : `После сдачи текст изменить нельзя. Оценка появится сразу (предварительно), ИИ оценит позже.${detail}`,
+          multi ? c.submitWritingMulti : c.submitWriting,
+          allEmpty ? (multi ? c.bothEmpty : c.letterEmpty) : c.afterSubmit(detail),
           [
-            { text: 'Вернуться', style: 'cancel' },
-            { text: 'Сдать', style: 'destructive', onPress: onSubmit },
+            { text: c.cancelReturn, style: 'cancel' },
+            { text: c.submit, style: 'destructive', onPress: onSubmit },
           ],
         );
       }}

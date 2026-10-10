@@ -545,7 +545,10 @@ function speakingTick(
   ) {
     return {
       state: { ...state, speaking: { ...sp, phase: 'processing', phaseDeadlineAt: undefined } },
-      effects: [{ type: 'STOP_REC', reason: 'deadline' }, { type: 'PERSIST_STATE', urgent: true }],
+      effects: [
+        { type: 'STOP_REC', reason: 'deadline' },
+        { type: 'PERSIST_STATE', urgent: true },
+      ],
     };
   }
   // Task 3 windows.

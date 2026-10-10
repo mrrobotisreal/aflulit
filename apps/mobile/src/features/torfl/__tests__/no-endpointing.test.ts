@@ -30,7 +30,9 @@ describe('TORFL never endpoints on silence (T77)', () => {
       const src = fs.readFileSync(f, 'utf8');
       // strip comments so prose about the old behaviour does not trip the scan
       const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-      if (/engine\/endpointing|endpointStep|endpointConfig|endpointManualStop|NO_SPEECH_MS/.test(code)) {
+      if (
+        /engine\/endpointing|endpointStep|endpointConfig|endpointManualStop|NO_SPEECH_MS/.test(code)
+      ) {
         offenders.push(path.relative(TORFL, f));
       }
     }
