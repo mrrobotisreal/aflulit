@@ -383,7 +383,7 @@ export function DebriefScreen() {
               />
               <Text className={`font-ui-medium ${practiced !== null ? 'text-accent' : 'text-bg'}`}>
                 {practiced !== null
-                  ? `In your bank${practiced < practice.length ? ` (${practice.length - practiced} were already there)` : ''}`
+                  ? `In your New queue${practiced < practice.length ? ` (${practice.length - practiced} were already there)` : ''}`
                   : `Practice these · ${practice.length}`}
               </Text>
             </Pressable>
@@ -391,6 +391,7 @@ export function DebriefScreen() {
           {practice.length > 0 && practiced === null && (
             <Text variant="caption" className="-mt-1 text-center">
               {practice.map((p) => p.lemma).join(' · ')}
+              {'\n'}These join your New queue — a few arrive each day.
             </Text>
           )}
           <View className="flex-row gap-3">

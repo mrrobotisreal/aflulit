@@ -526,6 +526,11 @@ export type AnalyticsEvent =
   // card_action {kind: suspend|unsuspend|bury|unbury|reset, direction,
   // from: item-detail|leech-inbox}; review_log_exported {rows}.
   | 'fsrs_retention_changed'
+  // T82 «Почему столько?». Numbers/slugs only.
+  | 'due_breakdown_viewed'
+  | 'new_budget_changed'
+  | 'sibling_bury_changed'
+  | 'due_snapshot'
   | 'fsrs_params_applied'
   | 'fsrs_params_rejected'
   | 'fsrs_params_reverted'

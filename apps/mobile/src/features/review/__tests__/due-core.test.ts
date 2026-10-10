@@ -38,3 +38,37 @@ describe('classifySource', () => {
     expect(classifySource(base)).toBe('manual');
   });
 });
+
+describe('copy', () => {
+  it('split line + backlog + bulk toast', async () => {
+    const { splitLine, backlogLine, bulkBankToast } = await import('../due-core');
+    expect(splitLine(30, 12)).toBe('30 повторений + 12 новых');
+    expect(splitLine(21, 1)).toBe('21 повторение + 1 новая');
+    expect(splitLine(0, 10)).toBe('10 новых');
+    expect(splitLine(5, 0)).toBe('5 повторений');
+    expect(backlogLine(286)).toBe('В очереди: 286 новых');
+    expect(backlogLine(0)).toBeNull();
+    expect(bulkBankToast(87, 10)).toBe('+87 слов в Словаре · по 10 в день');
+  });
+});
+
+describe('one function for every consumer (source scan)', () => {
+  it('no consumer reads the raw card count or raw due list any more', async () => {
+    const { readFileSync } = await import('node:fs');
+    const files = [
+      'src/db/hooks.ts',
+      'src/features/motivation/widget-sync.ts',
+      'src/features/motivation/notifications.ts',
+      'src/features/review/daily/session.ts',
+      'src/features/review/session.ts',
+      'src/features/review/games/cloze/session.ts',
+      'src/features/review/games/listening/session.ts',
+      'src/features/review/games/sentence-builder/session.ts',
+      'src/features/pronunciation/session.ts',
+    ];
+    for (const f of files) {
+      const src = readFileSync(f, 'utf8');
+      expect(src, f).not.toMatch(/reviews\s*\.\s*countDueCards|reviews\s*\.\s*listDueCards/);
+    }
+  });
+});

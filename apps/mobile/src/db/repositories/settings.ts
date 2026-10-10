@@ -235,6 +235,15 @@ export const SETTING_KEYS = {
    * parseStoredParams; a malformed row heals to defaults.
    */
   fsrsParams: 'fsrs.params',
+  /**
+   * Queue prefs (T82): { v: 1, newPerDay: 0–50 (default 10), buryRelated:
+   * boolean (default true) } — the daily new-WORD budget and sibling bury.
+   * Healed field-by-field on read (features/review/due-core.ts parseQueuePrefs);
+   * store/queue-prefs.ts owns the writes. No migration.
+   */
+  queuePrefs: 'review.queuePrefs',
+  /** Local day key ('YYYY-MM-DD') of the last `due_snapshot` event (T82). */
+  dueSnapshotDay: 'review.dueSnapshotDay',
 } as const;
 
 /** Key-value settings, JSON-encoded values. */

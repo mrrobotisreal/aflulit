@@ -220,3 +220,36 @@ export function planDue(input: PlanInput): DuePlan {
     overdue7d: reviews.filter((c) => now - c.dueAt > 7 * DAY_MS).length,
   };
 }
+
+// ---- copy (pure, tested) ---------------------------------------------------
+
+function plural(n: number, forms: readonly [string, string, string]): string {
+  const abs = Math.abs(n);
+  const mod10 = abs % 10;
+  const mod100 = abs % 100;
+  if (mod10 === 1 && mod100 !== 11) return forms[0];
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return forms[1];
+  return forms[2];
+}
+
+/** «30 повторений + 12 новых» — the split under the Today headline. */
+export function splitLine(reviewDue: number, newToday: number): string {
+  const reviews = `${reviewDue} ${plural(reviewDue, ['повторение', 'повторения', 'повторений'])}`;
+  if (newToday === 0) return reviews;
+  if (reviewDue === 0) return `${newToday} ${plural(newToday, ['новая', 'новые', 'новых'])}`;
+  return `${reviews} + ${newToday} ${plural(newToday, ['новая', 'новые', 'новых'])}`;
+}
+
+/** «В очереди: 286 новых» — never part of the headline. */
+export function backlogLine(newBacklog: number): string | null {
+  return newBacklog > 0 ? `В очереди: ${newBacklog} новых` : null;
+}
+
+/** «+87 слов в Словаре · по 10 в день» — the bulk-bank toast. */
+export function bulkBankToast(added: number, perDay: number): string {
+  if (added === 0) return '+0 слов — все слова уже в Словаре';
+  const words = plural(added, ['слово', 'слова', 'слов']);
+  return perDay > 0
+    ? `+${added} ${words} в Словаре · по ${perDay} в день`
+    : `+${added} ${words} в Словаре · новые слова выключены`;
+}

@@ -8,6 +8,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  Switch,
   TextInput,
   View,
 } from 'react-native';
@@ -18,9 +19,11 @@ import { repos } from '@/db';
 import { writeTextToBackupDir } from '@/features/backup/local-target';
 import { track } from '@/services/analytics';
 import { useFsrsPrefs } from '@/store/fsrs-prefs';
+import { useQueuePrefs } from '@/store/queue-prefs';
 import { useAppTheme } from '@/theme/use-app-theme';
 
 import { DEFAULT_W, RETENTION_DEFAULT, RETENTION_MAX, RETENTION_MIN } from './fsrs-settings';
+import { NEW_PER_DAY_MAX, NEW_PER_DAY_MIN } from './due-core';
 import {
   buildReviewLogExport,
   exportResultMessage,
@@ -51,6 +54,11 @@ export function SchedulingSettingsSection() {
   const [sheetKey, setSheetKey] = React.useState(0);
   const [notice, setNotice] = React.useState<string | null>(null);
   const [exportBusy, setExportBusy] = React.useState(false);
+
+  const newPerDay = useQueuePrefs((s) => s.prefs.newPerDay);
+  const buryRelated = useQueuePrefs((s) => s.prefs.buryRelated);
+  const setNewPerDay = useQueuePrefs((s) => s.setNewPerDay);
+  const setBuryRelated = useQueuePrefs((s) => s.setBuryRelated);
 
   const shown = draft ?? desiredRetention;
 
@@ -143,6 +151,61 @@ export function SchedulingSettingsSection() {
               <Text className="font-ui-medium text-sm text-accent">Default 90 %</Text>
             </Pressable>
           )}
+        </View>
+
+        {/* T82: daily new-word budget */}
+        <View className="border-t border-border px-4 py-3.5">
+          <View className="flex-row items-center justify-between gap-3">
+            <View className="flex-1 gap-0.5 pr-3">
+              <Text className="font-ui-medium">Новых слов в день</Text>
+              <Text variant="caption">
+                New words introduced per day (0–50). Extra banked words wait in the New queue;
+                reviews are always served first.
+              </Text>
+            </View>
+            <View className="flex-row items-center gap-3">
+              <Pressable
+                onPress={() => setNewPerDay(newPerDay - 1)}
+                disabled={newPerDay <= NEW_PER_DAY_MIN}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Fewer new words per day"
+              >
+                <Ionicons name="remove-circle-outline" size={26} color={tokens.accent} />
+              </Pressable>
+              <Text
+                className="min-w-[28px] text-center font-ui-medium"
+                accessibilityLiveRegion="polite"
+              >
+                {newPerDay}
+              </Text>
+              <Pressable
+                onPress={() => setNewPerDay(newPerDay + 1)}
+                disabled={newPerDay >= NEW_PER_DAY_MAX}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="More new words per day"
+              >
+                <Ionicons name="add-circle-outline" size={26} color={tokens.accent} />
+              </Pressable>
+            </View>
+          </View>
+        </View>
+
+        {/* T82: sibling bury */}
+        <View className="flex-row items-center justify-between border-t border-border px-4 py-3.5">
+          <View className="flex-1 gap-0.5 pr-3">
+            <Text className="font-ui-medium">Прятать родственные карточки</Text>
+            <Text variant="caption">
+              After one direction of a word is answered, its other directions wait until tomorrow.
+            </Text>
+          </View>
+          <Switch
+            value={buryRelated}
+            onValueChange={setBuryRelated}
+            accessibilityLabel="Bury related cards"
+            trackColor={{ true: tokens.accent, false: tokens.textMuted }}
+          />
         </View>
 
         {/* optimizer */}
