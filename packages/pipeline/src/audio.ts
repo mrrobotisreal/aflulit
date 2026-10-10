@@ -13,6 +13,7 @@ import {
   type WordStamp,
 } from '@sumrak/schema';
 import { z } from 'zod';
+import { analyseTrack, restampTrack, type Aligner } from './stamp-audit.ts';
 import { annotateDrafts } from './annotate.ts';
 import {
   planDialogueItems,
@@ -104,6 +105,14 @@ export interface FinalizeOptions extends AudioFilters {
   modelId?: string;
   /** Pack extras file (lesson/prompts/exercises — course-unit packs, T17). */
   extrasPath?: string;
+  /**
+   * T80: re-derive every story track's word stamps from the ENCODED audio by
+   * forced alignment right after the Opus is written (provider character
+   * times collapse pauses and dilate — see stamp-audit.ts). Off by default so
+   * finalize stays offline/byte-stable; `pipeline stamp-audit` (and the
+   * publish gate) catches an unrestamped track either way.
+   */
+  restamp?: Aligner;
 }
 
 export interface TrackReport {
@@ -918,7 +927,30 @@ export async function runFinalize(
       const opusFile = join(outDir, opusRelPath);
       encodeOpus(mp3File, opusFile);
       const durationMs = probeDurationMs(opusFile);
-      const stampResult = rendered.stampResultFor(durationMs);
+      let stampResult = rendered.stampResultFor(durationMs);
+      if (opts.restamp) {
+        const draftTrack = {
+          id: direction.id,
+          voice: direction.voice,
+          style: direction.style,
+          file: opusRelPath,
+          durationMs,
+          timestamps: [],
+        };
+        const work = analyseTrack(outDir, story.id, draftTrack, story.sentences, opts.restamp);
+        const stamps = restampTrack(story.sentences, work.refined);
+        stampResult = {
+          ...stampResult,
+          stamps,
+          trusted: true,
+          stampedTokens: stamps.length,
+          coverage: stampResult.wordTokens === 0 ? 1 : stamps.length / stampResult.wordTokens,
+          issues: [
+            ...stampResult.issues,
+            `stamps re-derived from the Opus by forced alignment (${stamps.length} words)`,
+          ],
+        };
+      }
       tracks.push({
         id: direction.id,
         voice: direction.voice,

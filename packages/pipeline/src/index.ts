@@ -223,3 +223,22 @@ export {
   type VoiceSettings,
 } from './frontmatter.ts';
 export { runValidate, type ValidateResult } from './validate.ts';
+export {
+  THRESHOLDS as STAMP_THRESHOLDS,
+  analyseTrack,
+  assertOnlyTimestampsChanged,
+  auditPack,
+  auditTrack,
+  formatAuditTable,
+  lemmaLint,
+  pythonAligner,
+  refineWords,
+  restampPack,
+  restampTrack,
+  structuralChecks,
+  wordsOfStory,
+  type AlignedWord,
+  type Aligner,
+  type PackAudit,
+  type TrackAudit,
+} from './stamp-audit.ts';
