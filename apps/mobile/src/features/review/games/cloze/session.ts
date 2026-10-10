@@ -84,7 +84,7 @@ export async function buildClozeSession(
 
   // Due first, weakest fill after — both capped generously since many
   // candidates get skipped (phrases, lemma-less items, unsourceable ones).
-  const due = await repos.reviews.listDueCards({
+  const due = await repos.reviews.listSessionCards({
     now,
     limit: limit * 3,
     directions: MIXED_SESSION_DIRECTIONS,

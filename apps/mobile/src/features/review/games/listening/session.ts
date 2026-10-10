@@ -109,7 +109,7 @@ export async function buildListeningSession(
 ): Promise<ListeningItem[]> {
   const { limit = LISTENING_SESSION_SIZE, now = Date.now(), unseenAllowed = false } = opts;
 
-  const due = await repos.reviews.listDueCards({ now, limit, directions: ['listening'] });
+  const due = await repos.reviews.listSessionCards({ now, limit, directions: ['listening'] });
   const weak = await repos.reviews.listWeakestCards({ now, limit, directions: ['listening'] });
   const pool = [...due, ...weak];
 

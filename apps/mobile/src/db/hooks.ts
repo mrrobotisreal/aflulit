@@ -37,6 +37,7 @@ export const queryKeys = {
   bankWordStatus: (lemmaNorm: string) => ['bank-word-status', lemmaNorm] as const,
   bankFilterOptions: ['bank-items', 'filter-options'] as const,
   dueCount: ['due-count'] as const,
+  dueBreakdown: ['due-count', 'breakdown'] as const,
   dueCountMixed: ['due-count', 'mixed'] as const,
   dueCountProduction: ['due-count', 'production'] as const,
   itemReviewState: (bankItemId: string) => ['review-state', bankItemId] as const,
@@ -201,7 +202,16 @@ export function useBankItemDetail(id: string | undefined) {
 export function useDueCardCount() {
   return useQuery({
     queryKey: queryKeys.dueCount,
-    queryFn: () => repos.reviews.countDueCards({ directions: UNIFIED_SESSION_DIRECTIONS }),
+    queryFn: async () =>
+      (await repos.reviews.countDueBreakdown({ directions: UNIFIED_SESSION_DIRECTIONS })).total,
+  });
+}
+
+/** T82: the full Today split — reviews due, new today, backlog, breakdown. */
+export function useDueBreakdown() {
+  return useQuery({
+    queryKey: queryKeys.dueBreakdown,
+    queryFn: () => repos.reviews.countDueBreakdown({ directions: UNIFIED_SESSION_DIRECTIONS }),
   });
 }
 
@@ -209,7 +219,8 @@ export function useDueCardCount() {
 export function useMixedDueCount() {
   return useQuery({
     queryKey: queryKeys.dueCountMixed,
-    queryFn: () => repos.reviews.countDueCards({ directions: MIXED_SESSION_DIRECTIONS }),
+    queryFn: async () =>
+      (await repos.reviews.countDueBreakdown({ directions: MIXED_SESSION_DIRECTIONS })).total,
   });
 }
 
@@ -217,7 +228,8 @@ export function useMixedDueCount() {
 export function useProductionDueCount() {
   return useQuery({
     queryKey: queryKeys.dueCountProduction,
-    queryFn: () => repos.reviews.countDueCards({ directions: ['production'] }),
+    queryFn: async () =>
+      (await repos.reviews.countDueBreakdown({ directions: ['production'] })).total,
   });
 }
 

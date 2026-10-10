@@ -1,13 +1,16 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import { createRepositories } from '@/db/repositories';
 import { createTestDb } from '@/db/__tests__/helpers';
-import { Rating } from '@/db/repositories/reviews';
+import { configureQueuePrefs, Rating } from '@/db/repositories/reviews';
 
 import { MC_FAST_THRESHOLD_MS, mcOutcomeToRating, ratingCountsAsCorrect } from '../mapping';
 import { buildSession, MC_CHOICE_COUNT, SESSION_SIZE } from '../session';
 
 /** T06: session generation + the MC outcome→rating mapping. */
+
+// T82: these suites pre-date the daily new-word budget; they test composition, not the limit.
+beforeEach(() => configureQueuePrefs({ v: 1, newPerDay: 50, buryRelated: false }));
 
 describe('mcOutcomeToRating', () => {
   it('maps per design §7.3: correct-fast=Good, correct-slow=Hard, wrong=Again', () => {

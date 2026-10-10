@@ -140,10 +140,12 @@ async function doReplan(): Promise<void> {
   const mornings = await Promise.all(
     morningDates.map(async (date) => ({
       date,
-      dueCount: await repos.reviews.countDueCards({
-        now: date.getTime(),
-        directions: UNIFIED_SESSION_DIRECTIONS,
-      }),
+      dueCount: (
+        await repos.reviews.countDueBreakdown({
+          now: date.getTime(),
+          directions: UNIFIED_SESSION_DIRECTIONS,
+        })
+      ).total,
     })),
   );
 

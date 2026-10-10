@@ -123,7 +123,7 @@ export async function buildSbSession(
   const { limit = SB_SESSION_SIZE, now = Date.now(), unseenAllowed = false } = opts;
   const index = await buildReadIndex(repos);
 
-  const due = await repos.reviews.listDueCards({
+  const due = await repos.reviews.listSessionCards({
     now,
     limit: limit * 3,
     directions: MIXED_SESSION_DIRECTIONS,

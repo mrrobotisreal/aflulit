@@ -190,7 +190,7 @@ export async function buildDailySession(
 
   const due = focusItemIds
     ? await repos.reviews.listCardsForItems(focusItemIds, UNIFIED_SESSION_DIRECTIONS, now)
-    : await repos.reviews.listDueCards({
+    : await repos.reviews.listSessionCards({
         now,
         limit: length * OVERFETCH,
         directions: UNIFIED_SESSION_DIRECTIONS,
