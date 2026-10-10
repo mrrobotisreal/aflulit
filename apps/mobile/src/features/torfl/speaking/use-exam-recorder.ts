@@ -12,6 +12,8 @@ import {
 import { trackTorfl } from '@/services/analytics';
 import { logError } from '@/services/error-log';
 
+import { copyDevWav, devInjectedWav } from './dev-wav';
+
 import type { SpeakingTask } from '../grading/speaking';
 import type { TorflLevel } from '../level-profile';
 import type { SpeakingAnswer, SpeakingWordStamp } from '../model';
@@ -90,6 +92,8 @@ export function useExamRecorder(events: RecorderEvents): ExamRecorder {
   const currentRef = React.useRef<RecorderStart | null>(null);
   const stoppingRef = React.useRef(false);
   const serialRef = React.useRef(0);
+  const devRef = React.useRef<{ uri: string; durationMs: number; startedAt: number } | null>(null);
+  const devTimerRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
 
   const setPhaseBoth = React.useCallback((p: RecorderPhase) => {
     phaseRef.current = p;
@@ -103,7 +107,14 @@ export function useExamRecorder(events: RecorderEvents): ExamRecorder {
       stoppingRef.current = true;
       const serial = ++serialRef.current;
       setPhaseBoth('processing');
-      const res = await stopAttemptRecording().catch(() => null);
+      // DEV only (`dev-wav.ts`): a pushed WAV stands in for the mic; its clock was a JS interval.
+      const injected = devRef.current;
+      devRef.current = null;
+      if (devTimerRef.current) clearInterval(devTimerRef.current);
+      devTimerRef.current = null;
+      const res = injected
+        ? { path: copyDevWav(injected.uri), durationMs: injected.durationMs }
+        : await stopAttemptRecording().catch(() => null);
       const wavUri = res
         ? res.path.startsWith('file://')
           ? res.path
@@ -182,7 +193,19 @@ export function useExamRecorder(events: RecorderEvents): ExamRecorder {
       setItemId(s.itemId);
       setPhaseBoth('recording');
       try {
-        await startAttemptRecording();
+        const injected = devInjectedWav();
+        if (injected) {
+          const startedAt = Date.now();
+          devRef.current = { ...injected, startedAt };
+          devTimerRef.current = setInterval(() => {
+            const ms = Date.now() - startedAt;
+            setElapsedMs(ms);
+            const cur = currentRef.current;
+            if (cur && !cur.fixedWindow && cur.capMs > 0 && ms >= cur.capMs) void finish('cap');
+          }, 250);
+        } else {
+          await startAttemptRecording();
+        }
         trackTorfl('exam_speaking_rec_started', {
           task: s.task,
           level: s.level ?? 'A1',
@@ -207,7 +230,7 @@ export function useExamRecorder(events: RecorderEvents): ExamRecorder {
         });
       }
     },
-    [setPhaseBoth],
+    [setPhaseBoth, finish],
   );
 
   const stop = React.useCallback(
@@ -222,6 +245,9 @@ export function useExamRecorder(events: RecorderEvents): ExamRecorder {
     serialRef.current += 1;
     currentRef.current = null;
     stoppingRef.current = false;
+    if (devTimerRef.current) clearInterval(devTimerRef.current);
+    devTimerRef.current = null;
+    devRef.current = null;
     if (phaseRef.current === 'recording') await cancelAttemptRecording().catch(() => undefined);
     setElapsedMs(0);
     setPhaseBoth('idle');
@@ -245,6 +271,7 @@ export function useExamRecorder(events: RecorderEvents): ExamRecorder {
   React.useEffect(
     () => () => {
       serialRef.current += 1;
+      if (devTimerRef.current) clearInterval(devTimerRef.current);
       if (phaseRef.current === 'recording') void cancelAttemptRecording().catch(() => undefined);
     },
     [],
