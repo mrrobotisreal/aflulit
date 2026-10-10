@@ -63,6 +63,8 @@ export interface TrackAudit {
   endClipRate: number;
   structural: string[];
   lemmaLint: string[];
+  /** Reported but not gating (lemma lint: legitimate predicatives share the pattern). */
+  warnings: string[];
   failures: string[];
   ok: boolean;
 }
@@ -402,7 +404,7 @@ export function auditTrack(
     failures.push(`step ${Math.round(maxStep)} ms near ${stepAt} ms`);
   if (Math.abs(drift) > THRESHOLDS.driftMsPerMin) failures.push(`drift ${drift.toFixed(1)} ms/min`);
   if (structural.length > 0) failures.push(`${structural.length} structural issue(s)`);
-  if (lemma.length > 0) failures.push(`${lemma.length} lemma-lint hit(s)`);
+  const warnings = lemma.length > 0 ? [`${lemma.length} lemma-lint hit(s)`] : [];
   return {
     trackId: track.id,
     durationMs: track.durationMs,
@@ -417,6 +419,7 @@ export function auditTrack(
     endClipRate: clipChecked === 0 ? 0 : Math.round((clip / clipChecked) * 1000) / 1000,
     structural,
     lemmaLint: lemma,
+    warnings,
     failures,
     ok: failures.length === 0,
   };
@@ -545,7 +548,8 @@ export function formatAuditTable(audit: PackAudit): string {
   for (const t of audit.tracks) {
     lines.push(
       `  ${t.ok ? 'ok  ' : 'FAIL'} ${t.trackId.padEnd(26)} med ${String(t.medianMs).padStart(6)} ms  p95 ${String(t.p95Ms).padStart(5)}  step ${String(t.maxStepMs).padStart(5)}  drift ${String(t.driftMsPerMin).padStart(7)}/min  endclip ${(t.endClipRate * 100).toFixed(1)}%` +
-        (t.failures.length ? `  [${t.failures.join('; ')}]` : ''),
+        (t.failures.length ? `  [${t.failures.join('; ')}]` : '') +
+        (t.warnings.length ? `  (warn: ${t.warnings.join('; ')})` : ''),
     );
   }
   return lines.join('\n');

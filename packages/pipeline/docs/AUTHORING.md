@@ -140,6 +140,72 @@ in every draft of the pack instead.
 
 `pnpm pipeline` runs at the repo root, so relative paths resolve from there. Exit codes: `0` success, `1` validation errors (all of them listed, `file:line: message`), `2` usage.
 
+## Timestamps (word stamps — T80)
+
+`audio[].timestamps` drive the karaoke highlight **and cut the listening-quiz
+audio**, so they must match the audio, not the text. ElevenLabs character times
+describe the _text it was sent_: a paragraph pause, a sigh or tag sound the
+model renders carries no character time (every later stamp is then **early** — a
+_step_ of +1.2 to +2.6 s measured on `rw5`, `sr1`, `sh2`), and `Mr. Wintrow` /
+v4 takes run slowly _late_ (−27 ms/min median, the _drift_). The audio chain
+itself (decode → excise → level-match → concat → MP3 → Opus) is sample-exact
+(`test/timeline.test.ts`); the provider times are the defect. So since T80 the
+stamps are **re-derived from the encoded Opus**:
+
+1. a CTC forced aligner (`tools/forced_align.py`: Russian wav2vec2
+   `jonatasgrosman/wav2vec2-large-xlsr-53-russian` + `torchaudio.functional.forced_align`)
+   places every known word token in the audio;
+2. boundary refinement on 5 ms RMS frames: each start snaps to the quiet point
+   before the energy rise (±80 ms, never past the midpoint to a neighbour);
+   each end is extended to the true energy release of the last phoneme (the
+   aligner's end is early — this is the «ужасная» → «ужасно» end-clip fix);
+3. invariants as before: one stamp per non-punct token, strictly monotonic,
+   inside the duration, integer ms (the 20 ms provider quantisation is gone).
+
+**Commands** (offline; no network once the model is cached, no API key):
+
+```sh
+pnpm pipeline stamp-audit <pack-dir|pack.json>… [--track id] [--json out.json]
+pnpm pipeline restamp <pack-dir|pack.json> [--track id] [-o out.json]
+pnpm pipeline audio drafts… -o <pack-dir> --seed …      # re-stamps by default
+pnpm pipeline audio drafts… -o <pack-dir> --no-restamp  # keep provider stamps
+pnpm pipeline publish <pack-dir> --content ../sumrak-content [--allow-stamp-risk]
+```
+
+- `stamp-audit` reports per track: median / p95 |offset| (published start vs the
+  refined audio start), **step** (rolling-median jump), **drift** (ms/min),
+  **end-clip rate**, the token-index check (stamped indices ≡ non-punct tokens)
+  and the lemma lint (an adverb in -о carrying its adjective's lemma, e.g.
+  «ужасно» → «ужасный»; a warning, not a gate, since predicatives such as
+  «готово» legitimately share the pattern). It exits 1 over the thresholds:
+  **median > 40 ms, p95 > 120 ms, any step > 250 ms, drift > 20 ms/min, any
+  structural issue**.
+- `restamp` changes **only** `audio[].timestamps` (asserted: the rest of the pack
+  must serialise byte-identically) and never touches audio bytes. Run it on a
+  `_build/<pack-id>` dir, re-run `stamp-audit`, bump `pack.version`, publish.
+- `publish` runs `stamp-audit` first and **refuses** a failing pack.
+  `--allow-stamp-risk` publishes anyway and appends the audit table to
+  `<pack-dir>/BUILD_NOTES.md`; `--skip-stamp-audit` is only for packs with no
+  word-sliced audio.
+- `audio` (finalize) re-stamps each story track from its Opus right after
+  encoding, so freshly rendered packs pass the gate; the old provider mapping
+  now also warns when the stamped tail ends > 1 s before the audio does.
+
+**Runtime.** Python 3.12 venv with `torch torchaudio transformers numpy`
+(`/opt/homebrew/bin/python3.12 -m venv ~/.venvs/sumrak-align && ~/.venvs/sumrak-align/bin/pip install torch torchaudio transformers numpy`).
+Point the pipeline at it with `SUMRAK_ALIGN_PYTHON=~/.venvs/sumrak-align/bin/python`
+(optional `SUMRAK_ALIGN_DEVICE=mps` — about 10× faster on Apple silicon; cache
+dir `SUMRAK_ALIGN_CACHE`, default `~/.cache/sumrak-align`, keyed by
+sha256(audio + words)). The first run downloads the 1.2 GB model into the
+Hugging Face cache (`HF_HOME`; set `HF_HUB_OFFLINE=1` afterwards). A full sweep
+of all 493 published tracks (11.1 h of audio) took ≈ 75 min on MPS; one
+track ≈ 5-15 s. `pipeline audio` checks the venv **before** any paid render and
+stops if it is missing.
+
+**Do not trust the provider's `previous_text`/character times for slicing.**
+If a track still fails the audit after `restamp`, the audio itself is the
+problem (a looped or garbled passage): re-render with another seed.
+
 ## Pack extras (course-unit / checkpoint / prompts packs — T17)
 
 Non-story sections live in ONE extras markdown file per pack, passed with `--extras` to `annotate` and `audio`:
