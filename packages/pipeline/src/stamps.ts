@@ -46,6 +46,8 @@ export interface StampResult {
 const OVERLAP_CLAMP_MS = 60;
 /** Below this matched-character ratio the provider text diverged too far to trust. */
 const MIN_MATCHED_CHAR_RATIO = 0.95;
+/** Stamped tail further than this from the audio's end draws a warning (T80). */
+export const TAIL_SHORTFALL_WARN_MS = 1000;
 /** How far ahead the tolerant matcher searches to resynchronize after a mismatch. */
 const RESYNC_WINDOW = 24;
 
@@ -196,6 +198,18 @@ export function mapAlignmentToStamps(
       ...issues,
       `${violations} monotonicity violation(s) beyond the ${OVERLAP_CLAMP_MS}ms clamp tolerance — dropping all stamps for this track (karaoke will fall back to sentence level)`,
     ]);
+  }
+
+  // Provider character times describe the TEXT, not the audio: a paragraph
+  // pause, sigh or tag sound the model renders carries no character time, and
+  // every stamp after it is then early (T80: rw5 +2.55 s, sr1 +1.8 s, sh2
+  // +1.2 s). The stamped tail falling seconds short of the audio is the cheap
+  // tell; `pipeline restamp` / `stamp-audit` is the real fix.
+  const lastEnd = stamps.length > 0 ? stamps[stamps.length - 1]!.endMs : 0;
+  if (stamps.length > 0 && durationMs - lastEnd > TAIL_SHORTFALL_WARN_MS) {
+    issues.push(
+      `stamps end ${durationMs - lastEnd} ms before the audio does (> ${TAIL_SHORTFALL_WARN_MS} ms) — provider alignment likely collapsed pauses; run \`pipeline stamp-audit\``,
+    );
   }
 
   const wordTokens = wordSpans.length;
