@@ -93,7 +93,7 @@ export interface ExamRun {
  *    subtest (T72) gets the offline provisional grade per letter and goes
  *    `pending-ai` (a key exists → the grading queue pumps at once) or stays
  *    `provisional`,
- *  - `START_REC` / `STOP_REC` (T73) → the exam recorder hook (mic → endpoint
+ *  - `START_REC` / `STOP_REC` (T73) → the exam recorder hook (mic, no endpointing
  *    → WAV under `recordings/exam/<attemptId>/` → Opus queue → Zipformer +
  *    Whisper transcripts) whose `onDone` sends `REC_DONE {answer}`; a
  *    SPEAKING `PERSIST_RESPONSE` also queues the transcode once the row
@@ -438,12 +438,13 @@ export function useExamRun(attemptId: string, devDurationSecParam?: string): Exa
               fixedWindow: e.fixedWindow,
               attemptId: a.id,
               level,
+              waitMs: Date.now() - (stateRef.current?.speaking?.readyAt ?? Date.now()),
             });
             break;
           }
           case 'STOP_REC': {
             // Stop whatever is recording; the hook's onDone → REC_DONE. Idle = no-op.
-            recorderRef.current.stop('manual');
+            recorderRef.current.stop(e.reason ?? 'done');
             break;
           }
           case 'ABANDON': {

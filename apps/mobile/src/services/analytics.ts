@@ -480,6 +480,9 @@ export type AnalyticsEvent =
   // source, pct} · exam_grading_failed {kind, code} · exam_recording_saved {task, ms} ·
   // torfl_rehearsal_finished {topic, score} · torfl_ticket_drawn {topic}.
   // ai_request_* gain feature 'exam-writing' | 'exam-speaking' via the AiFeature union.
+  // T77: exam_speaking_rec_started {task, waitMs} (think time before the tap) ·
+  // exam_speaking_rec_stopped {task, reason: 'done'|'cap'|'deadline'|'skip', durationMs} ·
+  // torfl_instruction_lang_toggled {to: 'ru'|'en', screen}; all carry `level`.
   // T74 (§8.5): exam_attempt_pinned {pinned} · exam_debrief_download_failed {code}; the T63
   // recordings_pruned / media_bundle_* events gain `root: 'exam'` for the exam root.
   // M19 (T75, TORFL_A2 A2-12): EVERY torfl_* / exam_* event above also carries `level` ('A1' |
@@ -509,6 +512,9 @@ export type AnalyticsEvent =
   | 'exam_speaking_scored'
   | 'exam_grading_failed'
   | 'exam_recording_saved'
+  | 'exam_speaking_rec_started'
+  | 'exam_speaking_rec_stopped'
+  | 'torfl_instruction_lang_toggled'
   | 'torfl_rehearsal_finished'
   | 'torfl_ticket_drawn'
   | 'exam_attempt_pinned'

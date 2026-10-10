@@ -1,15 +1,6 @@
 import * as React from 'react';
 
 import SherpaSpeech from '../../../../modules/sherpa-speech';
-import {
-  INITIAL_ENDPOINT,
-  endpointConfig,
-  endpointManualStop,
-  endpointStep,
-  type EndpointConfig,
-  type EndpointReason,
-  type EndpointState,
-} from '@/features/scenario/engine/endpointing';
 import { stashExamWav, transcodeQueue } from '@/features/scenario/recordings/transcode-queue';
 import { transcribeWav } from '@/features/pronunciation/asr-service';
 import { isAssistInstalled, transcribeWithAssist } from '@/features/pronunciation/assist-service';
@@ -28,10 +19,12 @@ import type { SpeakingAnswer, SpeakingWordStamp } from '../model';
 /**
  * The exam recorder (T73, TORFL §8.4) — the glue between the pure engine's
  * `START_REC` / `STOP_REC` effects and the native recorder: it opens the
- * mic, runs the M17 endpointer over the level events (the `patient`
- * preset with the task's cap; a task-3 answer is a FIXED window — no
- * endpointing, the engine's deadline stops it), stops on silence / cap /
- * «Закончить», moves the cache WAV into `recordings/exam/<attemptId>/`,
+ * mic and (T77, «you start, you stop») stops it ONLY on «Готово» / release,
+ * the task's hard cap (`capMs`, tasks 1 / 2; a task-3 answer is a FIXED
+ * window the engine's deadline stops) or `STOP_REC`. There is NO endpointing:
+ * a pause — however long — never ends a recording (Mitch's first sitting
+ * was ruined by the M17 endpointer's 6 s no-speech / 1.6 s silence stops;
+ * M17 scenarios keep theirs, TORFL never imports it). Moves the cache WAV into `recordings/exam/<attemptId>/`,
  * queues the Opus transcode, transcribes (Zipformer; + the Whisper assist
  * re-decode when installed) and hands the finished `SpeakingAnswer` back
  * through `onDone` (→ `REC_DONE`). A recording that captured nothing still
@@ -43,6 +36,9 @@ import type { SpeakingAnswer, SpeakingWordStamp } from '../model';
 
 export type RecorderPhase = 'idle' | 'recording' | 'processing';
 
+/** Why a TORFL recording ended (T77 analytics slugs; `hold` = hold-to-talk release, reported as `done`). */
+export type StopReason = 'done' | 'cap' | 'deadline' | 'skip' | 'hold';
+
 export interface RecorderStart {
   itemId: string;
   task: SpeakingTask;
@@ -52,18 +48,21 @@ export interface RecorderStart {
   attemptId: string;
   /** T75 (THE LEVEL RULE): the exam's level for `exam_recording_saved`; default A1. */
   level?: TorflLevel;
+  /** T77: ms the candidate thought between the prompt ending and this tap (analytics). */
+  waitMs?: number;
 }
 
 export interface ExamRecorder {
   phase: RecorderPhase;
   /** Normalized mic RMS 0..1 while recording. */
   level: number;
-  endpoint: EndpointState;
+  /** Recording clock (ms since the mic opened); 0 while idle. */
+  elapsedMs: number;
   /** The item being recorded / processed (null when idle). */
   itemId: string | null;
   start: (s: RecorderStart) => Promise<void>;
-  /** «Закончить» / the engine's STOP_REC: stop now; the answer follows through `onDone`. */
-  stop: (reason?: EndpointReason) => void;
+  /** «Готово» / the engine's STOP_REC: stop now; the answer follows through `onDone`. */
+  stop: (reason?: StopReason) => void;
   cancel: () => Promise<void>;
 }
 
@@ -73,8 +72,6 @@ export interface RecorderEvents {
   onSaved?: (task: SpeakingTask, ms: number) => void;
 }
 
-const SENSITIVITY = 'patient';
-
 function toStamps(words: { word: string; startMs: number; endMs: number }[]): SpeakingWordStamp[] {
   return words.map((w) => ({ w: w.word, s: Math.round(w.startMs), e: Math.round(w.endMs) }));
 }
@@ -82,7 +79,7 @@ function toStamps(words: { word: string; startMs: number; endMs: number }[]): Sp
 export function useExamRecorder(events: RecorderEvents): ExamRecorder {
   const [phase, setPhase] = React.useState<RecorderPhase>('idle');
   const [level, setLevel] = React.useState(0);
-  const [endpoint, setEndpoint] = React.useState<EndpointState>(INITIAL_ENDPOINT);
+  const [elapsedMs, setElapsedMs] = React.useState(0);
   const [itemId, setItemId] = React.useState<string | null>(null);
 
   const eventsRef = React.useRef(events);
@@ -90,8 +87,6 @@ export function useExamRecorder(events: RecorderEvents): ExamRecorder {
     eventsRef.current = events;
   });
   const phaseRef = React.useRef<RecorderPhase>('idle');
-  const epRef = React.useRef<EndpointState>(INITIAL_ENDPOINT);
-  const cfgRef = React.useRef<EndpointConfig | null>(null);
   const currentRef = React.useRef<RecorderStart | null>(null);
   const stoppingRef = React.useRef(false);
   const serialRef = React.useRef(0);
@@ -102,7 +97,7 @@ export function useExamRecorder(events: RecorderEvents): ExamRecorder {
   }, []);
 
   const finish = React.useCallback(
-    async (reason: EndpointReason) => {
+    async (reason: StopReason) => {
       const cur = currentRef.current;
       if (!cur || stoppingRef.current) return;
       stoppingRef.current = true;
@@ -119,7 +114,7 @@ export function useExamRecorder(events: RecorderEvents): ExamRecorder {
       let assistTranscript: string | undefined;
       let words: SpeakingWordStamp[] | undefined;
       let recordingPath: string | null = null;
-      if (wavUri && durationMs > 0 && reason !== 'no-speech') {
+      if (wavUri && durationMs > 0) {
         // Transcribe from the cache WAV FIRST (the move is instant; the decode is the slow part).
         try {
           const r = await transcribeWav(wavUri);
@@ -146,6 +141,12 @@ export function useExamRecorder(events: RecorderEvents): ExamRecorder {
         }
       }
       if (serial !== serialRef.current) return; // cancelled meanwhile
+      trackTorfl('exam_speaking_rec_stopped', {
+        task: cur.task,
+        level: cur.level ?? 'A1',
+        reason: reason === 'hold' ? 'done' : reason,
+        durationMs,
+      });
       const answer: SpeakingAnswer = {
         kind:
           cur.task === 3
@@ -164,6 +165,7 @@ export function useExamRecorder(events: RecorderEvents): ExamRecorder {
       setPhaseBoth('idle');
       setItemId(null);
       setLevel(0);
+      setElapsedMs(0);
       eventsRef.current.onDone(cur.itemId, answer);
     },
     [setPhaseBoth],
@@ -176,17 +178,16 @@ export function useExamRecorder(events: RecorderEvents): ExamRecorder {
       }
       currentRef.current = s;
       stoppingRef.current = false;
-      epRef.current = INITIAL_ENDPOINT;
-      setEndpoint(INITIAL_ENDPOINT);
-      // A fixed window never endpoints: the engine's TICK deadline sends STOP_REC. The cap is
-      // the task's (30 s / 40 s); no-speech still ends a silent reply after 6 s.
-      cfgRef.current = s.fixedWindow
-        ? null
-        : endpointConfig(SENSITIVITY, { capMs: Math.max(1000, s.capMs) });
+      setElapsedMs(0);
       setItemId(s.itemId);
       setPhaseBoth('recording');
       try {
         await startAttemptRecording();
+        trackTorfl('exam_speaking_rec_started', {
+          task: s.task,
+          level: s.level ?? 'A1',
+          waitMs: Math.max(0, Math.round(s.waitMs ?? 0)),
+        });
       } catch (err) {
         logError('manual', err);
         currentRef.current = null;
@@ -210,15 +211,8 @@ export function useExamRecorder(events: RecorderEvents): ExamRecorder {
   );
 
   const stop = React.useCallback(
-    (reason: EndpointReason = 'manual') => {
+    (reason: StopReason = 'done') => {
       if (phaseRef.current !== 'recording') return;
-      const decision = endpointManualStop(
-        epRef.current,
-        epRef.current.elapsedMs,
-        reason === 'hold' ? 'hold' : 'manual',
-      );
-      epRef.current = decision.state;
-      setEndpoint(decision.state);
       void finish(reason);
     },
     [finish],
@@ -229,24 +223,20 @@ export function useExamRecorder(events: RecorderEvents): ExamRecorder {
     currentRef.current = null;
     stoppingRef.current = false;
     if (phaseRef.current === 'recording') await cancelAttemptRecording().catch(() => undefined);
-    epRef.current = INITIAL_ENDPOINT;
-    setEndpoint(INITIAL_ENDPOINT);
+    setElapsedMs(0);
     setPhaseBoth('idle');
     setItemId(null);
     setLevel(0);
   }, [setPhaseBoth]);
 
-  // Level events → the endpointer (tap mode only; a fixed window just shows the meter).
+  // Level events drive the meter + the clock, and the CAP (tasks 1 / 2). Silence is never a stop.
   React.useEffect(() => {
-    const sub = SherpaSpeech.addListener('onRecordingLevel', ({ level: l, elapsedMs }) => {
+    const sub = SherpaSpeech.addListener('onRecordingLevel', ({ level: l, elapsedMs: ms }) => {
       setLevel(l);
       if (phaseRef.current !== 'recording') return;
-      const cfg = cfgRef.current;
-      if (!cfg) return;
-      const decision = endpointStep(epRef.current, { level: l, elapsedMs }, cfg);
-      epRef.current = decision.state;
-      setEndpoint(decision.state);
-      if (decision.stop) void finish(decision.stop.reason);
+      setElapsedMs(ms);
+      const cur = currentRef.current;
+      if (cur && !cur.fixedWindow && cur.capMs > 0 && ms >= cur.capMs) void finish('cap');
     });
     return () => sub.remove();
   }, [finish]);
@@ -260,7 +250,7 @@ export function useExamRecorder(events: RecorderEvents): ExamRecorder {
     [],
   );
 
-  return { phase, level, endpoint, itemId, start, stop, cancel };
+  return { phase, level, elapsedMs, itemId, start, stop, cancel };
 }
 
 /** Enqueue the Opus transcode of a saved exam recording (the executor calls it once the response row exists). */

@@ -279,7 +279,7 @@ export function TicketsScreen({ level = 'A1' }: { level?: TorflLevel }) {
       if (p.kind === 'prep' && at >= p.deadlineAt) void startAnswer();
       if (p.kind === 'answer' && at >= p.deadlineAt) {
         setPhase({ kind: 'processing', ticket: p.ticket, attemptId: p.attemptId });
-        recorder.stop('manual');
+        recorder.stop('done');
       }
     }, 1000);
     return () => clearInterval(id);
@@ -510,7 +510,7 @@ export function TicketsScreen({ level = 'A1' }: { level?: TorflLevel }) {
                       ticket: phase.ticket,
                       attemptId: phase.attemptId,
                     });
-                    recorder.stop('manual');
+                    recorder.stop('done');
                   }}
                   accessibilityRole="button"
                   testID="ticket-finish"

@@ -202,7 +202,7 @@ export function ExamRunScreen() {
         onChoose={(itemId) => run.send({ type: 'CHOOSE_TOPIC', itemId, now: Date.now() })}
         onPrepDone={() => run.send({ type: 'PREP_DONE', now: Date.now() })}
         onSkip={() => run.send({ type: 'SKIP_ITEM', now: Date.now() })}
-        onStopEarly={() => run.recorder.stop('manual')}
+        onStopEarly={() => run.recorder.stop('done')}
         onQuit={quit}
       />
     );

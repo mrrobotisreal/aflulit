@@ -329,7 +329,7 @@ export function SpeakingPracticeScreen() {
                 level={recorder.level}
                 holdPrimary={false}
                 onTap={() => {
-                  if (phase.kind === 'recording') recorder.stop('manual');
+                  if (phase.kind === 'recording') recorder.stop('done');
                   else if (phase.kind === 'ready') void startRecording();
                 }}
                 onHoldStart={() => {
