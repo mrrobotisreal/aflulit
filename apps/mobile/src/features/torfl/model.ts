@@ -72,6 +72,10 @@ export const SPEAKING_PHASES = [
   'choose',
   'prep',
   'answer',
+  /** T77: the prompt ended; the candidate thinks as long as he likes and taps the mic (task 1 / 2). */
+  'ready',
+  /** T77: task-3 prep ended; the candidate taps «Начать ответ» and the fixed window starts. */
+  'ready-answer',
 ] as const;
 export type SpeakingPhase = (typeof SPEAKING_PHASES)[number];
 
@@ -91,6 +95,8 @@ export const ExamSpeakingStateSchema = z.looseObject({
   chosenId: z.string().min(1).optional(),
   partIdx: nonNegInt.optional(),
   partExpired: z.boolean().optional(),
+  /** T77: wall-clock ms the `ready` / `ready-answer` wait began (think time = tap - readyAt). */
+  readyAt: int.optional(),
 });
 export type ExamSpeakingState = z.infer<typeof ExamSpeakingStateSchema>;
 

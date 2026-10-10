@@ -70,7 +70,9 @@ describe('A2 single-topic monologue (T76, A2-9)', () => {
     });
     // CHOOSE_TOPIC is a no-op now (nothing to choose)
     expect(r.send({ type: 'CHOOSE_TOPIC', itemId: 'sp05', now: T0 })).toEqual([]);
-    const fx = r.send({ type: 'PREP_DONE', now: T0 + 100_000 });
+    r.send({ type: 'PREP_DONE', now: T0 + 100_000 });
+    expect(r.state.speaking?.phase).toBe('ready-answer');
+    const fx = r.send({ type: 'TAP_REC', now: T0 + 100_000 });
     expect(fx[0]).toEqual({
       type: 'START_REC',
       itemId: 'sp05',
@@ -100,8 +102,10 @@ describe('A2 single-topic monologue (T76, A2-9)', () => {
 
   it('task 1 / 2 answer caps come from the level profile (A2 45 s / 60 s)', () => {
     const r = runA2();
-    const fx = r.send({ type: 'AUDIO_ENDED', now: T0 });
+    r.send({ type: 'AUDIO_ENDED', now: T0 });
+    const fx = r.send({ type: 'TAP_REC', now: T0 + 1000 });
     expect(fx[0]).toMatchObject({ type: 'START_REC', task: 1, capMs: 45_000 });
+    expect(r.state.speaking?.phaseDeadlineAt).toBe(T0 + 1000 + 45_000);
   });
 });
 

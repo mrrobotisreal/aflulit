@@ -527,10 +527,16 @@ describe('speaking (T73): three tasks, parts, windows, recordings', () => {
     expect(types(r.effects)).not.toContain('START_REC');
   });
 
-  it('AUDIO_ENDED on the prompt opens the mic (START_REC, cap 30 s task 1); REC_DONE persists + moves to task 2', () => {
+  it('AUDIO_ENDED on the prompt only WAITS (`ready`, no START_REC); TAP_REC opens the mic (cap 30 s task 1); REC_DONE persists + moves to task 2', () => {
     const r = run(['speaking']);
     begin(r);
-    const fx = r.send({ type: 'AUDIO_ENDED', now: T0 + 2000 });
+    const wait = r.send({ type: 'AUDIO_ENDED', now: T0 + 2000 });
+    expect(types(wait)).not.toContain('START_REC');
+    expect(r.state.speaking).toMatchObject({ phase: 'ready', readyAt: T0 + 2000 });
+    // 20 s of thinking: ticks never open the mic or advance the item
+    expect(r.send({ type: 'TICK', now: T0 + 22_000 })).toEqual([]);
+    expect(r.state.speaking?.phase).toBe('ready');
+    const fx = r.send({ type: 'TAP_REC', now: T0 + 22_000 });
     expect(fx[0]).toEqual({
       type: 'START_REC',
       itemId: 'sp01',
@@ -538,7 +544,7 @@ describe('speaking (T73): three tasks, parts, windows, recordings', () => {
       capMs: 30_000,
       fixedWindow: false,
     });
-    expect(r.state.speaking?.phase).toBe('recording');
+    expect(r.state.speaking).toMatchObject({ phase: 'recording', phaseDeadlineAt: T0 + 52_000 });
     const done = r.send(spoken('sp01', 'speaking-reply'));
     expect(types(done)).toEqual(['PERSIST_RESPONSE', 'PERSIST_STATE']);
     expect(r.state.answers.sp01).toMatchObject({ kind: 'speaking-reply', transcript: 'я тут' });
@@ -550,7 +556,8 @@ describe('speaking (T73): three tasks, parts, windows, recordings', () => {
     });
     expect(r.state.speaking?.partDeadlineAt).toBe(T0 + 5000 + 300_000);
     // task 2 cap = 40 s
-    const fx2 = r.send({ type: 'AUDIO_ENDED', now: T0 + 6000 });
+    r.send({ type: 'AUDIO_ENDED', now: T0 + 6000 });
+    const fx2 = r.send({ type: 'TAP_REC', now: T0 + 6500 });
     expect(fx2[0]).toMatchObject({ type: 'START_REC', itemId: 'sp02', task: 2, capMs: 40_000 });
   });
 
@@ -559,6 +566,7 @@ describe('speaking (T73): three tasks, parts, windows, recordings', () => {
     begin(r);
     expect(r.send(spoken('sp02', 'speaking-situation'))).toEqual([]);
     expect(r.send(spoken('sp01', 'speaking-reply'))).toEqual([]); // still in `prompt`
+    expect(r.send({ type: 'TAP_REC', now: T0 + 10 })).toEqual([]); // no mic before the prompt ends
     expect(r.state.speaking?.phase).toBe('prompt');
   });
 
@@ -570,6 +578,7 @@ describe('speaking (T73): three tasks, parts, windows, recordings', () => {
     expect(r.state.answers.sp01).toBeUndefined();
     expect(r.state.speaking).toMatchObject({ task: 2, itemId: 'sp02', phase: 'prompt' });
     r.send({ type: 'AUDIO_ENDED', now: T0 + 2000 });
+    r.send({ type: 'TAP_REC', now: T0 + 2500 });
     const fx2 = r.send({ type: 'SKIP_ITEM', now: T0 + 3000 });
     expect(types(fx2)[0]).toBe('STOP_REC');
     expect(r.state.speaking).toMatchObject({ task: 3, phase: 'choose', itemId: null, partIdx: 2 });
@@ -592,9 +601,14 @@ describe('speaking (T73): three tasks, parts, windows, recordings', () => {
       chosenId: 'sp04',
       phaseDeadlineAt: t1 + 480_000,
     });
-    // TICK inside prep: nothing; at the prep deadline → answer with the 2:00 window + START_REC
+    // TICK inside prep: nothing; at the prep deadline → `ready-answer` (NO mic); his tap opens the 2:00 window
     expect(r.send({ type: 'TICK', now: t1 + 100_000 })).toEqual([]);
-    const fx = r.send({ type: 'TICK', now: t1 + 480_000 });
+    const prepEnd = r.send({ type: 'TICK', now: t1 + 480_000 });
+    expect(types(prepEnd)).not.toContain('START_REC');
+    expect(r.state.speaking).toMatchObject({ phase: 'ready-answer' });
+    expect(r.send({ type: 'TICK', now: t1 + 540_000 })).toEqual([]); // a minute of dithering: still waiting
+    const tapAt = t1 + 540_000;
+    const fx = r.send({ type: 'TAP_REC', now: tapAt });
     expect(fx[0]).toEqual({
       type: 'START_REC',
       itemId: 'sp04',
@@ -602,12 +616,12 @@ describe('speaking (T73): three tasks, parts, windows, recordings', () => {
       capMs: 0,
       fixedWindow: true,
     });
-    expect(r.state.speaking).toMatchObject({ phase: 'answer', phaseDeadlineAt: t1 + 600_000 });
+    expect(r.state.speaking).toMatchObject({ phase: 'answer', phaseDeadlineAt: tapAt + 120_000 });
     // the answer window ends → STOP_REC, waits in processing
-    const end = r.send({ type: 'TICK', now: t1 + 600_000 });
+    const end = r.send({ type: 'TICK', now: tapAt + 120_000 });
     expect(types(end)).toEqual(['STOP_REC', 'PERSIST_STATE']);
     expect(r.state.speaking?.phase).toBe('processing');
-    expect(r.send({ type: 'TICK', now: t1 + 601_000 })).toEqual([]);
+    expect(r.send({ type: 'TICK', now: tapAt + 121_000 })).toEqual([]);
     // the hook delivers the transcribed answer → persisted → no more parts → SCORE + FINISH
     const done = r.send(spoken('sp04', 'speaking-monologue', 'меня зовут митч'));
     expect(types(done)).toEqual([
@@ -623,21 +637,26 @@ describe('speaking (T73): three tasks, parts, windows, recordings', () => {
     expect(score).toMatchObject({ kind: 'speaking', answered: 1, total: 4, autoSubmitted: false });
   });
 
-  it('PREP_DONE early («Готов») opens the answer window at once', () => {
+  it('PREP_DONE early («Готов») waits in `ready-answer`; the tap opens the answer window (the prep deadline no longer applies)', () => {
     const r = run(['speaking']);
     begin(r);
     r.send({ type: 'SKIP_ITEM', now: T0 });
     r.send({ type: 'SKIP_ITEM', now: T0 });
     r.send({ type: 'CHOOSE_TOPIC', itemId: 'sp03', now: T0 });
-    const fx = r.send({ type: 'PREP_DONE', now: T0 + 30_000 });
+    const prepDone = r.send({ type: 'PREP_DONE', now: T0 + 30_000 });
+    expect(types(prepDone)).toEqual(['PERSIST_STATE']);
+    expect(r.state.speaking).toMatchObject({ phase: 'ready-answer' });
+    expect(r.state.speaking?.phaseDeadlineAt).toBeUndefined();
+    const fx = r.send({ type: 'TAP_REC', now: T0 + 40_000 });
     expect(types(fx)).toEqual(['START_REC', 'PERSIST_STATE']);
-    expect(r.state.speaking).toMatchObject({ phase: 'answer', phaseDeadlineAt: T0 + 150_000 });
+    expect(r.state.speaking).toMatchObject({ phase: 'answer', phaseDeadlineAt: T0 + 160_000 });
   });
 
   it('the part budget: when task 1 runs out mid-recording the mic stops, the answer still lands, then task 2 opens', () => {
     const r = run(['speaking']);
     begin(r);
     r.send({ type: 'AUDIO_ENDED', now: T0 + 1000 });
+    r.send({ type: 'TAP_REC', now: T0 + 280_000 }); // cap would end at +310 s; the part budget ends first
     const fx = r.send({ type: 'TICK', now: T0 + 300_000 });
     expect(types(fx)).toEqual(['STOP_REC', 'PERSIST_STATE']);
     expect(r.state.speaking).toMatchObject({ phase: 'processing', partExpired: true });
@@ -646,6 +665,45 @@ describe('speaking (T73): three tasks, parts, windows, recordings', () => {
     expect(r.state.answers.sp01).toBeDefined();
     expect(r.state.speaking).toMatchObject({ task: 2, phase: 'prompt', partIdx: 1 });
     expect(r.state.speaking?.partExpired).toBeUndefined();
+  });
+
+  it('the part budget auto-advances from `ready` too (nothing recording)', () => {
+    const r = run(['speaking']);
+    begin(r);
+    r.send({ type: 'AUDIO_ENDED', now: T0 + 1000 });
+    const fx = r.send({ type: 'TICK', now: T0 + 300_000 });
+    expect(types(fx)).toEqual(['PERSIST_STATE']);
+    expect(r.state.speaking).toMatchObject({ task: 2, phase: 'prompt', itemId: 'sp02' });
+  });
+
+  it('the task cap ends a task-1 recording (STOP_REC deadline) — and only the cap or the hook ends it: silence never does', () => {
+    const r = run(['speaking']);
+    begin(r);
+    r.send({ type: 'AUDIO_ENDED', now: T0 + 1000 });
+    r.send({ type: 'TAP_REC', now: T0 + 5000 });
+    expect(r.send({ type: 'TICK', now: T0 + 5000 + 29_000 })).toEqual([]); // 29 s in, still recording
+    expect(r.state.speaking?.phase).toBe('recording');
+    const fx = r.send({ type: 'TICK', now: T0 + 5000 + 30_000 });
+    expect(fx[0]).toEqual({ type: 'STOP_REC', reason: 'deadline' });
+    expect(r.state.speaking?.phase).toBe('processing');
+  });
+
+  it('a kill in `ready` / `ready-answer` resumes in the same phase (persisted + hydrated)', () => {
+    const r = run(['speaking']);
+    begin(r);
+    r.send({ type: 'AUDIO_ENDED', now: T0 + 1000 });
+    const back = hydrate(EXAM, toPersisted(r.state), {});
+    expect(back.speaking).toMatchObject({ phase: 'ready', itemId: 'sp01' });
+    const rr = run(['speaking']);
+    begin(rr);
+    rr.send({ type: 'SKIP_ITEM', now: T0 });
+    rr.send({ type: 'SKIP_ITEM', now: T0 });
+    rr.send({ type: 'CHOOSE_TOPIC', itemId: 'sp03', now: T0 });
+    rr.send({ type: 'PREP_DONE', now: T0 + 1000 });
+    const back2 = hydrate(EXAM, toPersisted(rr.state), {});
+    expect(back2.speaking).toMatchObject({ phase: 'ready-answer', itemId: 'sp03' });
+    expect(types(rr.send({ type: 'RESUME', now: T0 + 90_000 }))).toEqual(['PERSIST_STATE']);
+    expect(rr.state.speaking?.phase).toBe('ready-answer');
   });
 
   it('the part budget running out on a prompt (nothing recording) moves straight to the next part', () => {
@@ -660,6 +718,7 @@ describe('speaking (T73): three tasks, parts, windows, recordings', () => {
     const r = run(['speaking']);
     begin(r);
     r.send({ type: 'AUDIO_ENDED', now: T0 + 1000 });
+    r.send({ type: 'TAP_REC', now: T0 + 2000 });
     const fx = r.send({ type: 'TICK', now: T0 + 20 * MIN });
     expect(types(fx).slice(0, 3)).toEqual(['STOP_AUDIO', 'STOP_REC', 'SCORE_SUBTEST']);
     expect(r.state.phase).toBe('done');
@@ -670,6 +729,7 @@ describe('speaking (T73): three tasks, parts, windows, recordings', () => {
     const r = run(['speaking']);
     begin(r);
     r.send({ type: 'AUDIO_ENDED', now: T0 + 1000 });
+    r.send({ type: 'TAP_REC', now: T0 + 1500 });
     const bg = r.send({ type: 'APP_BACKGROUND', now: T0 + 2000 });
     expect(types(bg)).toEqual(['STOP_AUDIO', 'STOP_REC', 'PERSIST_STATE']);
     const back = r.send({ type: 'RESUME', now: T0 + 9000 });
@@ -712,6 +772,7 @@ describe('speaking (T73): three tasks, parts, windows, recordings', () => {
     step({ type: 'CHOOSE_TOPIC', itemId: 'sp03', now: T0 });
     expect(state.speaking?.phaseDeadlineAt).toBe(T0 + 20_000);
     step({ type: 'PREP_DONE', now: T0 });
+    step({ type: 'TAP_REC', now: T0 });
     expect(state.speaking?.phaseDeadlineAt).toBe(T0 + 20_000);
     void r;
   });
