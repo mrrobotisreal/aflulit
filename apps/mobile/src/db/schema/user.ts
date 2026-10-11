@@ -80,6 +80,8 @@ export const encounters = sqliteTable(
     journalEntryId: text('journal_entry_id'),
     /** Surface form as it appeared at this encounter. */
     surface: text('surface').notNull(),
+    /** T81: index of the banked token within `sentenceId` (null = unknown / legacy / journal). */
+    tokenIndex: integer('token_index'),
     createdAt: integer('created_at').notNull(),
   },
   (t) => [index('encounters_bank_item_idx').on(t.bankItemId)],

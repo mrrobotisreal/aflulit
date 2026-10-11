@@ -104,7 +104,10 @@ function WordPopupSheet({
     if (!bankStatus.data || !encounterOnLookup || encounterLoggedRef.current) return;
     encounterLoggedRef.current = true;
     void repos.bank
-      .addEncounter(bankStatus.data.id, token.text, { sentenceId: target.sentenceId })
+      .addEncounter(bankStatus.data.id, token.text, {
+        sentenceId: target.sentenceId,
+        tokenIndex: token.tokenIndex,
+      })
       .then(() => {
         track('encounter_recorded', {
           via: 'tap-lookup',
@@ -145,6 +148,7 @@ function WordPopupSheet({
         pos: token.pos ?? undefined,
         level: (token.level as CefrLevel | null) ?? undefined,
         sentenceId: target.sentenceId,
+        tokenIndex: token.tokenIndex,
         sourceStoryId: target.storyId,
         note: token.note ?? undefined,
         needsEnrichment: !token.translation,
