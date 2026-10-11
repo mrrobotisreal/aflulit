@@ -167,6 +167,8 @@ export type AnalyticsEvent =
   | 'listening_session_abandoned'
   | 'listening_replay'
   | 'listening_audio_resolved'
+  | 'listening_answered'
+  | 'listening_audio_flagged'
   | 'daily_session_started'
   | 'daily_session_empty'
   | 'daily_session_composed'

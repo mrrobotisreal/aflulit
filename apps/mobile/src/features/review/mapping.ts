@@ -122,11 +122,13 @@ export interface ListeningOutcome {
   /** Slow (0.7×) replays taken — any use caps the rating at Hard. */
   slowReplays: number;
   durationMs: number;
+  /** T81: typed 'form' = right word, other form («Почти») — correct, FSRS capped at Hard. */
+  match?: 'exact' | 'form' | 'wrong';
 }
 
 export function listeningOutcomeToRating(outcome: ListeningOutcome): Grade {
   if (!outcome.correct) return Rating.Again;
-  if (outcome.slowReplays > 0) return Rating.Hard;
+  if (outcome.slowReplays > 0 || outcome.match === 'form') return Rating.Hard;
   if (outcome.variant === 'typed') return Rating.Good;
   return outcome.durationMs <= LISTENING_FAST_THRESHOLD_MS ? Rating.Good : Rating.Hard;
 }

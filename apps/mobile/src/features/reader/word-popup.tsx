@@ -120,6 +120,7 @@ function WordPopupSheet({
     bankStatus.data,
     encounterOnLookup,
     token.text,
+    token.tokenIndex,
     target.sentenceId,
     target.eventProps,
     effectiveLemma,

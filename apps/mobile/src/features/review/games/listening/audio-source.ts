@@ -1,4 +1,5 @@
 import { normalizeRu } from '@/db/normalize';
+import { foldForAnswer } from '@/lib/text';
 
 import type { BankItemRow } from '@/db/repositories/bank';
 import type { Repositories } from '@/db/repositories';
@@ -8,6 +9,7 @@ import type { SliceStamp } from '@/features/audio/slice-window';
 
 import { headword } from '../../session';
 import { sentenceEligible } from '../sentence-source';
+import { isFlagActive, readAudioFlags } from './audio-flags';
 
 /**
  * T22: the T02 fixture pack ships a deliberately SILENT narration track
@@ -32,6 +34,10 @@ const SILENT_FIXTURE_TRACKS = new Set(['a1-creepypasta-001:knock-anton-creepy'])
 export type ListeningAudio =
   | {
       kind: 'segment';
+      /** T81: which rule picked the keyed token — the banked occurrence, a surface match, or the first lemma match. */
+      keySource: 'encounter' | 'surface' | 'lemma';
+      /** T81: content ids of the keyed token (flag payload; slugs, never user text). */
+      ref: { packId: string; sentenceId: string; tokenIndex: number; trackId: string };
       /** Local file uri of the narration track (audio_tracks.localUri). */
       uri: string;
       startMs: number;
@@ -53,8 +59,11 @@ export type ListeningAudio =
     }
   | {
       kind: 'tts';
-      /** What the TTS engine should say (word headword / phrase surface). */
+      keySource: 'tts';
+      /** What the TTS engine should say: the BANKED surface (T81), never the lemma. */
       text: string;
+      /** T81: true when a «Неверный звук?» flag (still valid for this pack version) forced TTS. */
+      flagged?: boolean;
     };
 
 /** The Russian a listener is expected to hear — the quiz answer key. */
@@ -78,12 +87,26 @@ export async function resolveListeningAudio(
   opts: { unseenAllowed?: boolean } = {},
 ): Promise<ListeningAudio> {
   const { unseenAllowed = false } = opts;
-  const fallback: ListeningAudio = { kind: 'tts', text: headword(item) };
+  // T81: TTS speaks what Mitch banked (the surface), so heard = banked. The
+  // lemma is only the last resort when a surface is missing.
+  const fallback: ListeningAudio = {
+    kind: 'tts',
+    keySource: 'tts',
+    text: item.surface.trim() || headword(item),
+  };
   if (item.kind !== 'word' || !item.lemma || !item.sourceSentenceId) return fallback;
 
   const resolved = await repos.content.resolveSentence(item.sourceSentenceId);
   if (!resolved) return fallback;
   const { packId, storyId, id: sentenceId } = resolved.sentence;
+
+  // T81 «Неверный звук?»: a flag holds only while the pack is at the flagged version.
+  const flag = (await readAudioFlags(repos))[item.id];
+  if (flag) {
+    const pack = await repos.content.getPack(packId);
+    if (isFlagActive(flag, pack?.version ?? 0))
+      return { ...fallback, flagged: true } as ListeningAudio;
+  }
 
   // T14 ticket: listening items sourced from stories respect the T13
   // unseen-stories toggle too (a one-entry ReadIndex feeds the shared rule).
@@ -106,8 +129,9 @@ export async function resolveListeningAudio(
 
   const tokens = await repos.content.getSentenceTokens(packId, sentenceId);
   const norm = normalizeRu(item.lemma);
-  const target = tokens.find((t) => !t.isPunct && t.lemmaNorm === norm);
-  if (!target) return fallback;
+  const picked = await pickTargetToken(repos, item, sentenceId, tokens, norm);
+  if (!picked) return fallback;
+  const { target, keySource } = picked;
 
   for (const track of tracks) {
     const stamps = await repos.content.getWordStamps(packId, storyId, track.id);
@@ -120,6 +144,8 @@ export async function resolveListeningAudio(
       const sentenceSpan = sliceWindowSpan(sorted, (s) => s.sentenceId === sentenceId);
       return {
         kind: 'segment',
+        keySource,
+        ref: { packId, sentenceId, tokenIndex: target.tokenIndex, trackId: track.id },
         uri: track.localUri!,
         startMs: stamp.startMs,
         endMs: stamp.endMs,
@@ -145,4 +171,45 @@ export async function resolveListeningAudio(
     }
   }
   return fallback;
+}
+
+type SentenceToken = Awaited<ReturnType<Repositories['content']['getSentenceTokens']>>[number];
+
+/**
+ * T81 resolver order — the key must be the form Mitch banked:
+ * 1. the source encounter's `(sentenceId, tokenIndex)` (the oldest one in the
+ *    item's source sentence), if that token still reads as this word;
+ * 2. a token whose surface folds equal to `item.surface` (backfill for items
+ *    banked before `token_index` existed);
+ * 3. the first token with the item's lemma (the pre-T81 behaviour).
+ */
+export async function pickTargetToken(
+  repos: Repositories,
+  item: BankItemRow,
+  sentenceId: string,
+  tokens: SentenceToken[],
+  lemmaNorm: string,
+): Promise<{ target: SentenceToken; keySource: 'encounter' | 'surface' | 'lemma' } | null> {
+  const words = tokens.filter((t) => !t.isPunct);
+  const surfaceFold = foldForAnswer(item.surface);
+
+  const withEnc = await repos.bank.getItemWithEncounters(item.id);
+  const source = (withEnc?.encounters ?? [])
+    .filter((e) => e.sentenceId === sentenceId && e.tokenIndex != null)
+    .sort((a, b) => a.createdAt - b.createdAt)[0];
+  if (source) {
+    const t = words.find((w) => w.tokenIndex === source.tokenIndex);
+    if (
+      t &&
+      (t.lemmaNorm === lemmaNorm || foldForAnswer(t.text) === foldForAnswer(source.surface))
+    ) {
+      return { target: t, keySource: 'encounter' };
+    }
+  }
+  const bySurface = words.find(
+    (t) => foldForAnswer(t.text) === surfaceFold && (t.lemmaNorm === lemmaNorm || !t.lemmaNorm),
+  );
+  if (bySurface) return { target: bySurface, keySource: 'surface' };
+  const byLemma = words.find((t) => t.lemmaNorm === lemmaNorm);
+  return byLemma ? { target: byLemma, keySource: 'lemma' } : null;
 }
