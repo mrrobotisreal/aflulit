@@ -212,6 +212,15 @@ export function createContentRepo(db: SumrakDB) {
         .orderBy(asc(tokens.tokenIndex));
     },
 
+    /** T81: every distinct surface form (normalized) the packs show for a lemma — listening form-tolerant grading. */
+    async findTokenFormsByLemma(lemma: string): Promise<string[]> {
+      const rows = await db
+        .selectDistinct({ textNorm: tokens.textNorm })
+        .from(tokens)
+        .where(and(eq(tokens.lemmaNorm, normalizeRu(lemma)), eq(tokens.isPunct, false)));
+      return rows.map((r) => r.textNorm);
+    },
+
     /** All sentences containing a lemma (ё/е-tolerant) — cloze generation (T13). */
     async findSentencesWithLemma(lemma: string): Promise<SentenceRow[]> {
       const norm = normalizeRu(lemma);

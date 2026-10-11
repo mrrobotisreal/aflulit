@@ -10,9 +10,8 @@ import { describe, expect, it } from 'vitest';
  */
 const SRC = join(__dirname, '..', '..');
 const SLICE_PLAYERS = [
-  'features/review/games/listening/use-listening-audio.ts',
+  'features/audio/use-slice-player.ts', // T79: listening quiz + reader popup slice through this
   'features/torfl/items/use-exam-audio.ts',
-  'features/reader/use-narration.ts',
 ];
 const SPEAK_SURFACES = [
   'features/reader/word-popup.tsx',

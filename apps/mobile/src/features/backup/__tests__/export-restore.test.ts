@@ -817,6 +817,24 @@ describe('restore-core (full pipeline: export → encrypt → decrypt → restor
     expect(rows.every((r) => r.suspendedAt === NOW - 5 && r.buriedUntil === NOW + 99)).toBe(true);
   });
 
+  it('encounters.tokenIndex round-trips through export → restore, and a pre-T81 payload restores null (T81)', async () => {
+    const source = createTestDb();
+    await seedSource(source);
+    await source.update(encounters).set({ tokenIndex: 3 });
+    const { payload } = await exportUserData(source);
+    expect(payload.tables.encounters[0]).toMatchObject({ id: 'enc-1', tokenIndex: 3 });
+
+    const target = createTestDb();
+    await restoreUserData(target, JSON.parse(JSON.stringify(payload)));
+    expect((await target.select().from(encounters))[0]!.tokenIndex).toBe(3);
+
+    const old = JSON.parse(JSON.stringify(payload));
+    for (const e of old.tables.encounters) delete e.tokenIndex;
+    const target2 = createTestDb();
+    await restoreUserData(target2, old);
+    expect((await target2.select().from(encounters))[0]!.tokenIndex).toBeNull();
+  });
+
   it('review_log.source round-trips through export → restore (T50)', async () => {
     const source = createTestDb();
     await seedSource(source);

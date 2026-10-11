@@ -289,6 +289,8 @@ export function DailySessionScreen() {
               {
                 variant: outcome.variant,
                 source: item.entry.audio.kind,
+                match: outcome.match ?? 'wrong',
+                keySource: item.entry.audio.keySource,
                 replays: outcome.replays,
                 slowReplays: outcome.slowReplays,
                 durationMs: outcome.durationMs,

@@ -217,7 +217,16 @@ describe('migrations from empty DB', () => {
       'completed_at',
       'xp',
     ]);
-    expect(journal.entries.at(-1)).toMatchObject({ idx: 18, tag: '0018_daily-quests' });
+    expect(journal.entries.find((e) => e.tag === '0018_daily-quests')).toMatchObject({ idx: 18 });
+  });
+
+  it('0019_encounter-token-index: encounters gains a nullable token_index (additive)', async () => {
+    const db = createTestDb();
+    const rows = await db.all<{ name: string; notnull: number }>(
+      sql`PRAGMA table_info(encounters)`,
+    );
+    expect(rows.find((r) => r.name === 'token_index')?.notnull).toBe(0);
+    expect(journal.entries.at(-1)).toMatchObject({ idx: 19, tag: '0019_encounter-token-index' });
   });
 });
 

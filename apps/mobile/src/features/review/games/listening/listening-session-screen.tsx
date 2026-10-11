@@ -37,6 +37,8 @@ export function ListeningSessionScreen() {
       session.grade(entry.card, listeningOutcomeToRating(outcome), {
         variant: outcome.variant,
         source: entry.audio.kind,
+        match: outcome.match ?? 'wrong',
+        keySource: entry.audio.keySource,
         replays: outcome.replays,
         slowReplays: outcome.slowReplays,
         durationMs: outcome.durationMs,

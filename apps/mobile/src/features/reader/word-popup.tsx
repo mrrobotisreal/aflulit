@@ -104,7 +104,10 @@ function WordPopupSheet({
     if (!bankStatus.data || !encounterOnLookup || encounterLoggedRef.current) return;
     encounterLoggedRef.current = true;
     void repos.bank
-      .addEncounter(bankStatus.data.id, token.text, { sentenceId: target.sentenceId })
+      .addEncounter(bankStatus.data.id, token.text, {
+        sentenceId: target.sentenceId,
+        tokenIndex: token.tokenIndex,
+      })
       .then(() => {
         track('encounter_recorded', {
           via: 'tap-lookup',
@@ -117,6 +120,7 @@ function WordPopupSheet({
     bankStatus.data,
     encounterOnLookup,
     token.text,
+    token.tokenIndex,
     target.sentenceId,
     target.eventProps,
     effectiveLemma,
@@ -145,6 +149,7 @@ function WordPopupSheet({
         pos: token.pos ?? undefined,
         level: (token.level as CefrLevel | null) ?? undefined,
         sentenceId: target.sentenceId,
+        tokenIndex: token.tokenIndex,
         sourceStoryId: target.storyId,
         note: token.note ?? undefined,
         needsEnrichment: !token.translation,
@@ -200,6 +205,12 @@ function WordPopupSheet({
     }
   }, [hasSegment, segments, target.sentenceId, token]);
 
+  // T79: replay the whole source sentence so a slightly-off word stamp is recoverable by ear.
+  const hasContext = segments?.hasContext(target.sentenceId) ?? false;
+  const handleContext = React.useCallback(() => {
+    segments?.playContext(target.sentenceId);
+  }, [segments, target.sentenceId]);
+
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
       <Pressable className="flex-1 bg-scrim/50" onPress={onClose} accessibilityLabel="Close" />
@@ -214,6 +225,18 @@ function WordPopupSheet({
             )}
           </View>
           {token.level && <LevelChip level={token.level} />}
+          {hasContext && (
+            <Pressable
+              onPress={handleContext}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Play in sentence"
+              className="h-11 flex-row items-center gap-1 rounded-full bg-surface-2 px-3 active:bg-border"
+            >
+              <Ionicons name="play" size={16} color={theme.accent} />
+              <RNText className="font-ui-medium text-xs text-text">в предложении</RNText>
+            </Pressable>
+          )}
           <Pressable
             onPress={canSpeak ? handleSpeak : undefined}
             disabled={!canSpeak}

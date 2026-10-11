@@ -3,6 +3,7 @@ import { type CardRow } from '@/db/repositories/reviews';
 import type { Repositories } from '@/db/repositories';
 import { track } from '@/services/analytics';
 import { foldForAnswer } from '@/lib/text';
+import { normalizeRu } from '@/db/normalize';
 
 import { resolveListeningAudio, spokenText, type ListeningAudio } from './audio-source';
 
@@ -17,6 +18,8 @@ export interface ListeningItem {
   audio: ListeningAudio;
   /** The Russian actually spoken — the answer key (ё/casing as in source). */
   answerRu: string;
+  /** T81: folded other forms of this word's lemma (lemma + encounter surfaces + pack token forms) for «Почти». */
+  knownForms: string[];
   /** Gloss shown as post-answer feedback (null for unenriched captures). */
   translation: string | null;
   variant: ListeningVariant;
@@ -49,12 +52,17 @@ export async function buildListeningItemForCard(
   opts: { unseenAllowed?: boolean } = {},
 ): Promise<ListeningItem> {
   const audio = await resolveListeningAudio(repos, item, opts);
-  track('listening_audio_resolved', { source: audio.kind, itemKind: item.kind });
+  track('listening_audio_resolved', {
+    source: audio.kind,
+    keySource: audio.keySource,
+    itemKind: item.kind,
+  });
   const entry: ListeningItem = {
     card,
     item,
     audio,
     answerRu: spokenText(audio),
+    knownForms: await collectKnownForms(repos, item),
     translation: item.translation.trim() ? item.translation : null,
     variant: 'typed',
   };
@@ -66,6 +74,18 @@ export async function buildListeningItemForCard(
     }
   }
   return entry;
+}
+
+/** T81: every form of the item's lemma we can vouch for (words only; phrases have none). */
+export async function collectKnownForms(repos: Repositories, item: BankItemRow): Promise<string[]> {
+  if (item.kind !== 'word' || !item.lemma) return [];
+  const forms = new Set<string>([foldForAnswer(item.lemma), foldForAnswer(item.surface)]);
+  const withEnc = await repos.bank.getItemWithEncounters(item.id);
+  for (const e of withEnc?.encounters ?? []) forms.add(foldForAnswer(e.surface));
+  for (const f of await repos.content.findTokenFormsByLemma(item.lemma))
+    forms.add(foldForAnswer(f));
+  forms.delete('');
+  return [...forms];
 }
 
 /**
@@ -81,11 +101,14 @@ async function buildListeningChoices(
 ): Promise<string[] | null> {
   const answerOption = entry.answerRu.toLocaleLowerCase('ru-RU');
   const candidates = await repos.bank.findDistractors(entry.item, (LISTENING_CHOICE_COUNT - 1) * 3);
-  const seen = new Set([foldForAnswer(answerOption)]);
+  const seen = new Set([foldForAnswer(answerOption), ...entry.knownForms]);
+  const answerLemma = entry.item.lemma ? normalizeRu(entry.item.lemma) : null;
   const distractors: string[] = [];
   for (const candidate of candidates) {
     const text = candidate.surface.toLocaleLowerCase('ru-RU');
     const key = foldForAnswer(text);
+    // T81: never another form of the answer's lemma — "right word, wrong form" must not be a choice.
+    if (answerLemma && candidate.lemmaNorm === answerLemma) continue;
     if (!text || text.includes(' ') || seen.has(key)) continue;
     seen.add(key);
     distractors.push(text);

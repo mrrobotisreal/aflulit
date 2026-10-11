@@ -92,33 +92,51 @@ describe('resolveListeningAudio', () => {
     const { repos, item } = await setup({ withTrack: true, withStamp: true });
     await repos.reading.markFinished('p1', 'st1');
     const audio = await resolveListeningAudio(repos, item);
-    expect(audio).toEqual({
+    expect(audio).toMatchObject({
       kind: 'segment',
       uri: 'file:///packs/p1/audio/st1.opus',
       startMs: 700,
       endMs: 1400,
       spokenText: 'словами',
+      prev: null,
+      next: null,
+      context: { startMs: 700, endMs: 1400, prev: null, next: null },
     });
+    expect(
+      audio.kind === 'segment' && audio.context?.tokens.filter((t) => t.isTarget),
+    ).toHaveLength(1);
   });
 
   it('respects the unseen-stories rule: unread source sentence → TTS unless the toggle allows it', async () => {
     const { repos, item } = await setup({ withTrack: true, withStamp: true });
     // No progress row: the sentence would spoil an unopened story.
-    expect(await resolveListeningAudio(repos, item)).toEqual({ kind: 'tts', text: 'слово' });
+    expect(await resolveListeningAudio(repos, item)).toEqual({
+      kind: 'tts',
+      keySource: 'tts',
+      text: 'словами',
+    });
     const allowed = await resolveListeningAudio(repos, item, { unseenAllowed: true });
     expect(allowed.kind).toBe('segment');
   });
 
-  it('falls back to TTS of the lemma when the track has no stamp for the token', async () => {
+  it('falls back to TTS of the banked surface when the track has no stamp for the token', async () => {
     const { repos, item } = await setup({ withTrack: true, withStamp: false });
     await repos.reading.markFinished('p1', 'st1');
-    expect(await resolveListeningAudio(repos, item)).toEqual({ kind: 'tts', text: 'слово' });
+    expect(await resolveListeningAudio(repos, item)).toEqual({
+      kind: 'tts',
+      keySource: 'tts',
+      text: 'словами',
+    });
   });
 
   it('falls back to TTS when the track audio is not downloaded', async () => {
     const { repos, item } = await setup({ withTrack: true, withStamp: true, downloaded: false });
     await repos.reading.markFinished('p1', 'st1');
-    expect(await resolveListeningAudio(repos, item)).toEqual({ kind: 'tts', text: 'слово' });
+    expect(await resolveListeningAudio(repos, item)).toEqual({
+      kind: 'tts',
+      keySource: 'tts',
+      text: 'словами',
+    });
   });
 
   it('falls back to TTS when the item has no source sentence', async () => {
@@ -128,7 +146,11 @@ describe('resolveListeningAudio', () => {
       surface: 'дом',
       translation: 'house',
     });
-    expect(await resolveListeningAudio(repos, item)).toEqual({ kind: 'tts', text: 'дом' });
+    expect(await resolveListeningAudio(repos, item)).toEqual({
+      kind: 'tts',
+      keySource: 'tts',
+      text: 'дом',
+    });
   });
 
   it('phrases always go to TTS of the phrase surface', async () => {
@@ -141,6 +163,7 @@ describe('resolveListeningAudio', () => {
     });
     expect(await resolveListeningAudio(repos, item)).toEqual({
       kind: 'tts',
+      keySource: 'tts',
       text: 'вот словами',
     });
   });

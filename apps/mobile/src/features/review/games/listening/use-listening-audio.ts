@@ -1,7 +1,7 @@
-import { createAudioPlayer, type AudioPlayer } from 'expo-audio';
 import * as React from 'react';
 
-import { createSliceFocus } from '@/services/learning-focus';
+import { useSlicePlayer } from '@/features/audio/use-slice-player';
+import { track } from '@/services/analytics';
 import { getSpeechService } from '@/services/speech';
 
 import type { ListeningAudio } from './audio-source';
@@ -9,33 +9,22 @@ import type { ListeningAudio } from './audio-source';
 /** Slow-replay rate — matches the narration bar's lowest speed (T10). */
 export const SLOW_REPLAY_RATE = 0.7;
 
-/** Lead-in/out around a stamped slice so consonants don't get chopped (T10 values). */
-const SEGMENT_LEAD_IN_MS = 40;
-const SEGMENT_LEAD_OUT_MS = 60;
-
 /**
- * Playback for one listening-quiz item (T14). Segment sources get their own
- * expo-audio player (seek → play → timed pause, the T10 word-segment
- * technique); TTS sources go through the SpeechService (Piper when a voice
- * is installed, system voice otherwise — never network). Slow replay drops
- * the rate to 0.7× on both paths. Auto-plays once on mount.
+ * Playback for one listening-quiz item (T14). Segment sources play through
+ * the shared T79 slice player (neighbour-aware window, media-clock stop,
+ * T78 focus held for the slice); TTS sources go through the SpeechService
+ * (Piper when a voice is installed, system voice otherwise — never network).
+ * Slow replay drops the rate to 0.7× on both paths. Auto-plays once on mount.
+ * `playContext` (segment only) plays the whole source sentence.
  */
 export function useListeningAudio(audio: ListeningAudio) {
-  const playerRef = React.useRef<AudioPlayer | null>(null);
-  const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-  const focusRef = React.useRef(createSliceFocus('listening-quiz'));
-  const playSeqRef = React.useRef(0);
+  const slice = useSlicePlayer('listening', 'listening-quiz');
+  const { stop: stopSlice } = slice;
 
   const stop = React.useCallback(() => {
-    playSeqRef.current += 1;
-    focusRef.current.release();
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-    playerRef.current?.pause();
+    stopSlice();
     void getSpeechService().stop();
-  }, []);
+  }, [stopSlice]);
 
   const play = React.useCallback(
     (slow: boolean) => {
@@ -45,33 +34,31 @@ export function useListeningAudio(audio: ListeningAudio) {
         void getSpeechService().speak(audio.text, { rate });
         return;
       }
-      if (!playerRef.current) {
-        // Polling UI isn't needed — a huge updateInterval keeps status events quiet.
-        playerRef.current = createAudioPlayer({ uri: audio.uri }, { updateInterval: 60_000 });
-      }
-      const player = playerRef.current;
-      player.setPlaybackRate(rate, 'high');
-      const startMs = Math.max(0, audio.startMs - SEGMENT_LEAD_IN_MS);
-      const sliceMs = audio.endMs + SEGMENT_LEAD_OUT_MS - startMs;
-      const seq = playSeqRef.current;
-      // T78: pause other apps (transient focus) before the first sample.
-      void focusRef.current
-        .acquire()
-        .then(() => (seq === playSeqRef.current ? player.seekTo(startMs / 1000) : undefined))
-        .then(() => {
-          if (seq !== playSeqRef.current) return;
-          player.play();
-          timerRef.current = setTimeout(
-            () => {
-              player.pause();
-              focusRef.current.release();
-            },
-            Math.ceil(sliceMs / rate),
-          );
-        });
+      void slice.play(
+        {
+          uri: audio.uri,
+          startMs: audio.startMs,
+          endMs: audio.endMs,
+          prev: audio.prev,
+          next: audio.next,
+        },
+        rate,
+      );
     },
-    [audio, stop],
+    [audio, stop, slice],
   );
+
+  const hasContext = audio.kind === 'segment' && audio.context != null;
+  const playContext = React.useCallback(() => {
+    if (audio.kind !== 'segment' || !audio.context) return;
+    stop();
+    const c = audio.context;
+    track('word_slice_context_played', { surface: 'listening' });
+    void slice.play(
+      { uri: audio.uri, startMs: c.startMs, endMs: c.endMs, prev: c.prev, next: c.next },
+      1,
+    );
+  }, [audio, stop, slice]);
 
   // Auto-play the clip once the item appears — the audio IS the prompt.
   React.useEffect(() => {
@@ -81,13 +68,13 @@ export function useListeningAudio(audio: ListeningAudio) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Slice player teardown (pause, focus release, player.remove) lives in useSlicePlayer;
+  // this effect only silences TTS on unmount.
   React.useEffect(() => {
     return () => {
-      stop();
-      playerRef.current?.remove();
-      playerRef.current = null;
+      void getSpeechService().stop();
     };
-  }, [stop]);
+  }, []);
 
-  return { play, stop };
+  return { play, stop, playContext, hasContext };
 }

@@ -45,6 +45,7 @@ const encounterRow = z.strictObject({
   sentenceId: z.string().nullable(),
   journalEntryId: z.string().nullable(),
   surface: z.string(),
+  tokenIndex: int.nullable().optional(),
   createdAt: int,
 });
 

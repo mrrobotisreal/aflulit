@@ -41,6 +41,12 @@ export const SETTING_KEYS = {
    * secure-store only ('sumrak.backup.syncd.token'), same rule as the PAT.
    */
   syncdConfig: 'backup.syncd',
+  /**
+   * «Неверный звук?» flags (T81): `{ [bankItemId]: { packId, packVersion, sentenceId,
+   * tokenIndex, trackId, flaggedAt } }` — that card speaks TTS of the banked surface
+   * until the pack version changes. Read by `features/review/games/listening/audio-flags`.
+   */
+  listeningAudioFlags: 'listening.audioFlags',
   /** Content sync source (T07): { owner, repo, branch } — the PAT lives in secure-store, never here. */
   contentRepo: 'sync.contentRepo',
   /** boolean (T07, default true): only download narration audio on Wi-Fi. */

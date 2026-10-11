@@ -76,6 +76,9 @@ export type AnalyticsEvent =
   | 'narration_finished'
   | 'karaoke_fallback_sentence_mode'
   | 'word_segment_played'
+  // T79 slice player. Props: surface slug + numbers (lead/seek/stop ms, rate).
+  | 'word_slice_played'
+  | 'word_slice_context_played'
   // T11 on-device TTS (sherpa-onnx Piper) + voice model manager
   | 'tts_voice_download_started'
   | 'tts_voice_download_completed'
@@ -164,6 +167,8 @@ export type AnalyticsEvent =
   | 'listening_session_abandoned'
   | 'listening_replay'
   | 'listening_audio_resolved'
+  | 'listening_answered'
+  | 'listening_audio_flagged'
   | 'daily_session_started'
   | 'daily_session_empty'
   | 'daily_session_composed'

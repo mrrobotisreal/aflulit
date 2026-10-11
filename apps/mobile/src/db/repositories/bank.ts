@@ -23,6 +23,8 @@ export interface TypingCandidateRow {
 
 export interface EncounterSource {
   sentenceId?: string;
+  /** T81: the banked token's index inside `sentenceId`. */
+  tokenIndex?: number;
   journalEntryId?: string;
 }
 
@@ -273,6 +275,7 @@ export function createBankRepo(db: SumrakDB, hooks: BankRepoHooks = {}) {
       sentenceId: source.sentenceId ?? null,
       journalEntryId: source.journalEntryId ?? null,
       surface,
+      tokenIndex: source.sentenceId != null ? (source.tokenIndex ?? null) : null,
       createdAt: Date.now(),
     };
     await db.insert(encounters).values(row);
@@ -472,6 +475,7 @@ export function createBankRepo(db: SumrakDB, hooks: BankRepoHooks = {}) {
       const rows = await db
         .select({
           sentenceId: tokens.sentenceId,
+          tokenIndex: tokens.tokenIndex,
           text: tokens.text,
           lemma: tokens.lemma,
           lemmaNorm: tokens.lemmaNorm,
@@ -542,7 +546,10 @@ export function createBankRepo(db: SumrakDB, hooks: BankRepoHooks = {}) {
             createdAt: now,
           };
           await db.insert(bankItems).values(row);
-          await insertEncounter(row.id, tok.text, { sentenceId: tok.sentenceId });
+          await insertEncounter(row.id, tok.text, {
+            sentenceId: tok.sentenceId,
+            tokenIndex: tok.tokenIndex,
+          });
           const item = (await getById(row.id))!;
           await hooks.withinBulkAdd?.(item);
           created.push(item);

@@ -6,9 +6,12 @@ import { Pressable, Text as RNText, TextInput, Vibration, View } from 'react-nat
 import { Text } from '@/components/ui/text';
 import { track } from '@/services/analytics';
 import { useAppTheme } from '@/theme/use-app-theme';
+import { repos } from '@/db';
 import { answersMatch } from '@/lib/text';
 
 import type { ListeningOutcome } from '../../mapping';
+import { flagListeningAudio } from './audio-flags';
+import { gradeListening, type ListeningMatch } from './grading';
 import type { ListeningItem } from './session';
 import { useListeningAudio } from './use-listening-audio';
 
@@ -33,7 +36,10 @@ export function ListeningView({ entry, onDone }: ListeningViewProps) {
   const { tokens: theme } = useAppTheme();
   const audio = useListeningAudio(entry.audio);
 
-  const [answered, setAnswered] = React.useState<null | { text: string; correct: boolean }>(null);
+  const [answered, setAnswered] = React.useState<null | { text: string; match: ListeningMatch }>(
+    null,
+  );
+  const [flagged, setFlagged] = React.useState(false);
   const [revealed, setRevealed] = React.useState(false);
   const [typed, setTyped] = React.useState('');
   const [selectedChoice, setSelectedChoice] = React.useState<string | null>(null);
@@ -46,10 +52,11 @@ export function ListeningView({ entry, onDone }: ListeningViewProps) {
   }, []);
 
   const finish = React.useCallback(
-    (correct: boolean, delayMs?: number) => {
+    (correct: boolean, delayMs?: number, match?: ListeningMatch) => {
       const outcome: ListeningOutcome = {
         variant: entry.variant,
         correct,
+        match: match ?? (correct ? 'exact' : 'wrong'),
         replays: replaysRef.current,
         slowReplays: slowReplaysRef.current,
         durationMs: Date.now() - shownAtRef.current,
@@ -74,15 +81,20 @@ export function ListeningView({ entry, onDone }: ListeningViewProps) {
   const answer = React.useCallback(
     (text: string, viaChoice: string | null) => {
       if (answered || revealed) return;
-      const correct = answersMatch(entry.answerRu, text);
-      Vibration.vibrate(correct ? 8 : 24);
+      const match = gradeListening(text, entry.answerRu, entry.knownForms);
+      Vibration.vibrate(match === 'exact' ? 8 : 24);
       audio.stop();
-      setAnswered({ text, correct });
+      setAnswered({ text, match });
       if (viaChoice != null) setSelectedChoice(viaChoice);
-      if (correct) finish(true, FEEDBACK_DELAY_MS);
-      // wrong → explicit Continue below
+      track('listening_answered', {
+        match,
+        keySource: entry.audio.keySource,
+        variant: entry.variant,
+      });
+      if (match === 'exact') finish(true, FEEDBACK_DELAY_MS, 'exact');
+      // 'form' («Почти») and wrong → explicit Continue below: the heard form deserves a read
     },
-    [answered, revealed, entry.answerRu, audio, finish],
+    [answered, revealed, entry, audio, finish],
   );
 
   const giveUp = React.useCallback(() => {
@@ -92,7 +104,19 @@ export function ListeningView({ entry, onDone }: ListeningViewProps) {
     audio.stop();
   }, [answered, revealed, audio]);
 
-  const showContinue = (answered && !answered.correct) || revealed;
+  const exact = answered?.match === 'exact';
+  const almost = answered?.match === 'form';
+  const showContinue = (answered && !exact) || revealed;
+
+  const flagAudio = React.useCallback(() => {
+    if (flagged || entry.audio.kind !== 'segment') return;
+    setFlagged(true);
+    const { ref } = entry.audio;
+    void flagListeningAudio(repos, entry.item.id, ref).catch((err) =>
+      console.error('[listening] flag failed', err),
+    );
+    track('listening_audio_flagged', { ...ref, keySource: entry.audio.keySource });
+  }, [flagged, entry.audio, entry.item.id]);
   const showAnswer = !!answered || revealed;
 
   return (
@@ -127,17 +151,58 @@ export function ListeningView({ entry, onDone }: ListeningViewProps) {
           <View className="mt-5 items-center gap-1">
             <RNText
               className="font-reading text-2xl"
-              style={{ color: answered?.correct ? theme.success : theme.danger }}
+              style={{ color: exact || almost ? theme.success : theme.danger }}
             >
               {entry.answerRu}
             </RNText>
+            {almost && (
+              <Text className="text-center" variant="muted">
+                Почти — та же лексема, другая форма. Вы слышали «{entry.answerRu}».
+              </Text>
+            )}
             {entry.translation && <Text variant="muted">{entry.translation}</Text>}
+            {audio.hasContext && entry.audio.kind === 'segment' && entry.audio.context && (
+              <>
+                <RNText className="mt-2 text-center font-reading text-base text-text-muted">
+                  {entry.audio.context.tokens.map((t, i) => (
+                    <RNText
+                      key={i}
+                      className={t.isTarget ? 'font-reading text-accent' : 'font-reading'}
+                    >
+                      {(t.spaceBefore && i > 0 ? ' ' : '') + t.text}
+                    </RNText>
+                  ))}
+                </RNText>
+                <Pressable
+                  onPress={audio.playContext}
+                  accessibilityRole="button"
+                  accessibilityLabel="Play in sentence"
+                  className="mt-1 flex-row items-center gap-2 rounded-full border border-border bg-surface-2 px-4 py-2 active:bg-border"
+                >
+                  <Ionicons name="play" size={16} color={theme.accent} />
+                  <RNText className="font-ui-medium text-sm text-text">в предложении</RNText>
+                </Pressable>
+              </>
+            )}
+            {entry.audio.kind === 'segment' && (
+              <Pressable
+                onPress={flagAudio}
+                disabled={flagged}
+                accessibilityRole="button"
+                accessibilityLabel="Неверный звук?"
+                className="mt-1 px-3 py-2 active:opacity-70"
+              >
+                <RNText className="font-ui text-sm text-text-muted">
+                  {flagged ? 'Отмечено — дальше голос приложения' : 'Неверный звук?'}
+                </RNText>
+              </Pressable>
+            )}
           </View>
         )}
       </View>
 
       {/* wrong typed answer: show what was typed vs what was said */}
-      {answered && !answered.correct && entry.variant === 'typed' && (
+      {answered && !exact && entry.variant === 'typed' && (
         <Text className="mt-3 text-center" variant="muted">
           You typed «{answered.text.trim()}»
         </Text>
@@ -207,7 +272,7 @@ export function ListeningView({ entry, onDone }: ListeningViewProps) {
 
       {showContinue && (
         <Pressable
-          onPress={() => finish(false)}
+          onPress={() => finish(almost, undefined, answered?.match ?? 'wrong')}
           accessibilityRole="button"
           className="mt-4 items-center rounded-xl bg-accent py-3.5 active:opacity-80"
         >
