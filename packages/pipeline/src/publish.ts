@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
+  appendFileSync,
   cpSync,
   existsSync,
   mkdirSync,
@@ -10,6 +11,8 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { join, relative, sep } from 'node:path';
+import { auditPack, formatAuditTable } from './stamp-audit.ts';
+import type { Aligner } from './stamp-audit.ts';
 import {
   ManifestSchema,
   safeParsePack,
@@ -33,6 +36,14 @@ import {
 export interface PublishOptions {
   push?: boolean;
   message?: string;
+  /**
+   * T80 gate: audit every timestamped story track against its audio and
+   * refuse on failure. The CLI always passes one; library callers (tests)
+   * omit it to skip the audit.
+   */
+  stampAudit?: Aligner;
+  /** Publish despite a failing stamp audit; the override is logged to `<packDir>/BUILD_NOTES.md`. */
+  allowStampRisk?: boolean;
 }
 
 export interface PublishSummary {
@@ -132,6 +143,23 @@ export function runPublish(
     throw new Error(`${packFile} is not a valid pack:\n${details}`);
   }
   const pack = parsed.data;
+
+  // 1b. T80 stamp-accuracy gate: stamps must match the audio they ship with.
+  if (opts.stampAudit) {
+    const audit = auditPack(pack, packDir, opts.stampAudit);
+    if (!audit.ok) {
+      const table = formatAuditTable(audit);
+      if (!opts.allowStampRisk) {
+        throw new Error(
+          `stamp audit FAILED for ${pack.id} — fix with \`pipeline restamp\`, or override with --allow-stamp-risk:\n${table}`,
+        );
+      }
+      appendFileSync(
+        join(packDir, 'BUILD_NOTES.md'),
+        `\n## ${new Date().toISOString()} — published ${pack.id} v${pack.version} with --allow-stamp-risk\n\n\`\`\`\n${table}\n\`\`\`\n`,
+      );
+    }
+  }
 
   // 2. Collect + hash the pack's files from the source dir.
   const relPaths = packFileList(pack, packDir);

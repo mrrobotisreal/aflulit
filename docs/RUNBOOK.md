@@ -39,12 +39,23 @@ i.e. the `sumrak-content` directory at the workspace root).
    Check the printed stamp report: every track should say monotonic, ~100%
    coverage. A 0-stamp track falls back to sentence karaoke in the app —
    re-render with another seed instead of shipping that.
+   **Stamps are forced-aligned to the Opus (T80).** `audio` re-derives every
+   word stamp from the encoded audio (provider character times collapse
+   pauses and drift). It needs the aligner venv (AUTHORING «Timestamps»:
+   `SUMRAK_ALIGN_PYTHON`, optional `SUMRAK_ALIGN_DEVICE=mps`) and checks it
+   before spending anything. Before publishing run
+   `pnpm pipeline stamp-audit ../Stories/_build/<pack-id>` — it must exit 0
+   (median ≤ 40 ms, p95 ≤ 120 ms, no step, drift ≤ 20 ms/min). To fix an
+   already-built pack without re-rendering: `pnpm pipeline restamp
+../Stories/_build/<pack-id>`, then audit again.
 4. **Publish** (commits into the content repo; `--push` is opt-in):
    ```sh
    pnpm pipeline publish ../Stories/_build/<pack-id> --content ../sumrak-content --push
    ```
    Updating an existing pack: bump `pack.version` in every draft first —
-   publish refuses same-version content drift.
+   publish refuses same-version content drift. `publish` runs `stamp-audit`
+   and refuses a failing pack; `--allow-stamp-risk` overrides and logs the
+   audit to `<pack-dir>/BUILD_NOTES.md` (use only with a reason in the CT).
 5. **Sync on the phone.** Settings → Content sync must have the repo
    (`mrrobotisreal/sumrak-content`) and a fine-grained PAT (Contents:
    read-write) saved. Then Library → pull-to-refresh (or Packs → Check for
