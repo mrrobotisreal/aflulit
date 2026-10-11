@@ -2,6 +2,7 @@ import { createAudioPlayer, type AudioPlayer } from 'expo-audio';
 import * as React from 'react';
 
 import { buildKaraokeIndex, activeWordAt, type ActiveWord } from '@/features/reader/karaoke';
+import { createSliceFocus } from '@/services/learning-focus';
 import { getSpeechService } from '@/services/speech';
 
 import type { ExamAudio } from './exam-audio';
@@ -41,6 +42,8 @@ export function useExamAudio(
   const playerRef = React.useRef<AudioPlayer | null>(null);
   const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const pollRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+  const focusRef = React.useRef(createSliceFocus('torfl-drill'));
+  const playSeqRef = React.useRef(0);
   const onEndedRef = React.useRef(opts.onEnded);
   const onPlayRef = React.useRef(opts.onPlay);
   React.useEffect(() => {
@@ -72,6 +75,8 @@ export function useExamAudio(
   }, []);
 
   const stop = React.useCallback(() => {
+    playSeqRef.current += 1;
+    focusRef.current.release();
     clearTimers();
     playerRef.current?.pause();
     void getSpeechService().stop();
@@ -80,6 +85,7 @@ export function useExamAudio(
   }, [clearTimers]);
 
   const finish = React.useCallback(() => {
+    focusRef.current.release();
     clearTimers();
     setPlaying(false);
     setActiveWord(null);
@@ -106,27 +112,35 @@ export function useExamAudio(
       const player = playerRef.current;
       player.setPlaybackRate(rate, 'high');
       const sliceMs = Math.max(0, source.endMs - source.startMs);
-      void player.seekTo(source.startMs / 1000).then(() => {
-        player.play();
-        timerRef.current = setTimeout(
-          () => {
-            player.pause();
-            finish();
-          },
-          Math.ceil(sliceMs / rate),
-        );
-        if (index) {
-          pollRef.current = setInterval(() => {
-            setActiveWord(activeWordAt(index, Math.round(player.currentTime * 1000)));
-          }, 80);
-        }
-      });
+      const seq = playSeqRef.current;
+      // T78: pause other apps (transient focus) before the first sample.
+      void focusRef.current
+        .acquire()
+        .then(() => (seq === playSeqRef.current ? player.seekTo(source.startMs / 1000) : undefined))
+        .then(() => {
+          if (seq !== playSeqRef.current) return;
+          player.play();
+          timerRef.current = setTimeout(
+            () => {
+              player.pause();
+              finish();
+            },
+            Math.ceil(sliceMs / rate),
+          );
+          if (index) {
+            pollRef.current = setInterval(() => {
+              setActiveWord(activeWordAt(index, Math.round(player.currentTime * 1000)));
+            }, 80);
+          }
+        });
     },
     [audio, stop, finish, index],
   );
 
   React.useEffect(
     () => () => {
+      playSeqRef.current += 1;
+      focusRef.current.release();
       clearTimers();
       playerRef.current?.pause();
       void getSpeechService().stop();

@@ -1,6 +1,9 @@
 package expo.modules.sherpaspeech
 
+import android.content.Context
 import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.AudioTrack
@@ -103,6 +106,63 @@ class SherpaSpeechModule : Module() {
 
   @Volatile private var activeTrack: AudioTrack? = null
 
+  // ---- T78: transient audio focus for short learning clips ----------------
+  // Its own AudioFocusRequest (never expo-audio's global flag), ref-counted so
+  // an overlapping clip (replay mid-clip) cannot abandon focus early.
+  private val focusLock = Any()
+  private var focusRefs = 0
+  @Volatile private var focusGained = false
+  private var focusRequest: AudioFocusRequest? = null
+  private val focusListener = AudioManager.OnAudioFocusChangeListener { change ->
+    focusGained = change == AudioManager.AUDIOFOCUS_GAIN
+  }
+
+  /** 'granted' | 'delayed' | 'failed'. A delayed grant waits <= 300 ms then proceeds. */
+  private fun acquireTransientFocus(): String {
+    val ctx = appContext.reactContext ?: return "failed"
+    val am = ctx.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return "failed"
+    synchronized(focusLock) {
+      focusRefs += 1
+      if (focusRefs > 1 && focusRequest != null) return if (focusGained) "granted" else "delayed"
+      val req = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+        .setAudioAttributes(
+          AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_MEDIA)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+            .build(),
+        )
+        .setWillPauseWhenDucked(false)
+        .setAcceptsDelayedFocusGain(true)
+        .setOnAudioFocusChangeListener(focusListener)
+        .build()
+      focusRequest = req
+      return when (am.requestAudioFocus(req)) {
+        AudioManager.AUDIOFOCUS_REQUEST_GRANTED -> { focusGained = true; "granted" }
+        AudioManager.AUDIOFOCUS_REQUEST_DELAYED -> {
+          focusGained = false
+          val t0 = SystemClock.elapsedRealtime()
+          while (!focusGained && SystemClock.elapsedRealtime() - t0 < 300) SystemClock.sleep(20)
+          "delayed"
+        }
+        else -> "failed"
+      }
+    }
+  }
+
+  private fun releaseTransientFocus() {
+    val ctx = appContext.reactContext ?: return
+    val am = ctx.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
+    synchronized(focusLock) {
+      if (focusRefs == 0) return
+      focusRefs -= 1
+      if (focusRefs == 0) {
+        focusRequest?.let { runCatching { am.abandonAudioFocusRequest(it) } }
+        focusRequest = null
+        focusGained = false
+      }
+    }
+  }
+
   override fun definition() = ModuleDefinition {
     Name("SherpaSpeech")
 
@@ -168,6 +228,13 @@ class SherpaSpeechModule : Module() {
 
     Function("getLoadedVoiceId") { loadedVoiceId }
 
+    /** T78: take AUDIOFOCUS_GAIN_TRANSIENT (ref-counted). Pair with abandonTransientFocus. */
+    AsyncFunction("requestTransientFocus") { promise: Promise ->
+      ttsExecutor.execute { promise.resolve(acquireTransientFocus()) }
+    }
+
+    Function("abandonTransientFocus") { releaseTransientFocus() }
+
     /**
      * Speak text through the loaded voice. Resolves once playback has
      * STARTED (first synthesized chunk hits the AudioTrack) with the
@@ -192,6 +259,8 @@ class SherpaSpeechModule : Module() {
         var totalFrames = 0L
         var resolved = false
         val t0 = SystemClock.elapsedRealtime()
+        // T78: other apps pause before the first sample; synthesis time doubles as the settle gap.
+        val focusResult = acquireTransientFocus()
         try {
           engine.generateWithCallback(
             text = text,
@@ -209,6 +278,7 @@ class SherpaSpeechModule : Module() {
                   mapOf(
                     "started" to true,
                     "firstAudioMs" to (SystemClock.elapsedRealtime() - t0),
+                    "focus" to focusResult,
                   ),
                 )
               }
@@ -256,6 +326,7 @@ class SherpaSpeechModule : Module() {
             }
             if (activeTrack === doomed) activeTrack = null
           }
+          releaseTransientFocus()
           sendEvent("onSpeakingStateChanged", mapOf("speaking" to false))
         }
       }
