@@ -7,7 +7,8 @@ import { SETTING_KEYS } from '@/db/repositories/settings';
 import type { AudioTrackRow } from '@/db/repositories/content';
 import type { ClassificationEventProps } from '@/features/library/categories';
 import { track as trackEvent } from '@/services/analytics';
-import { createSliceFocus } from '@/services/learning-focus';
+import { runSpan } from '@/features/audio/slice-window';
+import { useSlicePlayer } from '@/features/audio/use-slice-player';
 
 import {
   activeSentenceAt,
@@ -62,6 +63,10 @@ export interface WordSegmentPlayer {
   hasSegment(sentenceId: string, tokenIndex: number): boolean;
   /** Play just this word's slice of the current track (pauses narration). */
   playSegment(sentenceId: string, tokenIndex: number): void;
+  /** T79: the sentence has stamps on the loaded track («▶ в предложении»). */
+  hasContext(sentenceId: string): boolean;
+  /** T79: play the whole source sentence (first stamp − lead-in … last + lead-out). */
+  playContext(sentenceId: string): void;
 }
 
 export interface Narration {
@@ -195,8 +200,6 @@ export function useNarration({
 
   // ---- player lifecycle ---------------------------------------------------
   const playerRef = React.useRef<AudioPlayer | null>(null);
-  const segmentPlayerRef = React.useRef<AudioPlayer | null>(null);
-  const segmentTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const rateRef = React.useRef(1);
   const lockScreenActiveRef = React.useRef(false);
 
@@ -456,18 +459,11 @@ export function useNarration({
   );
 
   // ---- word segments (popup speaker, work item 7) -------------------------
-  // T78: each slice holds transient focus (pauses other apps); narration keeps its own mode.
-  const segmentFocusRef = React.useRef(createSliceFocus('word-popup'));
-  const segmentSeqRef = React.useRef(0);
-  const stopSegment = React.useCallback(() => {
-    if (segmentTimerRef.current) {
-      clearTimeout(segmentTimerRef.current);
-      segmentTimerRef.current = null;
-    }
-    segmentPlayerRef.current?.pause();
-    segmentSeqRef.current += 1;
-    segmentFocusRef.current.release();
-  }, []);
+  // T79: the shared slice player (neighbour-aware window, media-clock stop, T78
+  // focus held for the slice); narration keeps its own player and mode.
+  const slice = useSlicePlayer('popup', 'word-popup');
+  const { stop: stopSlice, play: playSlice } = slice;
+  const stopSegment = stopSlice;
 
   const segments = React.useMemo<WordSegmentPlayer>(
     () => ({
@@ -481,33 +477,38 @@ export function useNarration({
         if (!stamp) return;
         // Never fight the narration for the same word.
         playerRef.current?.pause();
-        stopSegment();
-        if (!segmentPlayerRef.current) {
-          segmentPlayerRef.current = createAudioPlayer({ uri }, { updateInterval: 60000 });
-        } else {
-          segmentPlayerRef.current.replace({ uri });
-        }
-        const seg = segmentPlayerRef.current;
-        seg.setPlaybackRate(1, 'high');
-        // Small lead-in/out so clipped consonants don't get chopped.
-        const startMs = Math.max(0, stamp.startMs - 40);
-        const endMs = stamp.endMs + 60;
-        const seq = segmentSeqRef.current;
-        void segmentFocusRef.current
-          .acquire()
-          .then(() => (seq === segmentSeqRef.current ? seg.seekTo(startMs / 1000) : undefined))
-          .then(() => {
-            if (seq !== segmentSeqRef.current) return;
-            seg.play();
-            segmentTimerRef.current = setTimeout(() => {
-              seg.pause();
-              segmentFocusRef.current.release();
-            }, endMs - startMs);
-          });
+        const at = idx.stamps.findIndex(
+          (s) => s.sentenceId === sentenceId && s.tokenIndex === tokenIndex,
+        );
+        void playSlice({
+          uri,
+          startMs: stamp.startMs,
+          endMs: stamp.endMs,
+          prev: idx.stamps[at - 1] ?? null,
+          next: idx.stamps[at + 1] ?? null,
+        });
         trackEvent('word_segment_played', { sentenceId, tokenIndex });
       },
+      hasContext: (sentenceId) =>
+        indexRef.current?.stamps.some((s) => s.sentenceId === sentenceId) ?? false,
+      playContext: (sentenceId) => {
+        const idx = indexRef.current;
+        const uri = currentTrack?.localUri;
+        if (!idx || !uri) return;
+        const span = runSpan(idx.stamps, (s) => s.sentenceId === sentenceId);
+        if (!span) return;
+        playerRef.current?.pause();
+        void playSlice({
+          uri,
+          startMs: span.startMs,
+          endMs: span.endMs,
+          prev: span.prev,
+          next: span.next,
+        });
+        trackEvent('word_slice_context_played', { surface: 'popup' });
+      },
     }),
-    [currentTrack, stopSegment],
+    [currentTrack, playSlice],
   );
 
   // ---- teardown -----------------------------------------------------------
@@ -520,8 +521,6 @@ export function useNarration({
         player.remove();
         playerRef.current = null;
       }
-      segmentPlayerRef.current?.remove();
-      segmentPlayerRef.current = null;
     };
   }, [stopSegment]);
 

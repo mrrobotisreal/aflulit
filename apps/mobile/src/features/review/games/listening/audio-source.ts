@@ -3,6 +3,9 @@ import { normalizeRu } from '@/db/normalize';
 import type { BankItemRow } from '@/db/repositories/bank';
 import type { Repositories } from '@/db/repositories';
 
+import { sliceWindowSpan } from '@/features/audio/slice-span';
+import type { SliceStamp } from '@/features/audio/slice-window';
+
 import { headword } from '../../session';
 import { sentenceEligible } from '../sentence-source';
 
@@ -35,6 +38,18 @@ export type ListeningAudio =
       endMs: number;
       /** The surface form the narrator actually says in this slice. */
       spokenText: string;
+      /** T79: the stamps either side of the word in the same track (null at a track edge). */
+      prev: SliceStamp | null;
+      next: SliceStamp | null;
+      /** T79: the whole source sentence's span + outside neighbours («▶ в предложении»). */
+      context: {
+        startMs: number;
+        endMs: number;
+        prev: SliceStamp | null;
+        next: SliceStamp | null;
+        /** Sentence tokens for the post-answer highlight. */
+        tokens: { text: string; spaceBefore: boolean; isPunct: boolean; isTarget: boolean }[];
+      } | null;
     }
   | {
       kind: 'tts';
@@ -96,16 +111,36 @@ export async function resolveListeningAudio(
 
   for (const track of tracks) {
     const stamps = await repos.content.getWordStamps(packId, storyId, track.id);
-    const stamp = stamps.find(
+    const sorted = [...stamps].sort((a, b) => a.startMs - b.startMs);
+    const stamp = sorted.find(
       (s) => s.sentenceId === sentenceId && s.tokenIndex === target.tokenIndex,
     );
     if (stamp && stamp.endMs > stamp.startMs) {
+      const at = sorted.indexOf(stamp);
+      const sentenceSpan = sliceWindowSpan(sorted, (s) => s.sentenceId === sentenceId);
       return {
         kind: 'segment',
         uri: track.localUri!,
         startMs: stamp.startMs,
         endMs: stamp.endMs,
         spokenText: target.text,
+        prev: sorted[at - 1]
+          ? { startMs: sorted[at - 1]!.startMs, endMs: sorted[at - 1]!.endMs }
+          : null,
+        next: sorted[at + 1]
+          ? { startMs: sorted[at + 1]!.startMs, endMs: sorted[at + 1]!.endMs }
+          : null,
+        context: sentenceSpan
+          ? {
+              ...sentenceSpan,
+              tokens: tokens.map((t) => ({
+                text: t.text,
+                spaceBefore: t.spaceBefore,
+                isPunct: t.isPunct,
+                isTarget: t.tokenIndex === target.tokenIndex,
+              })),
+            }
+          : null,
       };
     }
   }

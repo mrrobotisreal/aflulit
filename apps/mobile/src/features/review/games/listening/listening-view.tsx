@@ -132,6 +132,29 @@ export function ListeningView({ entry, onDone }: ListeningViewProps) {
               {entry.answerRu}
             </RNText>
             {entry.translation && <Text variant="muted">{entry.translation}</Text>}
+            {audio.hasContext && entry.audio.kind === 'segment' && entry.audio.context && (
+              <>
+                <RNText className="mt-2 text-center font-reading text-base text-text-muted">
+                  {entry.audio.context.tokens.map((t, i) => (
+                    <RNText
+                      key={i}
+                      className={t.isTarget ? 'font-reading text-accent' : 'font-reading'}
+                    >
+                      {(t.spaceBefore && i > 0 ? ' ' : '') + t.text}
+                    </RNText>
+                  ))}
+                </RNText>
+                <Pressable
+                  onPress={audio.playContext}
+                  accessibilityRole="button"
+                  accessibilityLabel="Play in sentence"
+                  className="mt-1 flex-row items-center gap-2 rounded-full border border-border bg-surface-2 px-4 py-2 active:bg-border"
+                >
+                  <Ionicons name="play" size={16} color={theme.accent} />
+                  <RNText className="font-ui-medium text-sm text-text">в предложении</RNText>
+                </Pressable>
+              </>
+            )}
           </View>
         )}
       </View>

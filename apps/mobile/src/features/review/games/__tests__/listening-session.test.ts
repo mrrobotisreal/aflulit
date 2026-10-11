@@ -92,13 +92,19 @@ describe('resolveListeningAudio', () => {
     const { repos, item } = await setup({ withTrack: true, withStamp: true });
     await repos.reading.markFinished('p1', 'st1');
     const audio = await resolveListeningAudio(repos, item);
-    expect(audio).toEqual({
+    expect(audio).toMatchObject({
       kind: 'segment',
       uri: 'file:///packs/p1/audio/st1.opus',
       startMs: 700,
       endMs: 1400,
       spokenText: 'словами',
+      prev: null,
+      next: null,
+      context: { startMs: 700, endMs: 1400, prev: null, next: null },
     });
+    expect(
+      audio.kind === 'segment' && audio.context?.tokens.filter((t) => t.isTarget),
+    ).toHaveLength(1);
   });
 
   it('respects the unseen-stories rule: unread source sentence → TTS unless the toggle allows it', async () => {
