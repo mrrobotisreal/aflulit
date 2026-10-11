@@ -8,7 +8,15 @@ import {
   type Grade,
 } from 'ts-fsrs';
 
-import { startOfNextLocalDay } from '@/lib/dates';
+import {
+  classifySource,
+  DEFAULT_QUEUE_PREFS,
+  planDue,
+  type DuePlan,
+  type DueCandidate,
+  type QueuePrefs,
+} from '@/features/review/due-core';
+import { localDayWindow, startOfNextLocalDay } from '@/lib/dates';
 
 import { newId } from '../ids';
 import { bankItems, cards, reviewLog, type CardDirection, type ReviewSource } from '../schema';
@@ -107,6 +115,38 @@ export function servableSql(alias: string, now: number): SQL {
   return sql`${a}.suspended_at IS NULL AND (${a}.buried_until IS NULL OR ${a}.buried_until <= ${now})`;
 }
 
+/**
+ * T82: the live new-word budget / sibling-bury prefs. Same pattern as the
+ * scheduler: `store/queue-prefs.ts` configures it at boot and on change; every
+ * queue query and count reads it, so no consumer can disagree about the limit.
+ */
+let currentQueuePrefs: QueuePrefs = DEFAULT_QUEUE_PREFS;
+
+export function configureQueuePrefs(prefs: QueuePrefs): void {
+  currentQueuePrefs = prefs;
+}
+
+export function getQueuePrefs(): QueuePrefs {
+  return currentQueuePrefs;
+}
+
+/** Order a never-reviewed word's directions are introduced in (bury on = first only). */
+export const NEW_DIRECTION_ORDER = ['ru-en', 'en-ru', 'listening', 'production'] as const;
+
+function localDayKeyOf(now: number): string {
+  const d = new Date(now);
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+export interface SessionQuery {
+  now?: number;
+  directions?: CardDirection[];
+  /** Overrides the live prefs (tests, previews). */
+  prefs?: QueuePrefs;
+}
+
 export { Rating, State };
 export type { Grade };
 
@@ -145,6 +185,92 @@ export interface GradeResult {
  * how they arrive at a `Grade`.
  */
 export function createReviewsRepo(db: SumrakDB) {
+  /**
+   * T82: the ONE due computation. Loads every due, servable card in
+   * `directions` with its item context, then lets the pure `planDue` decide
+   * reviews-first, the daily new-word budget, sibling bury and the splits.
+   */
+  async function planDueFor(query: SessionQuery = {}): Promise<DuePlan> {
+    const { now = Date.now(), directions = ACTIVE_DIRECTIONS, prefs = currentQueuePrefs } = query;
+    if (directions.length === 0)
+      return planDue({
+        candidates: [],
+        now,
+        newWordsUsedToday: 0,
+        prefs,
+        directionOrder: NEW_DIRECTION_ORDER,
+      });
+    const { start, end } = localDayWindow(localDayKeyOf(now));
+    const dirSql = sql.join(
+      directions.map((d) => sql`${d}`),
+      sql`, `,
+    );
+    const rows = await db.all<{
+      id: string;
+      bankItemId: string;
+      direction: string;
+      state: number;
+      dueAt: number;
+      createdAt: number;
+      itemCreatedAt: number;
+      introduced: number;
+      translation: string;
+      reviewedToday: number;
+      siblingToday: number;
+      sourceStoryId: string | null;
+      sourceSentenceId: string | null;
+      hasJournal: number;
+    }>(sql`
+      SELECT c.id AS id, c.bank_item_id AS bankItemId, c.direction AS direction,
+             c.state AS state, c.due_at AS dueAt, c.created_at AS createdAt,
+             bi.created_at AS itemCreatedAt, bi.translation AS translation,
+             EXISTS (SELECT 1 FROM review_log r JOIN cards c2 ON c2.id = r.card_id
+                     WHERE c2.bank_item_id = c.bank_item_id) AS introduced,
+             EXISTS (SELECT 1 FROM review_log r WHERE r.card_id = c.id
+                     AND r.reviewed_at >= ${start} AND r.reviewed_at < ${end}) AS reviewedToday,
+             EXISTS (SELECT 1 FROM review_log r JOIN cards c2 ON c2.id = r.card_id
+                     WHERE c2.bank_item_id = c.bank_item_id
+                     AND r.reviewed_at >= ${start} AND r.reviewed_at < ${end}) AS siblingToday,
+             bi.source_story_id AS sourceStoryId, bi.source_sentence_id AS sourceSentenceId,
+             EXISTS (SELECT 1 FROM encounters e WHERE e.bank_item_id = bi.id
+                     AND e.journal_entry_id IS NOT NULL) AS hasJournal
+      FROM cards c JOIN bank_items bi ON bi.id = c.bank_item_id
+      WHERE c.due_at <= ${now} AND c.direction IN (${dirSql}) AND ${servableSql('c', now)}
+    `);
+    const used = await db.all<{ n: number }>(sql`
+      SELECT COUNT(*) AS n FROM (
+        SELECT c.bank_item_id AS item, MIN(r.reviewed_at) AS first
+        FROM review_log r JOIN cards c ON c.id = r.card_id
+        GROUP BY c.bank_item_id
+        HAVING first >= ${start} AND first < ${end}
+      )
+    `);
+    const candidates: DueCandidate[] = rows.map((r) => ({
+      id: r.id,
+      bankItemId: r.bankItemId,
+      direction: r.direction,
+      state: r.state,
+      dueAt: r.dueAt,
+      createdAt: r.itemCreatedAt,
+      introduced: r.introduced === 1,
+      hasGloss: r.translation.trim().length > 0,
+      reviewedToday: r.reviewedToday === 1,
+      siblingReviewedToday: r.siblingToday === 1,
+      source: classifySource({
+        sourceStoryId: r.sourceStoryId,
+        sourceSentenceId: r.sourceSentenceId,
+        hasJournalEncounter: r.hasJournal === 1,
+      }),
+    }));
+    return planDue({
+      candidates,
+      now,
+      newWordsUsedToday: used[0]?.n ?? 0,
+      prefs,
+      directionOrder: NEW_DIRECTION_ORDER,
+    });
+  }
+
   return {
     /** Create missing cards for a bank item (idempotent per direction). */
     async ensureCards(
@@ -341,6 +467,30 @@ export function createReviewsRepo(db: SumrakDB) {
           .as('mastered'),
       );
       return rows[0]?.n ?? 0;
+    },
+
+    /** T82: the headline numbers (reviews due, new today, backlog) — see `planDue`. */
+    async countDueBreakdown(query: SessionQuery = {}): Promise<DuePlan> {
+      return planDueFor(query);
+    },
+
+    /**
+     * T82: the cards a session serves — due reviews first (most overdue first),
+     * then today's new words within the daily budget, sibling-buried.
+     */
+    async listSessionCards(query: SessionQuery & { limit?: number } = {}): Promise<CardRow[]> {
+      const { limit = 100, ...rest } = query;
+      const plan = await planDueFor(rest);
+      const ids = plan.queue.slice(0, limit).map((c) => c.id);
+      if (ids.length === 0) return [];
+      const byId = new Map<string, CardRow>();
+      for (let i = 0; i < ids.length; i += 500) {
+        const chunk = ids.slice(i, i + 500);
+        for (const row of await db.select().from(cards).where(inArray(cards.id, chunk))) {
+          byId.set(row.id, row);
+        }
+      }
+      return ids.map((id) => byId.get(id)).filter((r): r is CardRow => r !== undefined);
     },
 
     async countDueCards(query: Omit<DueQuery, 'limit'> = {}): Promise<number> {

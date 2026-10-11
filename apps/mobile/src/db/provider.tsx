@@ -13,6 +13,7 @@ import { hydrateAmbientCursorsFromDb } from '@/store/ambient-cursors';
 import { hydrateAmbientPrefsFromDb } from '@/store/ambient-prefs';
 import { hydrateDailyPrefsFromDb } from '@/store/daily-prefs';
 import { hydrateFsrsPrefsFromDb } from '@/store/fsrs-prefs';
+import { hydrateQueuePrefsFromDb } from '@/store/queue-prefs';
 import { pruneRecordings } from '@/features/scenario/recordings/prune';
 import { hydrateScenarioPrefsFromDb } from '@/features/scenario/store/scenario-prefs';
 import { hydrateGamePrefsFromDb } from '@/store/game-prefs';
@@ -52,6 +53,8 @@ export function DbProvider({ children }: { children: React.ReactNode }) {
         await hydrateThemeFromDb();
         // T39: configures the live FSRS scheduler — must precede any grading.
         await hydrateFsrsPrefsFromDb();
+        // T82: the daily new-word budget + sibling bury — before any queue is built.
+        await hydrateQueuePrefsFromDb();
         await hydrateReaderPrefsFromDb();
         await hydrateLibraryPrefsFromDb();
         await hydrateBankPrefsFromDb();

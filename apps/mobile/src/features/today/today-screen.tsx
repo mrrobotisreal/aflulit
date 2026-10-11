@@ -4,17 +4,21 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import * as React from 'react';
 import { Pressable, Text as RNText, ScrollView, View } from 'react-native';
 
+import { repos } from '@/db';
+import { trackDueSnapshotOnce } from '@/features/review/due-snapshot';
 import { QueryError } from '@/components/query-error';
 import { Text } from '@/components/ui/text';
 import {
   useDialogues,
-  useDueCardCount,
+  useDueBreakdown,
   useScenarios,
   usePackClassification,
   useProductionDueCount,
   useStories,
   useStoryProgressList,
 } from '@/db/hooks';
+import { backlogLine, splitLine } from '@/features/review/due-core';
+import { DueBreakdownSheet } from '@/features/review/due-breakdown-sheet';
 import { classificationEventProps } from '@/features/library/categories';
 import { GoalRingCard } from '@/features/motivation/goal-ring-card';
 import { NotificationPromptCard } from '@/features/motivation/notification-prompt-card';
@@ -42,7 +46,8 @@ export function TodayScreen() {
   const queryClient = useQueryClient();
   const { tokens } = useAppTheme();
 
-  const due = useDueCardCount();
+  const due = useDueBreakdown();
+  const [breakdownOpen, setBreakdownOpen] = React.useState(false);
   const productionDue = useProductionDueCount();
   const progressList = useStoryProgressList();
   const stories = useStories();
@@ -62,6 +67,7 @@ export function TodayScreen() {
     React.useCallback(() => {
       track('tab_viewed', { tab: 'Сегодня' });
       void queryClient.invalidateQueries({ queryKey: ['due-count'] });
+      void trackDueSnapshotOnce(repos);
       void queryClient.invalidateQueries({ queryKey: ['daily-activity'] });
       void queryClient.invalidateQueries({ queryKey: ['motivation'] });
       void queryClient.invalidateQueries({ queryKey: ['story-progress'] });
@@ -74,7 +80,10 @@ export function TodayScreen() {
     }, [queryClient]),
   );
 
-  const dueCount = due.data ?? 0;
+  const dueCount = due.data?.total ?? 0;
+  const reviewDue = due.data?.reviewDue ?? 0;
+  const newToday = due.data?.newToday ?? 0;
+  const backlog = backlogLine(due.data?.newBacklog ?? 0);
   const pronDueCount = productionDue.data ?? 0;
 
   const continueTarget = React.useMemo(() => {
@@ -142,10 +151,24 @@ export function TodayScreen() {
 
       {/* what's due */}
       <View className="rounded-xl border border-border bg-surface p-4">
-        <View className="flex-row items-baseline gap-2">
-          <RNText className="font-ui-bold text-4xl text-text">{dueCount}</RNText>
-          <Text variant="muted">{dueCount === 1 ? 'card due' : 'cards due'}</Text>
-        </View>
+        <Pressable
+          onPress={() => setBreakdownOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Почему столько?"
+          className="active:opacity-70"
+        >
+          <View className="flex-row items-baseline gap-2">
+            <RNText className="font-ui-bold text-4xl text-text">{dueCount}</RNText>
+            <Text variant="muted">{dueCount === 1 ? 'card due' : 'cards due'}</Text>
+            <Ionicons name="information-circle-outline" size={16} color={tokens.textMuted} />
+          </View>
+          {dueCount > 0 && <Text variant="caption">{splitLine(reviewDue, newToday)}</Text>}
+          {backlog !== null && (
+            <Text variant="caption" className="mt-0.5">
+              {backlog}
+            </Text>
+          )}
+        </Pressable>
         {dueCount > 0 ? (
           <Pressable
             // T14: the default action is the unified daily session (mixed modes).
@@ -163,6 +186,8 @@ export function TodayScreen() {
           </Text>
         )}
       </View>
+
+      <DueBreakdownSheet open={breakdownOpen} onClose={() => setBreakdownOpen(false)} />
 
       {/* speaking practice (T12) — production cards are due only to this session */}
       {pronDueCount > 0 && (

@@ -10,6 +10,7 @@ import { repos } from '@/db';
 import { useBookmarksForStory, useStoryDetail, useStoryProgress } from '@/db/hooks';
 import type { SentenceWithTokens, TokenRow } from '@/db/repositories/content';
 import { track, trackTorfl } from '@/services/analytics';
+import { useQueuePrefs } from '@/store/queue-prefs';
 import { useReaderPrefs } from '@/store/reader-prefs';
 import { useAppTheme } from '@/theme/use-app-theme';
 
@@ -455,7 +456,7 @@ export function ReaderScreen({ packId, storyId, from, initialSentenceIdx }: Read
           newWords: added,
           level: torflLevelOf(detail.data?.pack.level),
         });
-        setBankToast(bankTopicToast(added));
+        setBankToast(bankTopicToast(added, useQueuePrefs.getState().prefs.newPerDay));
         for (const key of [
           'bank-items',
           'bank-count',

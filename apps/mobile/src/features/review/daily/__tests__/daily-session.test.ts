@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import { createTestDb } from '@/db/__tests__/helpers';
 import { createRepositories } from '@/db/repositories';
+import { configureQueuePrefs } from '@/db/repositories/reviews';
 
 import { seedStory } from '../../games/__tests__/seed';
 import { DEFAULT_DAILY_PREFS, type DailyWeights } from '../prefs';
@@ -10,6 +11,9 @@ import { buildDailySession, dailyItemBankItem, planTargets } from '../session';
 /** T14: unified daily-session composition. */
 
 const evenWeights = { flashcard: 1, mc: 1, cloze: 1, 'sentence-builder': 1, listening: 1 };
+
+// T82: these suites pre-date the daily new-word budget; they test composition, not the limit.
+beforeEach(() => configureQueuePrefs({ v: 1, newPerDay: 50, buryRelated: false }));
 
 describe('planTargets', () => {
   it('splits slots by weight with largest-remainder rounding, summing exactly', () => {

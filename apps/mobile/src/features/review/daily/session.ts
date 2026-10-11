@@ -190,7 +190,7 @@ export async function buildDailySession(
 
   const due = focusItemIds
     ? await repos.reviews.listCardsForItems(focusItemIds, UNIFIED_SESSION_DIRECTIONS, now)
-    : await repos.reviews.listDueCards({
+    : await repos.reviews.listSessionCards({
         now,
         limit: length * OVERFETCH,
         directions: UNIFIED_SESSION_DIRECTIONS,
@@ -287,7 +287,15 @@ export async function buildDailySession(
 
   const summary = Object.fromEntries(DAILY_MODES.map((m) => [m, 0])) as Record<DailyMode, number>;
   for (const entry of composed) summary[entry.mode] += 1;
+  // T82: the split behind the headline (numbers only).
+  const plan = await repos.reviews.countDueBreakdown({
+    now,
+    directions: UNIFIED_SESSION_DIRECTIONS,
+  });
   track('daily_session_composed', {
+    reviewDue: plan.reviewDue,
+    newToday: plan.newToday,
+    newBacklog: plan.newBacklog,
     ...CompositionSummarySchema.parse(summary),
     requested: length,
     served: composed.length,

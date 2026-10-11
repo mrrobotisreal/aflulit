@@ -33,7 +33,9 @@ async function gather(now: number) {
   const goal = useGoalPrefs.getState().goal;
   const [days, dueCount, activity, continueReading] = await Promise.all([
     repos.stats.getStreakDays(),
-    repos.reviews.countDueCards({ directions: UNIFIED_SESSION_DIRECTIONS }),
+    repos.reviews
+      .countDueBreakdown({ directions: UNIFIED_SESSION_DIRECTIONS })
+      .then((p) => p.total),
     repos.stats.getDailyActivity(todayKey),
     repos.reading.getContinueTarget(),
   ]);

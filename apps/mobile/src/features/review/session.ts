@@ -80,7 +80,7 @@ export async function buildSession(
 ): Promise<SessionItem[]> {
   const { limit = SESSION_SIZE, now = Date.now() } = opts;
 
-  const due = await repos.reviews.listDueCards({
+  const due = await repos.reviews.listSessionCards({
     now,
     limit: limit * OVERFETCH,
     // T12: production cards are due to the pronunciation session, not here.

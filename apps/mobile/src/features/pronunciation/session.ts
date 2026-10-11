@@ -48,7 +48,7 @@ export async function buildPronunciationSession(
   // production cards, due-agnostic (due first, then weakest).
   const due = focusItemIds
     ? await repos.reviews.listCardsForItems(focusItemIds, ['production'], now)
-    : await repos.reviews.listDueCards({ now, limit, directions: ['production'] });
+    : await repos.reviews.listSessionCards({ now, limit, directions: ['production'] });
   const items = await repos.bank.getItemsByIds([...new Set(due.map((c) => c.bankItemId))]);
   const itemById = new Map(items.map((i) => [i.id, i]));
 
