@@ -43,6 +43,17 @@ export type Aligner = (audioFile: string, words: readonly AlignWord[]) => Aligne
 export const THRESHOLDS = {
   medianMs: 40,
   p95Ms: 120,
+  /**
+   * T80b truth-calibrated pause-edge gate (frozen truth set, Whisper large-v3 + energy edges): a published track is
+   * healthy when, at its audio pauses, the word-START stamps sit within ±60 ms median / 150 ms p90 of the true energy
+   * onset and the word-END stamps within ±150 / 250 ms of the offset (published ElevenLabs ends sit ~80 ms early by
+   * convention). Tracks with fewer than `edgeMinPauses` usable pauses fall back to the CTC-refined median/p95 gate.
+   */
+  edgeStartMedianMs: 60,
+  edgeStartP90Ms: 150,
+  edgeEndMedianMs: 150,
+  edgeEndP90Ms: 250,
+  edgeMinPauses: 6,
   stepMs: 250,
   driftMsPerMin: 20,
   /** A stamp end this close to still-voiced audio counts as end-clipped. */
@@ -51,6 +62,14 @@ export const THRESHOLDS = {
 
 export interface TrackAudit {
   trackId: string;
+  /** T80b pause-edge statistics (published stamp − audio energy edge, ms); null when too few pauses. */
+  edge: {
+    pauses: number;
+    startMedianMs: number;
+    startP90Ms: number;
+    endMedianMs: number;
+    endP90Ms: number;
+  } | null;
   durationMs: number;
   words: number;
   stamped: number;
@@ -195,6 +214,20 @@ export function wordsOfStory(sentences: readonly Sentence[]): AlignWord[] {
 // ─────────────────────────── refinement ──────────────────────────
 
 const START_SEARCH_MS = 80;
+/** T80b start-extension tuning (chosen against the frozen truth set, see Stories/_build/stamp-audit-2026-10-10/after-T80b). */
+export const START_EXTEND = {
+  /** Walk back while frames are within this many dB of the word's own CTC-span peak… */
+  relDb: 40,
+  /** …and at least this far above the track's 5th-percentile (noise floor) level. */
+  aboveFloorDb: 12,
+  /** Bridge dips up to this many 5 ms frames (stop consonants / closures). */
+  dipFrames: 6,
+  /** The previous word may not be eaten into: lower bound = prev start + this many ms per prev letter. */
+  prevMsPerLetter: 45,
+  maxExtendMs: 1500,
+} as const;
+/** T80b: extend a word's end over its contiguous voiced run (bridging closures) — the first-drop rule clips tails. */
+export const END_EXTEND = { relDb: 40, aboveFloorDb: 20, dipFrames: 6, maxMs: 250 } as const;
 const END_SEARCH_MS = 450;
 const END_DROP_DB = 14;
 const MIN_WORD_MS = 20;
@@ -210,9 +243,11 @@ export function refineWords(
   aligned: readonly AlignedWord[],
   db: Float64Array,
   durationMs: number,
+  letters?: readonly number[],
 ): AlignedWord[] {
   const n = aligned.length;
   const fr = (ms: number) => Math.max(0, Math.min(db.length - 1, Math.round(ms / FRAME_MS)));
+  const floorDb = noiseFloorDb(db);
   const starts = new Array<number>(n);
   for (let i = 0; i < n; i++) {
     const w = aligned[i]!;
@@ -232,6 +267,14 @@ export function refineWords(
     let pick = fr(lo);
     for (let f = fr(lo); f <= fr(hi); f++) if (db[f]! <= min + 2) pick = f; // latest near-min
     starts[i] = pick * FRAME_MS;
+  }
+  // T80b: the CTC token span of a sentence-initial / post-pause word is "peaky" (one or two frames at the END of the
+  // word's energy; td1 «Ты» 22640–22700 vs a true 21.5–22.6 s), so the snap above cannot find the onset. Walk each
+  // start back over the contiguous voiced run, bounded by the previous word.
+  for (let i = 0; i < n; i++) {
+    const w = aligned[i]!;
+    if (!w.aligned) continue;
+    starts[i] = extendStart(i, aligned, db, starts[i]!, floorDb, letters);
   }
   // Starts must be strictly increasing.
   for (let i = 1; i < n; i++) if (starts[i]! <= starts[i - 1]!) starts[i] = starts[i - 1]! + 1;
@@ -267,12 +310,69 @@ export function refineWords(
         found = at;
       }
       end = Math.max(found, start + MIN_WORD_MS);
+      // T80b: the first-drop rule can stop inside a word's own dip; extend over the contiguous voiced run (bridging
+      // short closures) up to END_EXTEND_MS so a word's tail is never clipped.
+      const thr = Math.max(peak - END_EXTEND.relDb, floorDb + END_EXTEND.aboveFloorDb);
+      let q = fr(end);
+      let bestQ = q;
+      let dips = 0;
+      while (q + 1 < db.length && (q + 1) * FRAME_MS <= Math.min(upper, end + END_EXTEND.maxMs)) {
+        if (db[q + 1]! >= thr) {
+          bestQ = q + 1;
+          dips = 0;
+        } else if (++dips > END_EXTEND.dipFrames) break;
+        q++;
+      }
+      end = Math.max(end, bestQ * FRAME_MS);
     }
     end = Math.min(end, upper, durationMs);
     if (end <= start) end = Math.min(durationMs, start + 1);
     out[i] = { id: w.id, startMs: Math.round(start), endMs: Math.round(end), aligned: w.aligned };
   }
   return out;
+}
+
+/** 5th-percentile frame level (the track's noise floor). */
+export function noiseFloorDb(db: Float64Array): number {
+  const sorted = [...db].sort((a, b) => a - b);
+  return sorted[Math.floor(sorted.length * 0.05)] ?? -90;
+}
+
+/** Walk a start back to the onset of the voiced run that contains it (T80b). */
+function extendStart(
+  i: number,
+  aligned: readonly AlignedWord[],
+  db: Float64Array,
+  start: number,
+  floorDb: number,
+  letters?: readonly number[],
+): number {
+  const w = aligned[i]!;
+  const fr = (ms: number) => Math.max(0, Math.min(db.length - 1, Math.round(ms / FRAME_MS)));
+  let peak = -Infinity;
+  for (let f = fr(w.startMs); f <= fr(w.endMs); f++) peak = Math.max(peak, db[f]!);
+  const thr = Math.max(peak - START_EXTEND.relDb, floorDb + START_EXTEND.aboveFloorDb);
+  let lower = 0;
+  if (i > 0) {
+    const p = aligned[i - 1]!;
+    const prevBody = p.aligned
+      ? p.startMs + START_EXTEND.prevMsPerLetter * (letters?.[i - 1] ?? 4)
+      : p.endMs;
+    lower = Math.min(prevBody, start - 20);
+  }
+  lower = Math.max(lower, start - START_EXTEND.maxExtendMs, 0);
+  const lo = fr(lower);
+  let f = fr(start);
+  let best = f;
+  let dips = 0;
+  while (f - 1 >= lo) {
+    if (db[f - 1]! >= thr) {
+      best = f - 1;
+      dips = 0;
+    } else if (++dips > START_EXTEND.dipFrames) break;
+    f--;
+  }
+  return best * FRAME_MS < start ? best * FRAME_MS : start;
 }
 
 // ───────────────────────────── audit ─────────────────────────────
@@ -349,6 +449,79 @@ export function lemmaLint(sentences: readonly Sentence[]): string[] {
 }
 
 /**
+ * Pauses (>= 120 ms below floor+14 dB) with the energy offset of the speech before and the onset of the speech after
+ * (edge = where the level crosses peak−34 dB, never below floor+20). Pure audio; no aligner involved.
+ */
+export function pauseEdges(db: Float64Array): { offMs: number; onMs: number }[] {
+  const floor = noiseFloorDb(db);
+  const sil = floor + 14;
+  const out: { offMs: number; onMs: number }[] = [];
+  const n = db.length;
+  let f = 0;
+  while (f < n) {
+    if (db[f]! >= sil) {
+      f++;
+      continue;
+    }
+    let g = f;
+    while (g < n && db[g]! < sil) g++;
+    if (g - f >= 24 && f > 0 && g < n) {
+      let pk = -Infinity;
+      for (let k = Math.max(0, f - 20); k < f; k++) pk = Math.max(pk, db[k]!);
+      let thr = Math.max(pk - 34, floor + 20);
+      let h = f;
+      while (h > Math.max(0, f - 120) && db[h - 1]! < thr) h--;
+      pk = -Infinity;
+      for (let k = g; k < Math.min(n, g + 20); k++) pk = Math.max(pk, db[k]!);
+      thr = Math.max(pk - 34, floor + 20);
+      let k2 = g;
+      while (k2 < Math.min(n - 1, g + 120) && db[k2]! < thr) k2++;
+      out.push({ offMs: h * FRAME_MS, onMs: k2 * FRAME_MS });
+    }
+    f = g;
+  }
+  return out;
+}
+
+function edgeStats(
+  stamps: readonly WordStamp[],
+  truth: ReadonlyMap<string, AlignedWord>,
+  db: Float64Array,
+): TrackAudit['edge'] {
+  const floor = noiseFloorDb(db);
+  const words = [...truth.values()].sort((a, b) => a.startMs - b.startMs);
+  const stamp = new Map(stamps.map((s) => [`${s.sentenceId}:${s.tokenIndex}`, s]));
+  const ds: number[] = [];
+  const de: number[] = [];
+  const pauses = pauseEdges(db);
+  for (const p of pauses) {
+    const nxt = words.find((w) => w.startMs >= p.onMs - 150);
+    if (
+      nxt &&
+      nxt.startMs - p.onMs <= 700 &&
+      (db[Math.round(p.onMs / FRAME_MS) + 2] ?? -90) > floor + 25
+    ) {
+      const s = stamp.get(nxt.id);
+      if (s) ds.push(s.startMs - p.onMs);
+    }
+    let prv: AlignedWord | undefined;
+    for (const w of words) if (w.endMs <= p.offMs + 150) prv = w;
+    if (prv && p.offMs - prv.endMs <= 700) {
+      const s = stamp.get(prv.id);
+      if (s) de.push(s.endMs - p.offMs);
+    }
+  }
+  if (ds.length < THRESHOLDS.edgeMinPauses || de.length < THRESHOLDS.edgeMinPauses) return null;
+  return {
+    pauses: pauses.length,
+    startMedianMs: Math.round(median(ds)),
+    startP90Ms: Math.round(percentile(ds.map(Math.abs), 0.9)),
+    endMedianMs: Math.round(median(de)),
+    endP90Ms: Math.round(percentile(de.map(Math.abs), 0.9)),
+  };
+}
+
+/**
  * Compare a track's published stamps with the refined audio truth. `refined`
  * is the output of {@link refineWords} for the SAME word list.
  */
@@ -397,9 +570,22 @@ export function auditTrack(
   const structural = structuralChecks(sentences, track.timestamps);
   const lemma = lemmaLint(sentences);
   const failures: string[] = [];
-  if (Math.abs(med) > THRESHOLDS.medianMs) failures.push(`median offset ${Math.round(med)} ms`);
   const p95 = percentile(absOff, 0.95);
-  if (p95 > THRESHOLDS.p95Ms) failures.push(`p95 |offset| ${Math.round(p95)} ms`);
+  const edge = edgeStats(track.timestamps, truth, db);
+  if (edge) {
+    // T80b: judged on pause edges (truth-calibrated), not on the CTC-refined start of every word.
+    if (Math.abs(edge.startMedianMs) > THRESHOLDS.edgeStartMedianMs)
+      failures.push(`word starts ${edge.startMedianMs} ms from the audio onsets`);
+    else if (edge.startP90Ms > THRESHOLDS.edgeStartP90Ms)
+      failures.push(`word-start p90 ${edge.startP90Ms} ms at pauses`);
+    if (Math.abs(edge.endMedianMs) > THRESHOLDS.edgeEndMedianMs)
+      failures.push(`word ends ${edge.endMedianMs} ms from the audio offsets`);
+    else if (edge.endP90Ms > THRESHOLDS.edgeEndP90Ms)
+      failures.push(`word-end p90 ${edge.endP90Ms} ms at pauses`);
+  } else {
+    if (Math.abs(med) > THRESHOLDS.medianMs) failures.push(`median offset ${Math.round(med)} ms`);
+    if (p95 > THRESHOLDS.p95Ms) failures.push(`p95 |offset| ${Math.round(p95)} ms`);
+  }
   if (maxStep > THRESHOLDS.stepMs)
     failures.push(`step ${Math.round(maxStep)} ms near ${stepAt} ms`);
   if (Math.abs(drift) > THRESHOLDS.driftMsPerMin) failures.push(`drift ${drift.toFixed(1)} ms/min`);
@@ -407,6 +593,7 @@ export function auditTrack(
   const warnings = lemma.length > 0 ? [`${lemma.length} lemma-lint hit(s)`] : [];
   return {
     trackId: track.id,
+    edge,
     durationMs: track.durationMs,
     words: truth.size,
     stamped: track.timestamps.length,
@@ -471,7 +658,8 @@ export function analyseTrack(
     throw new Error(`${track.id}: aligner returned ${aligned.length} words for ${words.length}`);
   }
   const db = loadFrameDb(file);
-  const refined = refineWords(aligned, db, track.durationMs);
+  const letters = words.map((x) => (x.text.toLowerCase().match(/[а-яё]/g) ?? []).length);
+  const refined = refineWords(aligned, db, track.durationMs, letters);
   return { storyId, track, sentences, refined, db };
 }
 
@@ -508,10 +696,11 @@ export function restampPack(
   pack: Pack,
   packDir: string,
   aligner: Aligner,
-  filter?: { trackId?: string },
-): { pack: Pack; tracks: string[] } {
+  filter?: { trackId?: string; keepHealthy?: boolean },
+): { pack: Pack; tracks: string[]; kept: string[] } {
   const next = structuredClone(pack);
   const done: string[] = [];
+  const kept: string[] = [];
   next.stories.forEach((story, si) => {
     story.audio.forEach((track, ti) => {
       if (track.timestamps.length === 0) return;
@@ -523,12 +712,20 @@ export function restampPack(
         story.sentences,
         aligner,
       );
+      // T80b keep-healthy-track policy: stamps that already pass the audit stay byte-identical.
+      if (filter?.keepHealthy !== false) {
+        const a0 = auditTrack(pack.stories[si]!.audio[ti]!, story.sentences, w.refined, w.db);
+        if (a0.ok) {
+          kept.push(track.id);
+          return;
+        }
+      }
       track.timestamps = restampTrack(story.sentences, w.refined);
       done.push(track.id);
     });
   });
   assertOnlyTimestampsChanged(pack, next);
-  return { pack: next, tracks: done };
+  return { pack: next, tracks: done, kept };
 }
 
 /** Throws unless `after` equals `before` everywhere except track timestamps. */

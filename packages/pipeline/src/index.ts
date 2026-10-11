@@ -233,6 +233,8 @@ export {
   lemmaLint,
   pythonAligner,
   refineWords,
+  pauseEdges,
+  noiseFloorDb,
   restampPack,
   restampTrack,
   structuralChecks,

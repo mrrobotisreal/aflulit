@@ -10,6 +10,7 @@ import {
   lemmaLint,
   loadFrameDb,
   refineWords,
+  pauseEdges,
   restampPack,
   structuralChecks,
   type AlignedWord,
@@ -313,5 +314,74 @@ describe('publish gate', () => {
     writeFileSync(join(dir, 'pack.json'), JSON.stringify(fixed));
     const ok = runPublish(dir, content(), { stampAudit: aligner });
     expect(ok.outcome).toBe('published');
+  });
+});
+
+describe('T80b start-collapse fix (td1 «Ты» regression)', () => {
+  // Frame-level synthetic track (5 ms frames): previous word voiced 400-900 ms, 1100 ms pause, «Ты» voiced
+  // 2000-2900 ms, then a following word 3000-3400 ms. CTC is "peaky": it puts «Ты» only on its tail 2840-2900
+  // (td1: raw 22640-22700 for a word whose energy starts ~21.5 s). Everything else is silence at -80 dB.
+  const FR = 5;
+  const total = 4000 / FR;
+  const db = new Float64Array(total).fill(-80);
+  const voice = (a: number, b: number) => {
+    for (let f = a / FR; f < b / FR; f++) db[f] = -20;
+  };
+  voice(400, 900);
+  voice(2000, 2900);
+  voice(3000, 3400);
+  const aligned: AlignedWord[] = [
+    { id: 'p', startMs: 420, endMs: 880, aligned: true },
+    { id: 'ty', startMs: 2840, endMs: 2900, aligned: true },
+    { id: 'next', startMs: 3010, endMs: 3380, aligned: true },
+  ];
+
+  it('extends a collapsed sentence-initial start back to the energy onset (not into the previous word)', () => {
+    const r = refineWords(aligned, db, 4000, [1, 2, 4]);
+    expect(r[1]!.startMs).toBeGreaterThanOrEqual(1990);
+    expect(r[1]!.startMs).toBeLessThanOrEqual(2020);
+    expect(r[1]!.endMs - r[1]!.startMs).toBeGreaterThan(800); // not the 80 ms tail
+    expect(r[1]!.startMs).toBeGreaterThanOrEqual(r[0]!.endMs);
+    // words that were already right are unchanged
+    expect(Math.abs(r[0]!.startMs - 400)).toBeLessThanOrEqual(25);
+    expect(Math.abs(r[2]!.startMs - 3000)).toBeLessThanOrEqual(25);
+  });
+
+  it('never extends over the previous word (continuous speech keeps the CTC start)', () => {
+    const cont = new Float64Array(total).fill(-20); // no pause at all
+    const r = refineWords(aligned, cont, 4000, [1, 2, 4]);
+    expect(r[1]!.startMs).toBeGreaterThanOrEqual(400 + 45 * 1);
+    expect(r[1]!.startMs).toBeGreaterThanOrEqual(r[0]!.startMs + 45);
+  });
+
+  it('pauseEdges finds the audio onset/offset of the pause independently of any aligner', () => {
+    const e = pauseEdges(db);
+    const gap = e.find((p) => p.offMs < 1000 && p.onMs > 1500)!;
+    expect(Math.abs(gap.offMs - 900)).toBeLessThanOrEqual(15);
+    expect(Math.abs(gap.onMs - 2000)).toBeLessThanOrEqual(15);
+  });
+});
+
+describe('keep-healthy-track policy', () => {
+  it('restampPack leaves a track that already passes the audit byte-identical', () => {
+    const { dir, durationMs } = makeAudio();
+    const pack = packWith(durationMs, published(trueStart));
+    const aligner = alignerWith((_, t) => t);
+    const { pack: next, tracks, kept } = restampPack(pack, dir, aligner);
+    expect(kept).toEqual(['trk']);
+    expect(tracks).toEqual([]);
+    expect(next.stories[0]!.audio[0]!.timestamps).toEqual(pack.stories[0]!.audio[0]!.timestamps);
+  });
+
+  it('keepHealthy:false forces a restamp', () => {
+    const { dir, durationMs } = makeAudio();
+    const pack = packWith(durationMs, published(trueStart));
+    const { tracks } = restampPack(
+      pack,
+      dir,
+      alignerWith((_, t) => t),
+      { keepHealthy: false },
+    );
+    expect(tracks).toEqual(['trk']);
   });
 });

@@ -28,6 +28,7 @@ mkdirSync(out!, { recursive: true });
 
 const before: unknown[] = [];
 const after: unknown[] = [];
+const kept: { pack: string; track: string; keep: boolean }[] = [];
 for (const id of readdirSync(join(content!, 'packs')).sort()) {
   if (only && !only.includes(id)) continue;
   const dir = join(content!, 'packs', id);
@@ -51,7 +52,11 @@ for (const id of readdirSync(join(content!, 'packs')).sort()) {
       } else aligner = pythonAligner({ device: 'mps' });
       const w = analyseTrack(dir, story.id, track, story.sentences, aligner);
       before.push({ pack: id, ...auditTrack(track, story.sentences, w.refined, w.db) });
-      const stamps = restampTrack(story.sentences, w.refined);
+      // T80b keep-healthy-track policy: a track whose published stamps already pass the audit is left byte-identical.
+      const a0 = auditTrack(track, story.sentences, w.refined, w.db);
+      const keep = a0.ok;
+      kept.push({ pack: id, track: track.id, keep });
+      const stamps = keep ? track.timestamps : restampTrack(story.sentences, w.refined);
       next.stories[si]!.audio[ti]!.timestamps = stamps;
       after.push({
         pack: id,
@@ -65,4 +70,5 @@ for (const id of readdirSync(join(content!, 'packs')).sort()) {
 }
 writeFileSync(join(out!, 'audit-before.json'), JSON.stringify(before, null, 1));
 writeFileSync(join(out!, 'audit-after.json'), JSON.stringify(after, null, 1));
+writeFileSync(join(out!, 'kept.json'), JSON.stringify(kept, null, 1));
 void refineWords;
