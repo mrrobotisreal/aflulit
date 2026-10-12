@@ -16,7 +16,7 @@ import androidx.core.graphics.PathParser
  * caps, `surface2` track — outer reviews (`accent`), middle reading
  * (`textMuted`), inner quest (`gold`, only on a quest day); arcs start at
  * −90°. The flame is the Ionicons `flame` glyph (the one Today draws),
- * tinted per tier, with a soft halo at «all». Throws on any failure; the
+ * tinted per tier, with a soft yellow halo at «all». Throws on any failure; the
  * caller falls back to a progress bar.
  */
 object GoalRing {
@@ -94,12 +94,16 @@ object GoalRing {
     }
     val path = Path(flame).apply { transform(m) }
     if (tier == FlameTier.ALL) {
+      // Mitch 2026-10-13: a YELLOW ring of light, clear behind the flame, so
+      // the orange-red flame stands out instead of reading as a glowing sphere.
       val glow = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.FILL
+        style = Paint.Style.STROKE
+        strokeWidth = flamePx * 0.32f
         color = colors.glow
-        maskFilter = BlurMaskFilter(flamePx * 0.55f, BlurMaskFilter.Blur.NORMAL)
+        alpha = 150
+        maskFilter = BlurMaskFilter(flamePx * 0.28f, BlurMaskFilter.Blur.NORMAL)
       }
-      canvas.drawCircle(c, cy, flamePx * 0.75f, glow)
+      canvas.drawCircle(c, cy, flamePx * 0.68f, glow)
     }
     val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
       color = colors.flame

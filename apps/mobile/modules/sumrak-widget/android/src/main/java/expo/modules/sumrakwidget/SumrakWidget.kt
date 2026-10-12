@@ -286,7 +286,7 @@ private fun GoalRingImage(context: Context, snap: Snapshot, palette: WidgetPalet
         reading = palette.textMuted,
         quest = palette.gold,
         flame = flameColor(snap.flame, palette),
-        glow = palette.flameRed,
+        glow = palette.flameYellow,
       ),
     )
   }.onFailure { Log.w("SumrakWidget", "ring render failed, using bar", it) }.getOrNull()
