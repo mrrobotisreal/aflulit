@@ -33,6 +33,7 @@ import { profileFor } from '@/features/torfl/level-profile';
 import { isLevelActive, levelOrder, type ExamDates } from '@/features/torfl/levels-today';
 import { describeStep } from '@/features/torfl/today';
 import { track } from '@/services/analytics';
+import { resolveContinueTarget } from '@/features/reader/continue-target';
 import { useAppTheme } from '@/theme/use-app-theme';
 
 /**
@@ -86,16 +87,12 @@ export function TodayScreen() {
   const backlog = backlogLine(due.data?.newBacklog ?? 0);
   const pronDueCount = productionDue.data ?? 0;
 
-  const continueTarget = React.useMemo(() => {
-    const inProgress = (progressList.data ?? [])
-      .filter((p) => p.finishedAt == null)
-      .sort((a, b) => b.updatedAt - a.updatedAt)[0];
-    if (!inProgress) return null;
-    const story = (stories.data ?? []).find(
-      (s) => s.packId === inProgress.packId && s.id === inProgress.storyId,
-    );
-    return story ? { progress: inProgress, story } : null;
-  }, [progressList.data, stories.data]);
+  // T84: the same «last read → resume, or the next part once finished» rule
+  // the home-screen widget uses (`resolveContinueTarget`).
+  const continueTarget = React.useMemo(
+    () => resolveContinueTarget(progressList.data ?? [], stories.data ?? []),
+    [progressList.data, stories.data],
+  );
 
   // T27: «Диалог» card — first installed dialogue not yet finished once;
   // disappears after any finished run (V2 §3.3).
@@ -379,12 +376,10 @@ export function TodayScreen() {
       {continueTarget && (
         <Pressable
           onPress={() =>
-            router.push(
-              `/reader/${continueTarget.progress.packId}/${continueTarget.progress.storyId}?from=today`,
-            )
+            router.push(`/reader/${continueTarget.packId}/${continueTarget.storyId}?from=today`)
           }
           accessibilityRole="button"
-          accessibilityLabel={`Continue reading ${continueTarget.story.titleRu}`}
+          accessibilityLabel={`Continue reading ${continueTarget.title}`}
           className="rounded-xl border border-border bg-surface p-4 active:bg-surface-2"
         >
           <Text variant="caption" className="uppercase tracking-wider">
@@ -392,7 +387,7 @@ export function TodayScreen() {
           </Text>
           <View className="mt-2 flex-row items-center justify-between gap-3">
             <RNText className="flex-1 font-reading text-xl text-text" numberOfLines={1}>
-              {continueTarget.story.titleRu}
+              {continueTarget.title}
             </RNText>
             <Ionicons name="chevron-forward" size={18} color={tokens.textMuted} />
           </View>

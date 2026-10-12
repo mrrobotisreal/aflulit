@@ -37,7 +37,9 @@ async function gather(now: number) {
       .countDueBreakdown({ directions: UNIFIED_SESSION_DIRECTIONS })
       .then((p) => p.total),
     repos.stats.getDailyActivity(todayKey),
-    repos.reading.getContinueTarget(),
+    repos.reading
+      .getContinueTarget()
+      .then((t) => (t ? { packId: t.packId, storyId: t.storyId, title: t.title } : null)),
   ]);
   const streak = computeStreak(todayKey, days).current;
   const reviewsDone = activity?.reviewsDone ?? 0;

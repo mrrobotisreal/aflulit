@@ -47,6 +47,13 @@ SplashScreen.preventAutoHideAsync();
 // local error log from the earliest possible moment (before first render).
 installGlobalErrorLogging();
 
+/**
+ * T84: every deep link (widget, notification) lands with the tabs UNDER it.
+ * Without the anchor a cold `sumrak://reader/…` mounted the reader as the only
+ * route, so back did nothing (Mitch had to force-close the app).
+ */
+export const unstable_settings = { anchor: '(tabs)' };
+
 export default function RootLayout() {
   // Importing the theme store applies the persisted dark/light/system mode
   // to NativeWind on startup (see src/store/theme.ts).

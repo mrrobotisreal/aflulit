@@ -11,6 +11,7 @@ import { createDrillRecorder, type DrillRecorder } from '@/features/torfl/drill/
 import type { TorflLevel } from '@/features/torfl/level-profile';
 import { levelOrder } from '@/features/torfl/levels-today';
 import { getExamDates } from '@/features/torfl/settings';
+import { safeBack } from '@/lib/safe-back';
 import { track, trackTorfl } from '@/services/analytics';
 import { useDailyPrefs } from '@/store/daily-prefs';
 import { useGamePrefs } from '@/store/game-prefs';
@@ -145,7 +146,7 @@ export function DailySessionScreen() {
           onRetry={session.retry}
         />
         <Pressable
-          onPress={() => session.router.back()}
+          onPress={() => safeBack(session.router)}
           accessibilityRole="button"
           className="min-h-12 items-center justify-center rounded-full border border-border bg-surface px-5 active:bg-surface-2"
         >
@@ -163,7 +164,7 @@ export function DailySessionScreen() {
           Nothing is due right now. Read something — new words become reviews.
         </Text>
         <Pressable
-          onPress={() => session.router.back()}
+          onPress={() => safeBack(session.router)}
           accessibilityRole="button"
           className="mt-2 rounded-full border border-border bg-surface px-5 py-2 active:bg-surface-2"
         >
@@ -178,7 +179,7 @@ export function DailySessionScreen() {
       <SummaryView
         results={session.finalResults}
         durationMs={session.finalDurationMs}
-        onDone={() => session.router.back()}
+        onDone={() => safeBack(session.router)}
       />
     );
   }

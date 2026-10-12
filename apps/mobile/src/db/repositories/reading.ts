@@ -1,4 +1,6 @@
-import { and, desc, eq, isNull, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
+
+import { resolveContinueTarget, type ContinueTarget } from '@/features/reader/continue-target';
 
 import { stories, storyProgress } from '../schema';
 import type { SumrakDB } from '../types';
@@ -65,26 +67,30 @@ export function createReadingRepo(db: SumrakDB) {
     },
 
     /**
-     * The Today «Continue reading» target (T40 widget): the most recently
-     * updated UNFINISHED progress row whose story still exists — the same rule
-     * as today-screen's `continueTarget`, with the title joined in one query.
+     * The «Continue reading» target (T40 widget, T84 rule): what Mitch LAST
+     * READ — resume it, or once it is finished the next story of its pack —
+     * via the pure `resolveContinueTarget` (shared with Today's card).
      */
-    async getContinueTarget(): Promise<{ packId: string; storyId: string; title: string } | null> {
-      const rows = await db
-        .select({
-          packId: storyProgress.packId,
-          storyId: storyProgress.storyId,
-          title: stories.titleRu,
-        })
-        .from(storyProgress)
-        .innerJoin(
-          stories,
-          and(eq(stories.packId, storyProgress.packId), eq(stories.id, storyProgress.storyId)),
-        )
-        .where(isNull(storyProgress.finishedAt))
-        .orderBy(desc(storyProgress.updatedAt))
-        .limit(1);
-      return rows[0] ?? null;
+    async getContinueTarget(): Promise<ContinueTarget | null> {
+      const [progress, storyRows] = await Promise.all([
+        db
+          .select({
+            packId: storyProgress.packId,
+            storyId: storyProgress.storyId,
+            updatedAt: storyProgress.updatedAt,
+            finishedAt: storyProgress.finishedAt,
+          })
+          .from(storyProgress),
+        db
+          .select({
+            packId: stories.packId,
+            id: stories.id,
+            orderIdx: stories.orderIdx,
+            titleRu: stories.titleRu,
+          })
+          .from(stories),
+      ]);
+      return resolveContinueTarget(progress, storyRows);
     },
 
     /** Idempotent — returns true only on the first finish (for stats/analytics). */

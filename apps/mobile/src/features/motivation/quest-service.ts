@@ -11,6 +11,7 @@ import {
   type QuestKind,
 } from './quests';
 import { XP_TABLE } from './xp';
+import { requestWidgetRefresh } from './widget-bus';
 
 /**
  * Daily-quest orchestration (T34): gather the facts → assign the day's quest
@@ -193,7 +194,11 @@ export async function evaluateQuest(env: QuestEnv, todayKey: string): Promise<Qu
       await quests.setProgress(todayKey, progress);
       progressed = true;
     }
-    if (justCompleted || progressed) row = (await quests.get(todayKey)) ?? row;
+    if (justCompleted || progressed) {
+      row = (await quests.get(todayKey)) ?? row;
+      // T84: the widget draws the quest ring.
+      requestWidgetRefresh();
+    }
   }
 
   const progress = row.completedAt != null ? row.target : row.progress;
