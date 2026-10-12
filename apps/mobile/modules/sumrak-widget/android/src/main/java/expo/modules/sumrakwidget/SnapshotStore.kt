@@ -12,6 +12,16 @@ sealed class SnapshotResult {
 
 data class ContinueTarget(val packId: String, val storyId: String, val title: String)
 
+/**
+ * T84: Today's rings as the app computed them (`goal-rings.ts`) — outer
+ * reviews, middle reading, inner quest (null on a quest-less day). The widget
+ * only DRAWS these; it never recomputes, so it can't drift from Today.
+ */
+data class Rings(val reviews: Float, val reading: Float, val quest: Float?)
+
+/** T84: the graded flame — none · started · one · two · all. */
+enum class FlameTier { NONE, STARTED, ONE, TWO, ALL }
+
 data class Snapshot(
   val streak: Int,
   val dueCount: Int,
@@ -20,17 +30,11 @@ data class Snapshot(
   val readingMinDone: Int,
   val readingMinTarget: Int,
   val goalMet: Boolean,
+  val rings: Rings,
+  val flame: FlameTier,
   val continueTarget: ContinueTarget?,
   val updatedAtMs: Long,
 ) {
-  /** Mirror of widget-snapshot.ts `goalFraction`: mean of enabled parts, each clamped to 1. */
-  fun goalFraction(): Float {
-    val parts = ArrayList<Float>(2)
-    if (reviewsTarget > 0) parts.add(minOf(1f, reviewsDone.toFloat() / reviewsTarget))
-    if (readingMinTarget > 0) parts.add(minOf(1f, readingMinDone.toFloat() / readingMinTarget))
-    if (parts.isEmpty()) return if (goalMet) 1f else 0f
-    return parts.sum() / parts.size
-  }
 
   /** Mirror of widget-snapshot.ts `isStale`: strictly older than STALE_MS. */
   fun isStale(nowMs: Long): Boolean = nowMs - updatedAtMs > STALE_MS
@@ -87,6 +91,21 @@ object SnapshotStore {
       readingMinDone = goal.nonNegInt("readingMinDone"),
       readingMinTarget = goal.nonNegInt("readingMinTarget"),
       goalMet = goal.boolField("met"),
+      rings = o.getJSONObject("rings").let { r ->
+        Rings(
+          reviews = r.fraction("reviews"),
+          reading = r.fraction("reading"),
+          quest = if (r.isNull("quest")) null else r.fraction("quest"),
+        )
+      },
+      flame = when (o.stringField("flame")) {
+        "none" -> FlameTier.NONE
+        "started" -> FlameTier.STARTED
+        "one" -> FlameTier.ONE
+        "two" -> FlameTier.TWO
+        "all" -> FlameTier.ALL
+        else -> throw IllegalArgumentException("flame")
+      },
       continueTarget = target,
       updatedAtMs = o.longField("updatedAtMs"),
     )
@@ -104,6 +123,14 @@ object SnapshotStore {
     val v = get(name)
     require(v is Int || v is Long) { "$name not an integer" }
     return (v as Number).toLong()
+  }
+
+  private fun JSONObject.fraction(name: String): Float {
+    val v = get(name)
+    require(v is Number) { "$name not a number" }
+    val f = v.toFloat()
+    require(f in 0f..1f) { "$name out of range" }
+    return f
   }
 
   private fun JSONObject.stringField(name: String): String {

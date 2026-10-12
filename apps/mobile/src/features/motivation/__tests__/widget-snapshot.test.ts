@@ -12,10 +12,8 @@ import {
 } from '../widget-contract';
 import {
   buildWidgetSnapshot,
-  goalFraction,
   isStale,
   WidgetSnapshotSchema,
-  type WidgetSnapshot,
 } from '../widget-snapshot';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -34,29 +32,15 @@ function base(overrides: Partial<Parameters<typeof buildWidgetSnapshot>[0]> = {}
     readingMs: 4 * 60_000 + 30_000,
     goal: { reviews: 20, readingMin: 10 },
     goalMet: false,
+    quest: { progress: 1, target: 4, complete: false },
     continueReading: { packId: 'a1-pack', storyId: 'story-1', title: 'Тестовая история' },
     now: NOW,
     ...overrides,
   });
 }
 
-/** A snapshot literal with explicit goal fields, for goalFraction math. */
-function withGoal(goal: Partial<WidgetSnapshot['goal']>): WidgetSnapshot {
-  return {
-    ...base(),
-    goal: {
-      reviewsDone: 0,
-      reviewsTarget: 0,
-      readingMinDone: 0,
-      readingMinTarget: 0,
-      met: false,
-      ...goal,
-    },
-  };
-}
-
 describe('buildWidgetSnapshot', () => {
-  it('builds the v1 shape with floored reading minutes and the given counters', () => {
+  it("builds the v2 shape: floored reading minutes, Today's three rings and the flame tier", () => {
     const s = base();
     expect(s).toEqual({
       v: WIDGET_SNAPSHOT_VERSION,
@@ -69,10 +53,17 @@ describe('buildWidgetSnapshot', () => {
         readingMinTarget: 10,
         met: false,
       },
+      rings: { reviews: 0.5, reading: 0.45, quest: 0.25 },
+      flame: 'started',
       continueReading: { packId: 'a1-pack', storyId: 'story-1', title: 'Тестовая история' },
       updatedAtMs: NOW,
     });
-    expect(s.goal).not.toHaveProperty('questProgress');
+  });
+
+  it('a quest-less day has no quest ring; everything done → the «all» flame', () => {
+    const s = base({ quest: null, reviewsDone: 20, readingMs: 10 * 60_000 });
+    expect(s.rings).toEqual({ reviews: 1, reading: 1, quest: null });
+    expect(s.flame).toBe('all');
   });
 
   it('floors reading milliseconds to whole minutes (59.9 s = 0 min)', () => {
@@ -96,7 +87,7 @@ describe('buildWidgetSnapshot', () => {
 
 describe('WidgetSnapshotSchema', () => {
   const valid = {
-    v: 1,
+    v: 2,
     streak: 0,
     dueCount: 0,
     goal: {
@@ -106,20 +97,26 @@ describe('WidgetSnapshotSchema', () => {
       readingMinTarget: 0,
       met: false,
     },
+    rings: { reviews: 0, reading: 0, quest: null },
+    flame: 'none',
     continueReading: null,
     updatedAtMs: NOW,
   };
 
-  it('accepts a well-formed snapshot, including the optional questProgress', () => {
+  it('accepts a well-formed v2 snapshot, with or without a quest ring', () => {
     expect(WidgetSnapshotSchema.safeParse(valid).success).toBe(true);
     expect(
-      WidgetSnapshotSchema.safeParse({ ...valid, goal: { ...valid.goal, questProgress: 0.5 } })
-        .success,
+      WidgetSnapshotSchema.safeParse({ ...valid, rings: { ...valid.rings, quest: 0.5 } }).success,
     ).toBe(true);
   });
 
+  it('rejects a v1 snapshot (the widget renders the fallback until the app rewrites it)', () => {
+    const { rings: _r, flame: _f, ...v1 } = valid;
+    expect(WidgetSnapshotSchema.safeParse({ ...v1, v: 1 }).success).toBe(false);
+  });
+
   it('rejects a wrong version, a string where a number belongs, and unknown keys', () => {
-    expect(WidgetSnapshotSchema.safeParse({ ...valid, v: 2 }).success).toBe(false);
+    expect(WidgetSnapshotSchema.safeParse({ ...valid, v: 3 }).success).toBe(false);
     expect(WidgetSnapshotSchema.safeParse({ ...valid, streak: 'oops' }).success).toBe(false);
     expect(WidgetSnapshotSchema.safeParse({ ...valid, extra: 1 }).success).toBe(false);
   });
@@ -128,50 +125,15 @@ describe('WidgetSnapshotSchema', () => {
     expect(WidgetSnapshotSchema.safeParse({ ...valid, dueCount: -1 }).success).toBe(false);
     expect(WidgetSnapshotSchema.safeParse({ ...valid, streak: 1.5 }).success).toBe(false);
     expect(
-      WidgetSnapshotSchema.safeParse({ ...valid, goal: { ...valid.goal, questProgress: 1.2 } })
-        .success,
+      WidgetSnapshotSchema.safeParse({ ...valid, rings: { ...valid.rings, quest: 1.2 } }).success,
     ).toBe(false);
+    expect(WidgetSnapshotSchema.safeParse({ ...valid, flame: 'blazing' }).success).toBe(false);
   });
 
   it('rejects a malformed continueReading', () => {
     expect(
       WidgetSnapshotSchema.safeParse({ ...valid, continueReading: { packId: 'p' } }).success,
     ).toBe(false);
-  });
-});
-
-describe('goalFraction', () => {
-  it('is the mean of the enabled parts', () => {
-    const s = withGoal({
-      reviewsDone: 10,
-      reviewsTarget: 20,
-      readingMinDone: 10,
-      readingMinTarget: 10,
-    });
-    expect(goalFraction(s)).toBeCloseTo(0.75);
-  });
-
-  it('uses only the enabled part when one target is zero', () => {
-    expect(goalFraction(withGoal({ reviewsDone: 5, reviewsTarget: 20 }))).toBeCloseTo(0.25);
-    expect(goalFraction(withGoal({ readingMinDone: 5, readingMinTarget: 10 }))).toBeCloseTo(0.5);
-  });
-
-  it('clamps an over-goal part to 1', () => {
-    expect(goalFraction(withGoal({ reviewsDone: 50, reviewsTarget: 20 }))).toBe(1);
-    expect(
-      goalFraction(
-        withGoal({ reviewsDone: 50, reviewsTarget: 20, readingMinDone: 0, readingMinTarget: 10 }),
-      ),
-    ).toBeCloseTo(0.5);
-  });
-
-  it('is a half when exactly half of the single enabled target is done', () => {
-    expect(goalFraction(withGoal({ reviewsDone: 10, reviewsTarget: 20 }))).toBe(0.5);
-  });
-
-  it('with both targets zero, is met → 1 and not met → 0', () => {
-    expect(goalFraction(withGoal({ met: true }))).toBe(1);
-    expect(goalFraction(withGoal({ met: false }))).toBe(0);
   });
 });
 
@@ -215,6 +177,10 @@ describe('contract drift guard', () => {
       '"readingMinDone"',
       '"readingMinTarget"',
       '"met"',
+      '"rings"',
+      '"reading"',
+      '"quest"',
+      '"flame"',
     ]) {
       expect(snapshotStore).toContain(field);
     }

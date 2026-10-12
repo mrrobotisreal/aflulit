@@ -55,6 +55,13 @@ internal data class WidgetPalette(
   val textMuted: Int,
   val accent: Int,
   val border: Int,
+  /** T84: Today's ring track + quest ring + the flame tiers (mirror of colors.ts). */
+  val surface2: Int,
+  val gold: Int,
+  val flamePale: Int,
+  val flameYellow: Int,
+  val flameOrange: Int,
+  val flameRed: Int,
 ) {
   companion object {
     val DARK = WidgetPalette(
@@ -64,6 +71,12 @@ internal data class WidgetPalette(
       textMuted = 0xFF9A97A0.toInt(),
       accent = 0xFFB3402F.toInt(),
       border = 0xFF26262E.toInt(),
+      surface2 = 0xFF1C1C24.toInt(),
+      gold = 0xFFE2C462.toInt(),
+      flamePale = 0xFFF3E6A8.toInt(),
+      flameYellow = 0xFFFFD23F.toInt(),
+      flameOrange = 0xFFFF9124.toInt(),
+      flameRed = 0xFFFF4A2E.toInt(),
     )
     val LIGHT = WidgetPalette(
       bg = 0xFFF7F5F2.toInt(),
@@ -72,6 +85,12 @@ internal data class WidgetPalette(
       textMuted = 0xFF6B6870.toInt(),
       accent = 0xFFA03828.toInt(),
       border = 0xFFE2DED8.toInt(),
+      surface2 = 0xFFEFECE7.toInt(),
+      gold = 0xFF9E7A18.toInt(),
+      flamePale = 0xFFD9C27A.toInt(),
+      flameYellow = 0xFFE8B400.toInt(),
+      flameOrange = 0xFFEE7A0E.toInt(),
+      flameRed = 0xFFE0361C.toInt(),
     )
   }
 }
@@ -185,19 +204,17 @@ private fun Normal(
     horizontalAlignment = Alignment.CenterHorizontally,
   ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-      Box(contentAlignment = Alignment.Center, modifier = GlanceModifier.size(64.dp)) {
-        GoalRingImage(context, snap.goalFraction(), palette)
+      Box(contentAlignment = Alignment.Center, modifier = GlanceModifier.size(RING_DP.dp)) {
+        GoalRingImage(context, snap, palette)
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-          Text(
-            text = "🔥",
-            style = TextStyle(fontSize = 12.sp, textAlign = TextAlign.Center),
-          )
+          // The flame is drawn inside the bitmap (above centre); the number sits under it.
+          Spacer(GlanceModifier.height(if (snap.rings.quest != null) 12.dp else 16.dp))
           Text(
             text = snap.streak.toString(),
             style = TextStyle(
               color = ColorProvider(Color(numberColor)),
               fontWeight = FontWeight.Bold,
-              fontSize = 18.sp,
+              fontSize = if (snap.rings.quest != null) 13.sp else 16.sp,
               textAlign = TextAlign.Center,
             ),
           )
@@ -240,21 +257,50 @@ private fun Normal(
   }
 }
 
-/** Renders the ring as a bitmap; falls back to a Glance linear bar if the bitmap route fails. */
+/** Widget ring size; Today's card is 132 px, the bitmap scales its geometry. */
+private const val RING_DP = 84
+
+internal fun flameColor(tier: FlameTier, p: WidgetPalette): Int = when (tier) {
+  FlameTier.NONE -> p.textMuted
+  FlameTier.STARTED -> p.flamePale
+  FlameTier.ONE -> p.flameYellow
+  FlameTier.TWO -> p.flameOrange
+  FlameTier.ALL -> p.flameRed
+}
+
+/**
+ * T84: Today's three rings + the graded flame as a bitmap; falls back to a
+ * Glance linear bar (the reviews ring) if the bitmap route fails.
+ */
 @Composable
-private fun GoalRingImage(context: Context, fraction: Float, palette: WidgetPalette) {
+private fun GoalRingImage(context: Context, snap: Snapshot, palette: WidgetPalette) {
+  val sizePx = (RING_DP * context.resources.displayMetrics.density).toInt().coerceAtLeast(96)
   val bitmap = runCatching {
-    GoalRing.render(fraction, sizePx = 192, trackColor = palette.border, accentColor = palette.accent)
+    GoalRing.render(
+      rings = snap.rings,
+      tier = snap.flame,
+      sizePx = sizePx,
+      colors = GoalRing.Colors(
+        track = palette.surface2,
+        reviews = palette.accent,
+        reading = palette.textMuted,
+        quest = palette.gold,
+        flame = flameColor(snap.flame, palette),
+        glow = palette.flameRed,
+      ),
+    )
   }.onFailure { Log.w("SumrakWidget", "ring render failed, using bar", it) }.getOrNull()
   if (bitmap != null) {
     Image(
       provider = ImageProvider(bitmap),
-      contentDescription = "Daily goal ${(fraction * 100).toInt()}%",
-      modifier = GlanceModifier.size(64.dp),
+      contentDescription = "Reviews ${(snap.rings.reviews * 100).toInt()}%, " +
+        "reading ${(snap.rings.reading * 100).toInt()}%" +
+        (snap.rings.quest?.let { ", quest ${(it * 100).toInt()}%" } ?: ""),
+      modifier = GlanceModifier.size(RING_DP.dp),
     )
   } else {
     LinearProgressIndicator(
-      progress = fraction,
+      progress = snap.rings.reviews,
       modifier = GlanceModifier.fillMaxWidth().height(6.dp),
     )
   }

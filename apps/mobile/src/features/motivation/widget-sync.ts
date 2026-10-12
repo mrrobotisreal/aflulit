@@ -7,6 +7,7 @@ import { computeStreak } from '@/lib/streak';
 import { logError } from '@/services/error-log';
 import { useGoalPrefs } from '@/store/goal-prefs';
 
+import { refreshQuest } from './quest-runtime';
 import { WidgetSnapshotSchema, buildWidgetSnapshot } from './widget-snapshot';
 
 /**
@@ -31,7 +32,7 @@ let pending = false;
 async function gather(now: number) {
   const todayKey = localDateKey(new Date(now));
   const goal = useGoalPrefs.getState().goal;
-  const [days, dueCount, activity, continueReading] = await Promise.all([
+  const [days, dueCount, activity, continueReading, questEval] = await Promise.all([
     repos.stats.getStreakDays(),
     repos.reviews
       .countDueBreakdown({ directions: UNIFIED_SESSION_DIRECTIONS })
@@ -40,7 +41,11 @@ async function gather(now: number) {
     repos.reading
       .getContinueTarget()
       .then((t) => (t ? { packId: t.packId, storyId: t.storyId, title: t.title } : null)),
+    // T84: the same quest evaluation Today's inner ring reads (useDailyQuest).
+    refreshQuest(),
   ]);
+  const q = questEval?.state ?? null;
+  const quest = q ? { progress: q.progress, target: q.target, complete: q.complete } : null;
   const streak = computeStreak(todayKey, days).current;
   const reviewsDone = activity?.reviewsDone ?? 0;
   const readingMs = activity?.readingMs ?? 0;
@@ -53,6 +58,7 @@ async function gather(now: number) {
     readingMs,
     goal,
     goalMet,
+    quest,
     continueReading,
     now,
   });

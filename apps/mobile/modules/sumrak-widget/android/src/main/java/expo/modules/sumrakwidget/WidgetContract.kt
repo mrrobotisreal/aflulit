@@ -10,8 +10,8 @@ const val PREFS_NAME = "sumrak_widget"
 /** SharedPreferences key holding the JSON snapshot string. */
 const val KEY_SNAPSHOT = "snapshot"
 
-/** Snapshot schema version (`v` field). */
-const val SNAPSHOT_VERSION = 1
+/** Snapshot schema version (`v` field). T84: 2 = Today's three rings + the flame tier. */
+const val SNAPSHOT_VERSION = 2
 
 /** Older than this → the widget dims its numbers and asks for the app. */
 const val STALE_MS = 36L * 3600_000L

@@ -22,6 +22,15 @@ export interface ColorTokens {
   gold: string;
   /** Backdrop/shadow wash base (always used WITH an alpha) — scene layers (T31). */
   scrim: string;
+  /**
+   * T84: the streak flame grades the day (Today + widget, Mitch's spec) —
+   * pale yellow (started) → bright yellow (1 ring) → bright orange (2) →
+   * bright orange-red with a glow (all). Kotlin mirror: WidgetPalette.
+   */
+  flamePale: string;
+  flameYellow: string;
+  flameOrange: string;
+  flameRed: string;
 }
 
 export const colors: Record<ThemeScheme, ColorTokens> = {
@@ -38,6 +47,10 @@ export const colors: Record<ThemeScheme, ColorTokens> = {
     trackWarm: '#C08A4A',
     gold: '#E2C462',
     scrim: '#000000',
+    flamePale: '#F3E6A8',
+    flameYellow: '#FFD23F',
+    flameOrange: '#FF9124',
+    flameRed: '#FF4A2E',
   },
   light: {
     bg: '#F7F5F2',
@@ -52,5 +65,9 @@ export const colors: Record<ThemeScheme, ColorTokens> = {
     trackWarm: '#8F6534',
     gold: '#9E7A18',
     scrim: '#000000',
+    flamePale: '#D9C27A',
+    flameYellow: '#E8B400',
+    flameOrange: '#EE7A0E',
+    flameRed: '#E0361C',
   },
 };

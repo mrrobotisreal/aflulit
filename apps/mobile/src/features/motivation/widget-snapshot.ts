@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { flameTier, goalRings } from './goal-rings';
 import { WIDGET_SNAPSHOT_VERSION, WIDGET_STALE_MS } from './widget-contract';
 
 /**
@@ -20,9 +21,18 @@ export const WidgetSnapshotSchema = z.strictObject({
     readingMinDone: NonNegInt,
     readingMinTarget: NonNegInt,
     met: z.boolean(),
-    // Reserved for T34's quest registry (not built yet) — always omitted in v1.
-    questProgress: z.number().min(0).max(1).optional(),
   }),
+  /**
+   * T84 (v2): Today's rings, computed by the SAME `goalRings` the Today card
+   * uses (outer reviews · middle reading · inner quest, null on a quest-less
+   * day) and the graded flame — the widget only draws them, never recomputes.
+   */
+  rings: z.strictObject({
+    reviews: z.number().min(0).max(1),
+    reading: z.number().min(0).max(1),
+    quest: z.number().min(0).max(1).nullable(),
+  }),
+  flame: z.enum(['none', 'started', 'one', 'two', 'all']),
   continueReading: z
     .strictObject({ packId: z.string(), storyId: z.string(), title: z.string() })
     .nullable(),
@@ -39,6 +49,8 @@ export interface BuildWidgetSnapshotInput {
   readingMs: number;
   goal: { reviews: number; readingMin: number };
   goalMet: boolean;
+  /** Today's quest (T34), or null on a quest-less day. */
+  quest: { progress: number; target: number; complete: boolean } | null;
   continueReading: { packId: string; storyId: string; title: string } | null;
   /** Epoch ms the snapshot is built for (also its `updatedAtMs`). */
   now: number;
@@ -48,6 +60,13 @@ const nonNeg = (n: number) => Math.max(0, Math.trunc(n));
 
 /** Builds and Zod-validates a snapshot; throws on malformed input (a programming error). */
 export function buildWidgetSnapshot(input: BuildWidgetSnapshotInput): WidgetSnapshot {
+  const ringInput = {
+    reviewsDone: nonNeg(input.reviewsDone),
+    reviewsTarget: nonNeg(input.goal.reviews),
+    readingMs: nonNeg(input.readingMs),
+    readingMinTarget: nonNeg(input.goal.readingMin),
+    quest: input.quest,
+  };
   return WidgetSnapshotSchema.parse({
     v: WIDGET_SNAPSHOT_VERSION,
     streak: nonNeg(input.streak),
@@ -59,25 +78,11 @@ export function buildWidgetSnapshot(input: BuildWidgetSnapshotInput): WidgetSnap
       readingMinTarget: nonNeg(input.goal.readingMin),
       met: input.goalMet,
     },
+    rings: goalRings(ringInput),
+    flame: flameTier(ringInput),
     continueReading: input.continueReading,
     updatedAtMs: Math.trunc(input.now),
   });
-}
-
-/**
- * 0..1 progress for the ring: the mean of the ENABLED goal parts (a target of 0
- * disables that part), each clamped to 1. With no enabled part (both targets 0)
- * the goal is a yes/no: met → 1, else 0.
- */
-export function goalFraction(s: WidgetSnapshot): number {
-  const { goal } = s;
-  const parts: number[] = [];
-  if (goal.reviewsTarget > 0) parts.push(Math.min(1, goal.reviewsDone / goal.reviewsTarget));
-  if (goal.readingMinTarget > 0) {
-    parts.push(Math.min(1, goal.readingMinDone / goal.readingMinTarget));
-  }
-  if (parts.length === 0) return goal.met ? 1 : 0;
-  return parts.reduce((sum, p) => sum + p, 0) / parts.length;
 }
 
 /** True when the snapshot is more than WIDGET_STALE_MS old (strictly: exactly 36 h is fresh). */

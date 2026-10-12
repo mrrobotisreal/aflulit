@@ -9,6 +9,8 @@ import { useGoalPrefs } from '@/store/goal-prefs';
 import { useAppTheme } from '@/theme/use-app-theme';
 
 import { MAX_FREEZES } from './freeze';
+import { flameTier, goalRings } from './goal-rings';
+import { StreakFlame } from './streak-flame';
 import { useDailyQuest } from './use-daily-quest';
 import { useMotivation } from './use-motivation';
 
@@ -80,14 +82,25 @@ export function GoalRingCard() {
   const readingMs = activity.data?.readingMs ?? 0;
   const readingMin = Math.floor(readingMs / 60_000);
 
-  const reviewsFraction = goal.reviews > 0 ? reviewsDone / goal.reviews : 1;
-  const readingFraction = goal.readingMin > 0 ? readingMs / (goal.readingMin * 60_000) : 1;
+  // T84: one shared definition with the home-screen widget (goal-rings.ts).
+  const ringInput = {
+    reviewsDone,
+    reviewsTarget: goal.reviews,
+    readingMs,
+    readingMinTarget: goal.readingMin,
+    quest: quest
+      ? { progress: quest.progress, target: quest.target, complete: quest.complete }
+      : null,
+  };
+  const rings = goalRings(ringInput);
+  const tier = flameTier(ringInput);
+  const reviewsFraction = rings.reviews;
+  const readingFraction = rings.reading;
 
   const streak = motivation.data?.streak;
   const freeze = motivation.data?.freeze;
   const level = motivation.data?.level;
   const goalMetToday = motivation.data?.goalMetToday ?? false;
-  const flameLit = goalMetToday || (streak?.todayCounted ?? false);
 
   return (
     <View className="rounded-xl border border-border bg-surface p-4">
@@ -124,7 +137,7 @@ export function GoalRingCard() {
               <ProgressRing
                 radius={RING_SIZE / 2 - 19 - RING_STEP}
                 strokeWidth={RING_STROKE}
-                fraction={quest.target > 0 ? quest.progress / quest.target : 0}
+                fraction={rings.quest ?? 0}
                 color={tokens.gold}
                 trackColor={tokens.surface2}
               />
@@ -136,20 +149,12 @@ export function GoalRingCard() {
               accessible
               accessibilityLabel={`Streak ${streak?.current ?? 0} ${(streak?.current ?? 0) === 1 ? 'day' : 'days'}`}
             >
-              <Ionicons
-                name={flameLit ? 'flame' : 'flame-outline'}
-                size={18}
-                color={flameLit ? tokens.accent : tokens.textMuted}
-              />
+              <StreakFlame tier={tier} size={18} />
               <RNText className="font-ui-bold text-lg text-text">{streak?.current ?? 0}</RNText>
             </View>
           ) : (
             <View className="absolute inset-0 items-center justify-center">
-              <Ionicons
-                name={flameLit ? 'flame' : 'flame-outline'}
-                size={26}
-                color={flameLit ? tokens.accent : tokens.textMuted}
-              />
+              <StreakFlame tier={tier} size={26} />
               <RNText className="font-ui-bold text-2xl text-text">{streak?.current ?? 0}</RNText>
               <Text variant="caption">{(streak?.current ?? 0) === 1 ? 'day' : 'days'}</Text>
             </View>

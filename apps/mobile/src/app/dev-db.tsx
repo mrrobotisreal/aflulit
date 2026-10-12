@@ -541,6 +541,7 @@ export default function DevDbScreen() {
       readingMs: 5 * 60_000,
       goal: { reviews: 20, readingMin: 10 },
       goalMet: false,
+      quest: null,
       continueReading: null,
       now: Date.now() - 48 * 3600_000,
     });

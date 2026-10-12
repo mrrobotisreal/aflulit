@@ -11,8 +11,8 @@ export const WIDGET_PREFS_NAME = 'sumrak_widget';
 /** SharedPreferences key holding the JSON snapshot string (Kotlin: `KEY_SNAPSHOT`). */
 export const WIDGET_SNAPSHOT_KEY = 'snapshot';
 
-/** Snapshot schema version (Kotlin: `SNAPSHOT_VERSION`). */
-export const WIDGET_SNAPSHOT_VERSION = 1;
+/** Snapshot schema version (Kotlin: `SNAPSHOT_VERSION`). T84: 2 = Today's three rings + the flame tier. */
+export const WIDGET_SNAPSHOT_VERSION = 2;
 
 /** Older than this → the widget dims its numbers and asks for the app (Kotlin: `STALE_MS`). */
 export const WIDGET_STALE_MS = 36 * 3600_000;
