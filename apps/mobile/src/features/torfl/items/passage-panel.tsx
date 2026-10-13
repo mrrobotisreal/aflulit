@@ -27,9 +27,9 @@ import {
 /** The passage scrolls inside this height so a 450-word text never pushes the question off screen. */
 export const PASSAGE_MAX_HEIGHT = 420;
 
-/** Exam passage reading style (Literata, a touch under the reader's default so a text fits a screen). */
+/** Exam passage reading style (Frank Ruhl Libre, a touch under the reader's default so a text fits a screen). */
 export const EXAM_READING_STYLE: TextStyle = {
-  fontFamily: 'Literata_400Regular',
+  fontFamily: 'FrankRuhlLibre_400Regular',
   fontSize: 18,
   lineHeight: 29,
 };

@@ -267,6 +267,17 @@ export default function SettingsScreen() {
                 <Ionicons name="chevron-forward" size={18} color={tokens.textMuted} />
               </Pressable>
             </Link>
+            <Link href="/dev-glyphs" asChild>
+              <Pressable className="flex-row items-center justify-between border-t border-border px-4 py-3.5 active:bg-surface-2">
+                <View className="gap-0.5">
+                  <Text className="font-ui-medium">Hebrew glyph check</Text>
+                  <Text variant="caption">
+                    Niqqud stacking per face and size — Frank Ruhl, Noto Sans, Rubik (T01)
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={tokens.textMuted} />
+              </Pressable>
+            </Link>
           </View>
         </>
       )}

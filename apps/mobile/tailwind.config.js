@@ -40,16 +40,22 @@ module.exports = {
         'level-c1': 'rgb(var(--level-c1) / <alpha-value>)',
       },
       fontFamily: {
-        // UI chrome: Golos Text (Cyrillic-friendly, used for the Russian tab titles)
+        // UI chrome (English): Golos Text
         ui: ['GolosText_400Regular'],
         'ui-medium': ['GolosText_500Medium'],
         'ui-bold': ['GolosText_700Bold'],
-        // Display / branding (אַפְלוּלִית wordmark): dripping-paint horror, Cyrillic-capable
+        // UI Hebrew (chips, tab titles, labels): Noto Sans Hebrew 500 (ADR-0005 §8)
+        'ui-he': ['NotoSansHebrew_500Medium'],
+        // Display / branding (אַפְלוּלִית wordmark): dripping-paint, Hebrew + niqqud capable
         display: ['RubikWetPaint_400Regular'],
-        // Reading (Russian story content): Literata with real Cyrillic italics
-        reading: ['Literata_400Regular'],
-        'reading-bold': ['Literata_700Bold'],
-        'reading-italic': ['Literata_400Regular_Italic'],
+        // Reading (Hebrew story content): Frank Ruhl Libre serif (full niqqud);
+        // the face has no italic — Hebrew has no italic tradition, so
+        // reading-italic resolves to the regular face (T01 decision).
+        reading: ['FrankRuhlLibre_400Regular'],
+        'reading-bold': ['FrankRuhlLibre_700Bold'],
+        'reading-italic': ['FrankRuhlLibre_400Regular'],
+        // Reading sans toggle: Noto Sans Hebrew (Ilan's proven niqqud renderer)
+        'reading-sans': ['NotoSansHebrew_400Regular'],
         // Error log stack traces (T22) — Android generic monospace
         mono: ['monospace'],
       },

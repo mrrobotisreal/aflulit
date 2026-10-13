@@ -200,21 +200,31 @@ describe('fixture snapshot (Stories/_build/a1-scenario-fixture — the T57 real 
   // every line's mouth is ceil(durationMs/40) ± 1 and the snapshot pins them.
   // Worktree-safe: the WORKSPACE root is the parent of the repo (or of
   // `.worktrees/<name>`), so walk up until a `Stories/` sibling appears.
+  // The snapshot pins Sumrak's `radio-a1` render; the Hebrew workspace's
+  // `Stories/_build/a1-scenario-fixture` is Ilan's café render, so the pin is
+  // skipped unless the found pack is the one it was taken from (T10 renders
+  // Aflulit's own Hebrew fixture and re-pins this).
+  const PINNED_SCENARIO_ID = 'radio-a1';
+  type FixturePack = {
+    scenarios: {
+      id: string;
+      turns: { id: string; expect?: { coachAudio?: { durationMs: number; mouth: string } } }[];
+    }[];
+  };
   const built = (() => {
     let dir = join(import.meta.dirname, '..', '..', '..');
     for (let i = 0; i < 4; i++) {
       const candidate = join(dir, 'Stories', '_build', 'a1-scenario-fixture', 'pack.json');
-      if (existsSync(candidate)) return candidate;
+      if (existsSync(candidate)) {
+        const pack = JSON.parse(readFileSync(candidate, 'utf8')) as FixturePack;
+        return pack.scenarios[0]?.id === PINNED_SCENARIO_ID ? candidate : '';
+      }
       dir = join(dir, '..');
     }
     return '';
   })();
   it.skipIf(!existsSync(built))('pins the rendered fixture’s per-line mouth track lengths', () => {
-    const pack = JSON.parse(readFileSync(built, 'utf8')) as {
-      scenarios: {
-        turns: { id: string; expect?: { coachAudio?: { durationMs: number; mouth: string } } }[];
-      }[];
-    };
+    const pack = JSON.parse(readFileSync(built, 'utf8')) as FixturePack;
     const lines = scenarioLines(pack.scenarios[0] as never).map((ref) => {
       const audio = ref.line.audio!;
       return `${ref.line.sentence.id}:${audio.durationMs}:${audio.mouth!.length}`;

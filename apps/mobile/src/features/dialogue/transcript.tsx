@@ -20,7 +20,7 @@ import { characterById, type ChoiceEntry, type NodeEntry } from './engine';
 
 /** Fixed dialogue reading style (reader typography prefs stay reader-scoped). */
 export const DIALOGUE_READING_STYLE: TextStyle = {
-  fontFamily: 'Literata_400Regular',
+  fontFamily: 'FrankRuhlLibre_400Regular',
   fontSize: 19,
   lineHeight: 30,
 };

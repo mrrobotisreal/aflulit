@@ -7,7 +7,7 @@ import type { WordProfile } from './profile-schema';
 
 /**
  * The strip above the section cards (WORD_FORMS §7.2): the stressed
- * headword in Literata (the combining acute renders natively), the gloss,
+ * headword in the reading serif (combining marks render natively), the gloss,
  * `facts` as two-column `label: value` captions, `notes` as muted lines.
  */
 export function OverviewStrip({ profile }: { profile: WordProfile }) {

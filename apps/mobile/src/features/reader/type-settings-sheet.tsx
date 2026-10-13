@@ -84,7 +84,7 @@ export function TypeSettingsSheet({ open, onClose }: { open: boolean; onClose: (
         <View className="flex-row items-center justify-between">
           <Text variant="muted">Typeface</Text>
           <Segmented
-            options={['Literata', 'Golos']}
+            options={['Frank Ruhl', 'Noto Sans']}
             selected={prefs.serif ? 0 : 1}
             onSelect={(i) => prefs.setPrefs({ serif: i === 0 })}
           />

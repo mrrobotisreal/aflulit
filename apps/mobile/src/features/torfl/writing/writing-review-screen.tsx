@@ -24,7 +24,7 @@ import { mergedCriteria } from './review-model';
 import { SelfCheckSheet } from './self-check-sheet';
 import { isNoteTopic, writingItemsOf, writingTaskOf } from './writing-model';
 
-const LITERATA = { fontFamily: 'Literata_400Regular', fontSize: 17, lineHeight: 28 } as const;
+const READING = { fontFamily: 'FrankRuhlLibre_400Regular', fontSize: 17, lineHeight: 28 } as const;
 
 /**
  * The writing review (T72, TORFL §6.2 / §8.3) — route
@@ -310,7 +310,7 @@ function TaskReview({
           />
         ) : (
           <View className="rounded-2xl border border-border bg-surface px-4 py-4">
-            <RNText style={{ ...LITERATA, color: tokens.text }}>{letter || '—'}</RNText>
+            <RNText style={{ ...READING, color: tokens.text }}>{letter || '—'}</RNText>
           </View>
         )}
       </View>

@@ -13,7 +13,11 @@ interface MarkdownViewProps {
   onSelectingChange?: (selecting: boolean) => void;
 }
 
-const READING: TextStyle = { fontFamily: 'Literata_400Regular', fontSize: 17, lineHeight: 27 };
+const READING: TextStyle = {
+  fontFamily: 'FrankRuhlLibre_400Regular',
+  fontSize: 17,
+  lineHeight: 27,
+};
 /**
  * Tables wider than this many columns scroll horizontally with fixed column
  * widths instead of squeezing every cell to `flex-1` — a stress-marked form
@@ -78,8 +82,9 @@ function runStyle(run: InlineRun, base: TextStyle, accent: string): TextStyle {
     const size = typeof base.fontSize === 'number' ? base.fontSize - 2 : 15;
     return { fontFamily: 'monospace', fontSize: size, color: accent };
   }
-  if (run.bold) return { fontFamily: 'Literata_700Bold' };
-  if (run.italic) return { fontFamily: 'Literata_400Regular_Italic' };
+  if (run.bold) return { fontFamily: 'FrankRuhlLibre_700Bold' };
+  // No italic face in Frank Ruhl Libre — italic runs keep the regular face (T01).
+  if (run.italic) return { fontFamily: 'FrankRuhlLibre_400Regular' };
   return {};
 }
 
@@ -109,7 +114,7 @@ function renderBlock(
     case 'quote':
       return (
         <View className="border-l-2 border-accent/40 pl-3">
-          {renderRuns(block.runs, { ...READING, fontFamily: 'Literata_400Regular_Italic' })}
+          {renderRuns(block.runs, { ...READING, fontFamily: 'FrankRuhlLibre_400Regular' })}
         </View>
       );
     case 'table': {
@@ -137,7 +142,7 @@ function renderBlock(
                     runs,
                     r === 0 && block.headerRow
                       ? { fontFamily: 'GolosText_500Medium', fontSize: 14, lineHeight: 20 }
-                      : { fontFamily: 'Literata_400Regular', fontSize: 15, lineHeight: 22 },
+                      : { fontFamily: 'FrankRuhlLibre_400Regular', fontSize: 15, lineHeight: 22 },
                   )}
                 </View>
               ))}

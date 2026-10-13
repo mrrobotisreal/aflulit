@@ -381,7 +381,7 @@ function PracticeResult({
           <View className="rounded-2xl border border-border bg-surface px-4 py-4">
             <RNText
               style={{
-                fontFamily: 'Literata_400Regular',
+                fontFamily: 'FrankRuhlLibre_400Regular',
                 fontSize: 17,
                 lineHeight: 28,
                 color: tokens.text,

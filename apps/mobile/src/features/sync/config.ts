@@ -20,7 +20,6 @@ export const DEFAULT_REPO: GithubRepoConfig = {
   branch: 'main',
 };
 
-
 export async function getRepoConfig(): Promise<GithubRepoConfig | null> {
   const stored = await repos.settings.get<GithubRepoConfig>(SETTING_KEYS.contentRepo);
   if (!stored || !stored.owner?.trim() || !stored.repo?.trim()) return null;

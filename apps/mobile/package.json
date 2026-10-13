@@ -17,8 +17,9 @@
     "release:android": "./scripts/release-android.sh"
   },
   "dependencies": {
+    "@expo-google-fonts/frank-ruhl-libre": "0.4.1",
     "@expo-google-fonts/golos-text": "^0.4.2",
-    "@expo-google-fonts/literata": "^0.4.3",
+    "@expo-google-fonts/noto-sans-hebrew": "0.4.1",
     "@expo-google-fonts/rubik-wet-paint": "^0.4.0",
     "@expo/vector-icons": "^15.1.1",
     "@noble/ciphers": "^2.3.0",

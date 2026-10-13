@@ -17,7 +17,7 @@ export interface ReaderPrefs {
   sizeStep: number;
   /** 0–2 into READER_LINE_HEIGHT_STEPS; 1 = the §2 default (1.6). */
   lineHeightStep: number;
-  /** true = Literata (reading serif), false = Golos (UI sans). */
+  /** true = Frank Ruhl Libre (reading serif), false = Noto Sans Hebrew (sans). */
   serif: boolean;
 }
 

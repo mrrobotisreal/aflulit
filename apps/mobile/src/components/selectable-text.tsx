@@ -187,12 +187,14 @@ export function SelectableText({
     if (seg.code) {
       return { fontFamily: 'monospace', fontSize: fontSize - 2, color: theme.accent };
     }
-    if (seg.bold && textStyle.fontFamily === 'Literata_400Regular') {
-      return { fontFamily: 'Literata_700Bold' };
+    if (seg.bold && textStyle.fontFamily === 'FrankRuhlLibre_400Regular') {
+      return { fontFamily: 'FrankRuhlLibre_700Bold' };
     }
     if (seg.bold) return { fontFamily: 'GolosText_700Bold' };
-    if (seg.italic && textStyle.fontFamily === 'Literata_400Regular') {
-      return { fontFamily: 'Literata_400Regular_Italic' };
+    // Frank Ruhl Libre has no italic (Hebrew has no italic tradition): an
+    // italic run in the reading face keeps the regular face (T01 decision).
+    if (seg.italic && textStyle.fontFamily === 'FrankRuhlLibre_400Regular') {
+      return { fontFamily: 'FrankRuhlLibre_400Regular' };
     }
     if (seg.italic) return { fontStyle: 'italic' };
     return {};

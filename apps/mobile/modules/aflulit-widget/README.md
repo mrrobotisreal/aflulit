@@ -6,12 +6,12 @@ The JS surface is `index.ts` (typed `requireNativeModule`). The device writer li
 
 ## Cross-process contract
 
-| Item                   | Value           | Kotlin (`WidgetContract.kt`) | TS (`widget-contract.ts`) |
-| ---------------------- | --------------- | ---------------------------- | ------------------------- |
+| Item                   | Value            | Kotlin (`WidgetContract.kt`) | TS (`widget-contract.ts`) |
+| ---------------------- | ---------------- | ---------------------------- | ------------------------- |
 | SharedPreferences file | `aflulit_widget` | `PREFS_NAME`                 | `WIDGET_PREFS_NAME`       |
-| Key (JSON string)      | `snapshot`      | `KEY_SNAPSHOT`               | `WIDGET_SNAPSHOT_KEY`     |
-| Schema version         | `1`             | `SNAPSHOT_VERSION`           | `WIDGET_SNAPSHOT_VERSION` |
-| Stale window           | 36 h            | `STALE_MS`                   | `WIDGET_STALE_MS`         |
+| Key (JSON string)      | `snapshot`       | `KEY_SNAPSHOT`               | `WIDGET_SNAPSHOT_KEY`     |
+| Schema version         | `1`              | `SNAPSHOT_VERSION`           | `WIDGET_SNAPSHOT_VERSION` |
+| Stale window           | 36 h             | `STALE_MS`                   | `WIDGET_STALE_MS`         |
 
 The snapshot schema is `WidgetSnapshotSchema` in `widget-snapshot.ts`: `{ v, streak, dueCount, goal: { reviewsDone, reviewsTarget, readingMinDone, readingMinTarget, met, questProgress? }, continueReading: {packId, storyId, title} | null, updatedAtMs }`. `questProgress` is reserved for T34's quest registry, which does not exist yet, so it is always omitted.
 

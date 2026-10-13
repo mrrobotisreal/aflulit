@@ -178,7 +178,7 @@ const VALUE_COL_WIDTH = 150;
 
 /**
  * Grid renderer: header = colLabels, first column = rowLabels, cells `ru`
- * in Literata + gloss caption, null → «—», a cell `note` → ⓘ that toggles
+ * in the reading serif + gloss caption, null → «—», a cell `note` → ⓘ that toggles
  * the note under its row. Wide grids (> 2 value columns — adjectives)
  * scroll horizontally inside the card with fixed column widths; 1–2 column
  * grids stretch to the card width (never squished cells — T22 convention).

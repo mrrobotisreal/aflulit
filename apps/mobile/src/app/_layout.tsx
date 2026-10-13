@@ -1,16 +1,20 @@
 import '../global.css';
 
 import {
+  FrankRuhlLibre_400Regular,
+  FrankRuhlLibre_700Bold,
+  useFonts,
+} from '@expo-google-fonts/frank-ruhl-libre';
+import {
   GolosText_400Regular,
   GolosText_500Medium,
   GolosText_700Bold,
 } from '@expo-google-fonts/golos-text';
 import {
-  Literata_400Regular,
-  Literata_400Regular_Italic,
-  Literata_700Bold,
-  useFonts,
-} from '@expo-google-fonts/literata';
+  NotoSansHebrew_400Regular,
+  NotoSansHebrew_500Medium,
+  useFonts as useHebrewSansFonts,
+} from '@expo-google-fonts/noto-sans-hebrew';
 import {
   RubikWetPaint_400Regular,
   useFonts as useDisplayFonts,
@@ -60,10 +64,15 @@ export default function RootLayout() {
   useThemeStore();
   const { scheme, navTheme, tokens } = useAppTheme();
 
-  const [literataLoaded, literataError] = useFonts({
-    Literata_400Regular,
-    Literata_400Regular_Italic,
-    Literata_700Bold,
+  // Reading serif (Hebrew, full niqqud) — ADR-0005 §8
+  const [readingLoaded, readingError] = useFonts({
+    FrankRuhlLibre_400Regular,
+    FrankRuhlLibre_700Bold,
+  });
+  // Hebrew sans: reading toggle + UI Hebrew
+  const [hebrewSansLoaded, hebrewSansError] = useHebrewSansFonts({
+    NotoSansHebrew_400Regular,
+    NotoSansHebrew_500Medium,
   });
   const [golosLoaded, golosError] = useGolosFonts({
     GolosText_400Regular,
@@ -75,7 +84,8 @@ export default function RootLayout() {
     RubikWetPaint_400Regular,
   });
   const fontsReady =
-    (literataLoaded || !!literataError) &&
+    (readingLoaded || !!readingError) &&
+    (hebrewSansLoaded || !!hebrewSansError) &&
     (golosLoaded || !!golosError) &&
     (displayLoaded || !!displayError);
 
@@ -265,6 +275,7 @@ export default function RootLayout() {
                 <Stack.Screen name="dev-judge" options={{ title: 'Judge lab' }} />
                 <Stack.Screen name="dev-scene" options={{ title: 'Scene gallery' }} />
                 <Stack.Screen name="dev-exam-capture" options={{ title: 'A2 grading capture' }} />
+                <Stack.Screen name="dev-glyphs" options={{ title: 'Hebrew glyph check' }} />
               </Stack>
               <AmbientAudioHost ready={introDone} />
               <AutoSync />

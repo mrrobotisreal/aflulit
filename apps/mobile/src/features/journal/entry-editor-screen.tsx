@@ -372,7 +372,11 @@ function EntryEditor({
                 <SelectableText
                   key={i}
                   chunks={chunkText(para)}
-                  textStyle={{ fontFamily: 'Literata_400Regular', fontSize: 19, lineHeight: 31 }}
+                  textStyle={{
+                    fontFamily: 'FrankRuhlLibre_400Regular',
+                    fontSize: 19,
+                    lineHeight: 31,
+                  }}
                   onSelection={onSelection}
                   onSelectingChange={setSelecting}
                 />

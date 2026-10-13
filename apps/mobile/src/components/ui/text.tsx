@@ -13,7 +13,7 @@ const textVariants = cva('font-ui text-base text-text', {
       caption: 'text-sm text-text-muted',
       title: 'font-ui-bold text-xl',
       heading: 'font-ui-bold text-2xl',
-      // Russian story/content text — Literata, reading scale
+      // Story/content text — Frank Ruhl Libre, reading scale
       reading: 'font-reading text-reading',
     },
   },

@@ -59,7 +59,7 @@ original release APK remains release-signed.
 
 | Check                              | Result                                                                                       |
 | ---------------------------------- | -------------------------------------------------------------------------------------------- |
-| Launch / Today                     | No Aflulit audio player playing before entering a study activity.                             |
+| Launch / Today                     | No Aflulit audio player playing before entering a study activity.                            |
 | Existing library story             | Soundtrack starts: one stereo 44.1 kHz Android AudioTrack.                                   |
 | Narration play                     | Narration's mono 48 kHz track starts; soundtrack pauses.                                     |
 | Narration pause                    | Narration pauses; the same soundtrack player resumes.                                        |

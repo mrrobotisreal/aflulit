@@ -30,7 +30,7 @@ export function FeedbackView({ feedback }: { feedback: StoredFeedback }) {
           {clean ? 'No corrections needed' : 'Corrections'}
         </Text>
         {segments ? (
-          <RNText style={{ fontFamily: 'Literata_400Regular', fontSize: 17, lineHeight: 29 }}>
+          <RNText style={{ fontFamily: 'FrankRuhlLibre_400Regular', fontSize: 17, lineHeight: 29 }}>
             {segments.map((seg, i) => (
               <RNText
                 key={i}
@@ -54,7 +54,7 @@ export function FeedbackView({ feedback }: { feedback: StoredFeedback }) {
           // Entry too long for the word diff — show the corrected text plainly.
           <RNText
             style={{
-              fontFamily: 'Literata_400Regular',
+              fontFamily: 'FrankRuhlLibre_400Regular',
               fontSize: 17,
               lineHeight: 29,
               color: theme.text,

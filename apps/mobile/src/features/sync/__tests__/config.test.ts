@@ -1,7 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { SETTING_KEYS } from '@/db/repositories/settings';
-
 import { DEFAULT_REPO, getRepoConfig, setRepoConfig } from '../config';
 
 /**

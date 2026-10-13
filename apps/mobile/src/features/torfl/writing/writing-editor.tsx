@@ -43,7 +43,7 @@ export const DRAFT_DEBOUNCE_MS = 600;
  * The letter editor (T72, TORFL §8.3) — shared by the mock runner (timed,
  * counters only, lookup per the dictionary rule) and the practice mode
  * (untimed, the bullets as a live checklist). The task and its bullet
- * points sit above exactly as printed; the editor is Literata ≥ 18 px with
+ * points sit above exactly as printed; the editor is Frank Ruhl Libre ≥ 18 px with
  * the Russian keyboard hint; «Словарь» opens the lookup sheet pre-filled
  * with the selected word; «Сдать» confirms through the host.
  *
@@ -271,7 +271,7 @@ export function WritingEditor({
             'rounded-2xl border border-border bg-surface px-4 py-4 text-text',
             isNoteTopic(item.topic) ? 'min-h-[180px] rounded-bl-md border-accent' : 'min-h-[260px]',
           )}
-          style={{ fontFamily: 'Literata_400Regular', fontSize: 18, lineHeight: 29 }}
+          style={{ fontFamily: 'FrankRuhlLibre_400Regular', fontSize: 18, lineHeight: 29 }}
         />
         <Text variant="caption">{c.keyboardHint}</Text>
 
