@@ -4,17 +4,21 @@ import { Animated, StyleSheet, useWindowDimensions } from 'react-native';
 
 import { track } from '@/services/analytics';
 
+import { SPLASH_TITLE } from './splash-title';
+
 // Fixed palette on purpose (not theme tokens): the intro must look identical in
 // both themes and blend seamlessly with the native splash background declared
-// in app.json (#0B0B0E) and the crescent glow baked into the artwork.
-const BG = '#0B0B0E';
-const TITLE_RED = '#E8452F';
-const GLOW_RED = '#FF3B1F';
+// in app.json (#0A0A17) and the blue crescent glow baked into the artwork
+// (UI_DESIGN §2).
+const BG = '#0A0A17';
+const TITLE_BLUE = '#7CC4FF';
+const GLOW_BLUE = '#4D6BFF';
 
 /**
  * In-app splash intro shown once per launch, immediately after the native
  * splash hides: the full crescent-moon artwork near full-width with the app
- * title in RubikWetPaint below it, then the whole overlay fades into the app.
+ * title «אַפְלוּלִית» in RubikWetPaint below it, then the whole overlay fades
+ * into the app.
  */
 export function AnimatedSplash({ onDone }: { onDone: () => void }) {
   const { width, height } = useWindowDimensions();
@@ -57,13 +61,14 @@ export function AnimatedSplash({ onDone }: { onDone: () => void }) {
         contentFit="cover"
       />
       <Animated.Text
+        accessibilityLanguage="he"
         style={[
           styles.title,
           { fontSize: Math.min(64, width * 0.17) },
           { opacity: titleOpacity, transform: [{ translateY: titleShift }] },
         ]}
       >
-        Сумрак
+        {SPLASH_TITLE}
       </Animated.Text>
     </Animated.View>
   );
@@ -78,9 +83,11 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: 'RubikWetPaint_400Regular',
-    color: TITLE_RED,
-    letterSpacing: 2,
-    textShadowColor: GLOW_RED,
+    color: TITLE_BLUE,
+    // Hebrew is never letter-spaced — it breaks niqqud attachment (ADR-0005).
+    letterSpacing: 0,
+    writingDirection: 'rtl',
+    textShadowColor: GLOW_BLUE,
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 24,
   },
