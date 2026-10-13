@@ -147,6 +147,64 @@ describe('media bundle naming (T63 §10.3)', () => {
   });
 });
 
+describe('syncd name contract', () => {
+  // THE NAME CONTRACT (T11). Mirrored literally from AflulitAPI
+  // `internal/naming/naming_test.go` (`nameContract`) — keep the two in sync:
+  // a rename or a regex change on either side must break both tests. The
+  // name doubles as the server's path-traversal guard, so every separator
+  // row here is a security case. Columns: name, valid, media, reason.
+  const rows: [string, boolean, boolean, string][] = [
+    // Snapshots.
+    ['aflulit-backup-20260823-030709Z.json', true, false, 'canonical snapshot'],
+    ['aflulit-backup-20261231-235959Z.json', true, false, 'last second of a year'],
+    ['aflulit-backup-20260823-030709.json', false, false, 'missing Z'],
+    ['aflulit-backup-20260823-030709Z.json.bak', false, false, 'trailing suffix'],
+    ['aflulit-backup-2026082-030709Z.json', false, false, 'seven-digit date'],
+    ['aflulit-backup-20261301-030709Z.json', false, false, 'month 13'],
+    ['aflulit-backup-20260230-030709Z.json', false, false, 'Feb 30'],
+    ['aflulit-backup-20260823-240000Z.json', false, false, 'hour 24'],
+    ['aflulit-backup-20260823-036000Z.json', false, false, 'minute 60'],
+    ['sumrak-backup-20260823-030709Z.json', false, false, 'old product prefix'],
+    ['AFLULIT-BACKUP-20260823-030709Z.json', false, false, 'uppercase prefix'],
+    // Media bundles.
+    ['aflulit-media-mg1x2k3a-abc12def00.json', true, true, 'scenario run id'],
+    ['aflulit-media-exam-mkxy1abc-q7ztuv00.json', true, true, 'exam attempt stem'],
+    ['aflulit-media-abcd.json', true, true, '4-char run id (minimum)'],
+    [`aflulit-media-${'a'.repeat(80)}.json`, true, true, '80-char run id (maximum)'],
+    ['aflulit-media-abc.json', false, false, '3-char run id (too short)'],
+    [`aflulit-media-${'a'.repeat(81)}.json`, false, false, '81-char run id (too long)'],
+    ['aflulit-media--abcd.json', false, false, 'run id starting with a dash'],
+    ['aflulit-media-ABCD-efgh.json', false, false, 'uppercase run id'],
+    ['aflulit-media-ab_cd.json', false, false, 'underscore in run id'],
+    ['aflulit-media-../x.json', false, false, 'traversal in run id'],
+    ['sumrak-media-mg1x2k3a-abc12def00.json', false, false, 'old product prefix'],
+    // Strangers and traversal.
+    ['', false, false, 'empty'],
+    ['manifest.json', false, false, 'manifest'],
+    ['../etc/passwd', false, false, 'traversal'],
+    ['../aflulit-backup-20260823-030709Z.json', false, false, 'traversal before a valid name'],
+    ['aflulit-backup-20260823-030709Z.json/./x', false, false, 'path after a valid name'],
+    ['aflulit-backup-20260823-030709Z.json\n', false, false, 'trailing newline'],
+    ['aflulit-backup-20260823-030709Z.json\x00', false, false, 'embedded NUL'],
+    [' aflulit-backup-20260823-030709Z.json', false, false, 'leading space'],
+  ];
+
+  // The app's equivalent of the server's Valid / IsMedia / Parse.
+  const isMedia = (name: string) => parseMediaFileName(name) !== null;
+  const isValid = (name: string) => parseBackupFileName(name) !== null || isMedia(name);
+
+  it.each(rows)('%s → valid=%s media=%s (%s)', (name, valid, media) => {
+    expect(isValid(name)).toBe(valid);
+    expect(isMedia(name)).toBe(media);
+    // A snapshot parses; a media bundle or a stranger never does.
+    expect(parseBackupFileName(name) !== null).toBe(valid && !media);
+  });
+
+  it('has the same row count as the Go table', () => {
+    expect(rows).toHaveLength(30);
+  });
+});
+
 describe('exam media bundle naming (T74, TORFL §8.5)', () => {
   // AflulitAPI `internal/naming/naming.go:24` — the server-side acceptance regex, copied verbatim
   // so a rename on either side breaks this test: lowercase stems only, 4–80 chars.
