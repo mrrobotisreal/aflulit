@@ -52,8 +52,7 @@
           "defaultChannel": "reminders"
         }
       ],
-      "./plugins/with-release-signing.js",
-      "./plugins/with-tailnet-cleartext.js"
+      "./plugins/with-release-signing.js"
     ],
     "experiments": {
       "typedRoutes": true

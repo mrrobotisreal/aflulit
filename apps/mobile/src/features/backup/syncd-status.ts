@@ -7,8 +7,8 @@ import { SyncdClient } from './syncd-client';
 import { getSyncdConfig, getSyncdToken } from './syncd-config';
 
 /**
- * Ephemeral syncd reachability state (T21). The tailnet host being away is
- * a normal state of the world (VPN off, server down, traveling) — this
+ * Ephemeral syncd reachability state (T21). The home server being away is
+ * a normal state of the world (offline, server down, traveling) — this
  * store lets the UI say "unreachable" plainly without any run failing or
  * blocking, and analytics record every flip.
  */

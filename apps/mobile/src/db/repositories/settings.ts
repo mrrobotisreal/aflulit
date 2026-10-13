@@ -36,7 +36,7 @@ export const SETTING_KEYS = {
   /** SAF directory uri granted for local backup export/restore (T20). */
   backupSafDir: 'backup.safDirUri',
   /**
-   * syncd target config (T21): { host } — the tailnet base URL, Zod-validated
+   * syncd target config (T21): { host } — the server base URL, Zod-validated
    * on read (features/backup/syncd-config). The bearer token is NEVER here:
    * secure-store only ('aflulit.backup.syncd.token'), same rule as the PAT.
    */

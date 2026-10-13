@@ -4,18 +4,23 @@ import { z } from 'zod';
 import { repos } from '@/db';
 import { SETTING_KEYS } from '@/db/repositories/settings';
 
+import { builtInSyncdToken, DEFAULT_SYNCD_HOST } from './syncd-defaults';
+
 /**
  * syncd target configuration (T21). Split by sensitivity, the T07/T20 rule:
- * the tailnet host URL (not secret) lives in the settings table and is
- * backed up; the bearer token lives in expo-secure-store ONLY — never the
- * settings table, logs, analytics, or backup payloads. Note the consequence
- * (same as the PAT): after a full wipe the restored settings bring the host
- * back but the token must be re-entered.
+ * the host URL (not secret) lives in the settings table and is backed up;
+ * a bearer token entered in Settings lives in expo-secure-store ONLY —
+ * never the settings table, logs, analytics, or backup payloads.
+ *
+ * Since 2026-10-13 both have build-time defaults (`syncd-defaults.ts`): the
+ * Cloudflare-tunnel host and the token baked in from `.env`. Anything saved
+ * on the phone wins over the default; clearing the saved token falls back
+ * to the built-in one rather than to "no token".
  */
 const TOKEN_STORE_KEY = 'aflulit.backup.syncd.token';
 
 const SyncdConfigSchema = z.strictObject({
-  /** Base URL of the service on the tailnet, e.g. "http://homeserver:8787". */
+  /** Base URL of the service, e.g. "https://aflulit.creatv.dev". */
   host: z.string().min(1),
 });
 export type SyncdConfig = z.infer<typeof SyncdConfigSchema>;
@@ -25,7 +30,13 @@ export { normalizeSyncdHost } from './syncd-client';
 export async function getSyncdConfig(): Promise<SyncdConfig | null> {
   const raw = await repos.settings.get<unknown>(SETTING_KEYS.syncdConfig);
   const parsed = SyncdConfigSchema.safeParse(raw);
-  return parsed.success ? parsed.data : null;
+  return parsed.success ? parsed.data : { host: DEFAULT_SYNCD_HOST };
+}
+
+/** True when the host in use is the built-in default, not one Mitch saved. */
+export async function isSyncdHostDefault(): Promise<boolean> {
+  const raw = await repos.settings.get<unknown>(SETTING_KEYS.syncdConfig);
+  return !SyncdConfigSchema.safeParse(raw).success;
 }
 
 export async function setSyncdConfig(config: SyncdConfig | null): Promise<void> {
@@ -33,7 +44,12 @@ export async function setSyncdConfig(config: SyncdConfig | null): Promise<void> 
 }
 
 export async function getSyncdToken(): Promise<string | null> {
-  return SecureStore.getItemAsync(TOKEN_STORE_KEY);
+  return (await SecureStore.getItemAsync(TOKEN_STORE_KEY)) ?? builtInSyncdToken();
+}
+
+/** True when a token was entered in Settings (as opposed to the built-in one). */
+export async function hasSavedSyncdToken(): Promise<boolean> {
+  return (await SecureStore.getItemAsync(TOKEN_STORE_KEY)) != null;
 }
 
 export async function setSyncdToken(token: string): Promise<void> {

@@ -185,3 +185,17 @@ strings, never enforced FKs (user data must survive pack reimport/removal).
 - Russian text is UTF-8 NFC, ё preserved.
 - Stable string ids, never renumbered.
 - Analytics: user actions go through `src/services/analytics.ts` `track()` (SQLite-backed from T03).
+
+## Home server (syncd) — built-in target
+
+The backup/transcription service (`AflulitAPI`) is reached over HTTPS at
+`https://aflulit.creatv.dev` (a Cloudflare Tunnel; no VPN). The host and the
+bearer token are **baked into the app at build time**: `.env` at the repo root
+carries `EXPO_PUBLIC_SYNCD_TOKEN` (same value as the server's `SYNCD_TOKEN`),
+which babel-preset-expo inlines into the bundle (`apps/mobile/.env` is a
+symlink to it so Expo finds it). `.env` is gitignored; only the built APK
+carries the value. Settings → Backup → Home server shows the target and lets a
+saved host/token override it — e.g. `http://localhost:8787` + a throwaway
+token over `adb reverse tcp:8787 tcp:8787` for testing against a local
+`go run ./cmd/syncd` (a dev client allows cleartext; a release build does not
+need it because the real host is HTTPS).

@@ -32,7 +32,8 @@ afterEach(() => {
 
 describe('normalizeSyncdHost', () => {
   it('defaults the scheme and strips trailing slashes', () => {
-    expect(normalizeSyncdHost('homeserver:8787')).toBe('http://homeserver:8787');
+    expect(normalizeSyncdHost('aflulit.creatv.dev')).toBe('https://aflulit.creatv.dev');
+    expect(normalizeSyncdHost('http://localhost:8787')).toBe('http://localhost:8787'); // adb reverse
     expect(normalizeSyncdHost('http://homeserver:8787///')).toBe('http://homeserver:8787');
     expect(normalizeSyncdHost('  https://100.64.0.7:8787/ ')).toBe('https://100.64.0.7:8787');
   });

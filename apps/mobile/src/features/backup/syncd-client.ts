@@ -9,23 +9,24 @@ import { MEDIA_FILE_RE, parseBackupFileName } from './naming';
  * Zod-validated before use. Requests carry the bearer token in memory only —
  * it never appears in errors, logs, or analytics (T07/T20 rule).
  *
- * Reachability is the defining failure mode: the host only exists inside
- * the tailnet, so DNS failures / refusals / timeouts are expected life
+ * Reachability is the defining failure mode: the home server may be off or
+ * the phone offline, so DNS failures / refusals / timeouts are expected life
  * events ('syncd-unreachable'), never crashes.
  */
 
-/** Tailnet peers answer fast when reachable; fail fast when not. */
+/** The server answers fast when reachable; fail fast when not. */
 const REQUEST_TIMEOUT_MS = 10_000;
 
 /**
  * Normalize what Mitch types into a usable base URL: default the scheme to
- * http:// (plain HTTP inside the tailnet is the deploy contract — Tailscale
- * provides transport encryption) and drop trailing slashes.
+ * https:// (the deployed host is a Cloudflare Tunnel; a plain-HTTP host for
+ * `adb reverse` testing is still accepted when typed with its scheme) and
+ * drop trailing slashes.
  */
 export function normalizeSyncdHost(raw: string): string | null {
   let host = raw.trim();
   if (host.length === 0) return null;
-  if (!/^https?:\/\//i.test(host)) host = `http://${host}`;
+  if (!/^https?:\/\//i.test(host)) host = `https://${host}`;
   host = host.replace(/\/+$/, '');
   try {
     const url = new URL(host);
@@ -82,8 +83,8 @@ export class SyncdClient {
         signal: controller.signal,
       });
     } catch {
-      // DNS failure, connection refused, timeout — the tailnet host is not
-      // reachable from here right now. Expected whenever Tailscale is off.
+      // DNS failure, connection refused, timeout — the home server is not
+      // reachable from here right now. Expected whenever the phone is offline.
       throw new BackupError('syncd-unreachable', 'home server not reachable');
     } finally {
       clearTimeout(timeout);

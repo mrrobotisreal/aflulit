@@ -34,8 +34,8 @@ import { reportSyncdReachability } from './syncd-status';
  * target — GitHub `backups/` (T07 client) and/or syncd on the home server —
  * each succeeding or failing independently, then retention. Backup failures
  * never affect app usability: every trigger treats problems as a recorded
- * summary, not a thrown crash (design §3.1), and an unreachable tailnet
- * host never blocks the GitHub target (or anything else).
+ * summary, not a thrown crash (design §3.1), and an unreachable home
+ * server never blocks the GitHub target (or anything else).
  */
 
 export const BACKUPS_DIR = 'backups';

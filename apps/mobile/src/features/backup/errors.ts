@@ -13,7 +13,7 @@ export type BackupErrorCode =
   | 'offline'
   /** GitHub target failed (wraps a SyncError code in `message`). */
   | 'github'
-  /** syncd host not reachable — tailnet down, server off, wrong host (T21). */
+  /** syncd host not reachable — offline, server off, wrong host (T21). */
   | 'syncd-unreachable'
   /** syncd target failed for a non-reachability reason (bad token, HTTP error). */
   | 'syncd'
@@ -61,7 +61,7 @@ export function friendlyBackupMessage(err: unknown): string {
     case 'github':
       return `GitHub backup failed: ${e.message}. Check the repo and token in Settings (the PAT needs read-write Contents access).`;
     case 'syncd-unreachable':
-      return 'Home server not reachable — check that Tailscale is connected on this phone and the server is up. Everything else keeps working.';
+      return 'Home server not reachable — check your connection and that the server is up. Everything else keeps working.';
     case 'syncd':
       return `Home server backup failed: ${e.message}. Check the host and token in Settings → Backup.`;
     case 'invalid-envelope':

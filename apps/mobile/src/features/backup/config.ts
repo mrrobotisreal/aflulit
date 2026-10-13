@@ -28,13 +28,14 @@ const BackupPrefsSchema = z.strictObject({
   githubEnabled: z.boolean(),
   autoEnabled: z.boolean(),
   // T21 addition — `.default` keeps prefs stored before T21 parsing cleanly.
-  syncdEnabled: z.boolean().default(false),
+  // On by default since the host + token are built in (syncd-defaults.ts).
+  syncdEnabled: z.boolean().default(true),
 });
 export type BackupPrefs = z.infer<typeof BackupPrefsSchema>;
 export const DEFAULT_BACKUP_PREFS: BackupPrefs = {
   githubEnabled: true,
   autoEnabled: true,
-  syncdEnabled: false,
+  syncdEnabled: true,
 };
 
 const LastBackupSchema = z.strictObject({

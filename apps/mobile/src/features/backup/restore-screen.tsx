@@ -170,7 +170,7 @@ export function RestoreScreen() {
                 <Text variant="caption">
                   {syncdReady === false
                     ? 'Needs the host and token — set them in Settings → Backup first'
-                    : 'Snapshots stored on syncd over Tailscale'}
+                    : 'Snapshots stored on your home server'}
                 </Text>
               </View>
               <Ionicons name="server-outline" size={20} color={tokens.textMuted} />

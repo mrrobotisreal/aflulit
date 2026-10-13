@@ -11,16 +11,19 @@ import { useBackupStatus } from './store';
 import {
   clearSyncdToken,
   getSyncdConfig,
-  hasSyncdToken,
+  hasSavedSyncdToken,
+  isSyncdHostDefault,
   normalizeSyncdHost,
   setSyncdConfig,
   setSyncdToken,
 } from './syncd-config';
+import { builtInSyncdToken, DEFAULT_SYNCD_HOST } from './syncd-defaults';
 import { checkSyncdReachability, useSyncdStatus } from './syncd-status';
 
 /**
- * Settings → Backup → home server target (T21, ticket item 5): tailnet host
- * + bearer token (write-only, secure-store — the T07 PAT rule), independent
+ * Settings → Backup → home server target (T21, ticket item 5): host + bearer
+ * token (write-only, secure-store — the T07 PAT rule; both have built-in
+ * defaults since 2026-10-13, see syncd-defaults.ts), independent
  * enable toggle, own last-backup status, and an explicit connection test so
  * "unreachable" is a visible state, never a mystery. Rendered even before
  * the passphrase is set up: a fresh install must be able to configure the
@@ -36,6 +39,8 @@ export function SyncdSettingsCard() {
   const [host, setHost] = React.useState('');
   const [tokenInput, setTokenInput] = React.useState('');
   const [tokenConfigured, setTokenConfigured] = React.useState(false);
+  const [hostIsDefault, setHostIsDefault] = React.useState(false);
+  const builtIn = builtInSyncdToken() !== null;
   const [lastSyncd, setLastSyncd] = React.useState<LastBackup | null>(null);
   const [savedFlash, setSavedFlash] = React.useState(false);
   const [formError, setFormError] = React.useState<string | null>(null);
@@ -46,7 +51,8 @@ export function SyncdSettingsCard() {
     void (async () => {
       setEnabled((await getBackupPrefs()).syncdEnabled);
       setHost((await getSyncdConfig())?.host ?? '');
-      setTokenConfigured(await hasSyncdToken());
+      setHostIsDefault(await isSyncdHostDefault());
+      setTokenConfigured(await hasSavedSyncdToken());
       setLastSyncd(await getLastBackup(SETTING_KEYS.lastBackupSyncd));
       setLoaded(true);
     })();
@@ -137,7 +143,7 @@ export function SyncdSettingsCard() {
           <Text variant="caption">
             {lastSyncd
               ? `Last backup ${formatWhen(lastSyncd.at)}`
-              : 'Second backup target, over Tailscale'}
+              : 'Second backup target — your home server'}
           </Text>
           {reachable !== null && checkedAt !== null && (
             <Text variant="caption" className={reachable ? 'text-success' : 'text-danger'}>
@@ -165,11 +171,11 @@ export function SyncdSettingsCard() {
       </View>
 
       <View className="border-t border-border px-4 py-3.5">
-        <Text variant="caption">Tailnet host</Text>
+        <Text variant="caption">Host{hostIsDefault ? ' · built-in default' : ''}</Text>
         <TextInput
           value={host}
           onChangeText={setHost}
-          placeholder="http://homeserver:8787"
+          placeholder={DEFAULT_SYNCD_HOST}
           placeholderTextColor={tokens.textMuted}
           autoCapitalize="none"
           autoCorrect={false}
@@ -178,13 +184,15 @@ export function SyncdSettingsCard() {
           accessibilityLabel="syncd host"
         />
         <Text variant="caption" className="mt-3">
-          Bearer token {tokenConfigured ? '· configured ✓' : ''}
+          Bearer token {tokenConfigured ? '· saved ✓' : builtIn ? '· built-in ✓' : ''}
         </Text>
         <TextInput
           value={tokenInput}
           onChangeText={setTokenInput}
           placeholder={
-            tokenConfigured ? 'Enter a new token to replace' : 'From /etc/syncd/syncd.env'
+            tokenConfigured || builtIn
+              ? 'Enter a new token to override'
+              : 'From /etc/syncd/syncd.env'
           }
           placeholderTextColor={tokens.textMuted}
           autoCapitalize="none"

@@ -399,8 +399,8 @@ export interface DownloadResult {
 }
 
 /**
- * Lazy restore for one run (the debrief's Download): try syncd first (fast
- * on the tailnet), then GitHub; decrypt with the T20 key; verify; write the
+ * Lazy restore for one run (the debrief's Download): try syncd first (the
+ * home server), then GitHub; decrypt with the T20 key; verify; write the
  * files back; point the attempt rows at them; flip `mediaLocal`.
  */
 export async function downloadBundle(runId: string): Promise<DownloadResult> {
