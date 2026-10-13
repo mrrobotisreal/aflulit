@@ -9,7 +9,7 @@ import type { ColorTokens } from '@/theme/colors';
 const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 
 export interface ScenePalette {
-  /** Primary light source / tint — the pack accent when valid, else the theme ember. */
+  /** Primary light source / tint — the pack accent when valid, else the theme accent (blue-violet). */
   glow: string;
   /** Deep shadow wash base (the scrim token, used with alpha). */
   shadow: string;

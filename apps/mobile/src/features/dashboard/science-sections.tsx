@@ -232,9 +232,11 @@ export function ForecastSection({
  * The sequential heatmap ramp, derived from the accent per theme and
  * validated with the dataviz ordinal check (one hue, monotone lightness)
  * AND the T22 contrast bar: every active step ≥ 3:1 vs the card surface
- * (WCAG 1.4.11 non-text) — recorded in the T38 notes:
- * dark  #B3402F 3.2 · #be6153 4.4 · #c88277 6.1 · #d4a79f 8.6 (on #141419)
- * light #b86a5e 4.0 · #A03828 6.8 · #782f25 9.4 · #502623 12.8 (on #FFFFFF)
+ * (WCAG 1.4.11 non-text) — Sumrak T38 established the rule on the ember
+ * ramp; Aflulit's blue-violet ramp (T01) mixes the same way from the new
+ * accent: dark #6C63FF → text-mixed steps on #12112A, light the accent
+ * #4A3CC8 ± surface/text mixes on #FFFFFF. Re-measure in T17 if the mix
+ * ratios change.
  * Level 0 (no activity) is the near-neutral track, so "nothing" never
  * reads as "a little".
  */

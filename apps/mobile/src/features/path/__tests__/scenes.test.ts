@@ -64,7 +64,7 @@ describe('scenePalette', () => {
 
 describe('withAlpha', () => {
   it('converts #RRGGBB + alpha to rgba()', () => {
-    expect(withAlpha('#B3402F', 0.15)).toBe('rgba(179, 64, 47, 0.15)');
+    expect(withAlpha('#6C63FF', 0.15)).toBe('rgba(108, 99, 255, 0.15)');
     expect(withAlpha('#000000', 0)).toBe('rgba(0, 0, 0, 0)');
     expect(withAlpha('#FFFFFF', 1)).toBe('rgba(255, 255, 255, 1)');
   });

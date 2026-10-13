@@ -109,14 +109,14 @@ export function DbProvider({ children }: { children: React.ReactNode }) {
           flex: 1,
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: '#0B0B0E',
+          backgroundColor: '#0A0A17',
           padding: 24,
         }}
       >
-        <Text style={{ color: '#E8E6E3', fontSize: 16, marginBottom: 8 }}>
+        <Text style={{ color: '#E7E6F2', fontSize: 16, marginBottom: 8 }}>
           Database failed to initialize
         </Text>
-        <Text style={{ color: '#9A97A0', fontSize: 13, textAlign: 'center' }}>
+        <Text style={{ color: '#9C9AB8', fontSize: 13, textAlign: 'center' }}>
           {(migrationError ?? bootError)?.message}
         </Text>
       </View>

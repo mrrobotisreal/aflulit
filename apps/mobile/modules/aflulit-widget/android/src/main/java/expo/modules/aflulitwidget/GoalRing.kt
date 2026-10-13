@@ -94,8 +94,8 @@ object GoalRing {
     }
     val path = Path(flame).apply { transform(m) }
     if (tier == FlameTier.ALL) {
-      // Mitch 2026-10-13: a YELLOW ring of light, clear behind the flame, so
-      // the orange-red flame stands out instead of reading as a glowing sphere.
+      // Mitch 2026-10-13: a light-blue ring of light (flameHalo), clear behind the flame, so
+      // the deep purple flame stands out instead of reading as a glowing sphere (Aflulit: light-blue halo).
       val glow = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = flamePx * 0.32f

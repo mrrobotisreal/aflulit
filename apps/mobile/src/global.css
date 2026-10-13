@@ -4,57 +4,61 @@
 
 /*
  * Aflulit theme tokens — single source of truth for color VALUES
- * (UI_DESIGN.md §1). Space-separated RGB so Tailwind alpha modifiers work.
+ * (docs-aflulit/design/UI_DESIGN.md §1). Space-separated RGB so Tailwind
+ * alpha modifiers work.
  *
- * Dark is the default identity ("dark, atmospheric, restrained horror");
- * light is the deliberate warm-paper daylight variant, not an inversion.
+ * Dark is the default identity ("the same quiet, moonlit study app, gone
+ * blue-violet": night-indigo base, blue-violet accent, moon-blue glow);
+ * light is the deliberate cool-paper daylight variant, not an inversion.
  *
  * NOTE: src/theme/colors.ts mirrors these values for the few places CSS
  * classes cannot reach (navigation theme, status bar, splash). Keep in sync.
  */
 
 @layer base {
-  /* Light — warm paper */
+  /* Light — cool paper */
   :root {
-    --bg: 247 245 242; /* #F7F5F2 */
+    --bg: 246 245 251; /* #F6F5FB */
     --surface: 255 255 255; /* #FFFFFF */
-    --surface-2: 239 236 231; /* #EFECE7 */
-    --text: 26 26 31; /* #1A1A1F */
-    --text-muted: 107 104 112; /* #6B6870 */
-    --accent: 160 56 40; /* #A03828 */
-    --success: 90 117 72; /* #5A7548 muted moss */
-    --danger: 150 50 43; /* #96322B dried blood */
-    --border: 226 222 216; /* #E2DED8 */
+    --surface-2: 236 234 246; /* #ECEAF6 */
+    --text: 23 22 43; /* #17162B */
+    --text-muted: 95 92 120; /* #5F5C78 */
+    --accent: 74 60 200; /* #4A3CC8 blue-violet, 7.0:1 on bg */
+    --glow: 31 111 209; /* #1F6FD1 moon-blue — focus rings, karaoke caret, ring highlights */
+    --success: 63 122 96; /* #3F7A60 */
+    --danger: 158 51 70; /* #9E3346 */
+    --border: 222 219 238; /* #DEDBEE */
     --scrim: 0 0 0; /* modal/sheet backdrop wash (used with alpha) */
-    --track-warm: 143 101 52; /* #8F6534 warm honey — «Семья» track identity (T30), 5.1:1 on surface */
-    --gold: 158 122 24; /* #9E7A18 «с запасом» readiness band (T70) */
-    /* CEFR chip ramp — one hue journey, A1 coolest → C1 ember (UI_DESIGN §1) */
-    --level-a1: 78 101 127; /* #4E657F cool slate */
-    --level-a2: 79 112 96; /* #4F7060 sage */
-    --level-b1: 117 104 61; /* #75683D dry olive */
-    --level-b2: 130 85 47; /* #82552F rust */
-    --level-c1: 160 56 40; /* #A03828 ember (= accent) */
+    --track-warm: 126 101 51; /* #7E6533 warm — family-track identity (inherited role) */
+    --gold: 158 122 24; /* #9E7A18 «with margin» readiness band */
+    /* CEFR chip ramp — one cool hue journey, A1 coolest → C1 the accent (UI_DESIGN §1) */
+    --level-a1: 63 95 153; /* #3F5F99 */
+    --level-a2: 62 113 137; /* #3E7189 */
+    --level-b1: 88 98 168; /* #5862A8 */
+    --level-b2: 107 79 184; /* #6B4FB8 */
+    --level-c1: 74 60 200; /* #4A3CC8 (= accent) */
   }
 
-  /* Dark — near-black, desaturated ember (default identity) */
+  /* Dark — deep night-indigo, blue-violet accent (default identity) */
   .dark:root {
-    --bg: 11 11 14; /* #0B0B0E */
-    --surface: 20 20 25; /* #141419 */
-    --surface-2: 28 28 36; /* #1C1C24 */
-    --text: 232 230 227; /* #E8E6E3 */
-    --text-muted: 154 151 160; /* #9A97A0 */
-    --accent: 179 64 47; /* #B3402F */
-    --success: 112 140 90; /* #708C5A muted moss */
-    --danger: 206 106 96; /* #CE6A60 dried blood, lightened for AA text contrast on all dark surfaces (T22 a11y; was #8E3B35 @ 2.65:1) */
-    --border: 38 38 46; /* #26262E */
+    --bg: 10 10 23; /* #0A0A17 */
+    --surface: 18 17 42; /* #12112A */
+    --surface-2: 26 24 56; /* #1A1838 */
+    --text: 231 230 242; /* #E7E6F2 15.9:1 on bg */
+    --text-muted: 156 154 184; /* #9C9AB8 7.2:1 */
+    --accent: 108 99 255; /* #6C63FF blue-violet, 4.55:1 on bg */
+    --glow: 77 177 250; /* #4DB1FA moon-blue 8.4:1 — focus rings, splash title, karaoke caret */
+    --success: 111 165 140; /* #6FA58C */
+    --danger: 208 105 122; /* #D0697A — AA text contrast on all dark surfaces (Sumrak T22 a11y rule) */
+    --border: 38 36 74; /* #26244A */
     --scrim: 0 0 0; /* modal/sheet backdrop wash (used with alpha) */
-    --track-warm: 192 138 74; /* #C08A4A warm candle amber — «Семья» track identity (T30), 6.2:1 on surface */
-    --gold: 226 196 98; /* #E2C462 «с запасом» readiness band (T70) — brighter than track-warm so amber (60–66) and gold (≥ 80) never blur */
-    /* CEFR chip ramp — one hue journey, A1 coolest → C1 ember (UI_DESIGN §1) */
-    --level-a1: 107 127 153; /* #6B7F99 cool slate */
-    --level-a2: 110 139 121; /* #6E8B79 sage */
-    --level-b1: 143 133 90; /* #8F855A dry olive */
-    --level-b2: 156 107 69; /* #9C6B45 rust */
-    --level-c1: 179 64 47; /* #B3402F ember (= accent) */
+    --track-warm: 185 154 91; /* #B99A5B warm — family-track identity (inherited role) */
+    --gold: 226 196 98; /* #E2C462 «with margin» readiness band — brighter than track-warm so amber (60–66) and gold (≥ 80) never blur */
+    /* CEFR chip ramp — one cool hue journey, A1 coolest → C1 the accent (UI_DESIGN §1) */
+    --level-a1: 94 127 184; /* #5E7FB8 */
+    --level-a2: 91 143 168; /* #5B8FA8 */
+    --level-b1: 122 134 201; /* #7A86C9 */
+    --level-b2: 143 114 217; /* #8F72D9 */
+    --level-c1: 108 99 255; /* #6C63FF (= accent) */
   }
 }

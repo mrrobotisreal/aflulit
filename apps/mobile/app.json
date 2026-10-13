@@ -7,11 +7,11 @@
     "icon": "./assets/images/icon.png",
     "scheme": "aflulit",
     "userInterfaceStyle": "automatic",
-    "backgroundColor": "#0B0B0E",
+    "backgroundColor": "#0A0A17",
     "android": {
       "package": "aflulit.creatv.io",
       "adaptiveIcon": {
-        "backgroundColor": "#0B0B0E",
+        "backgroundColor": "#0A0A17",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
@@ -30,7 +30,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#0B0B0E",
+          "backgroundColor": "#0A0A17",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200
         }
@@ -48,7 +48,7 @@
         "expo-notifications",
         {
           "icon": "./assets/images/android-icon-monochrome.png",
-          "color": "#B3402F",
+          "color": "#6C63FF",
           "defaultChannel": "reminders"
         }
       ],

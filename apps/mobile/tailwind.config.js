@@ -17,6 +17,8 @@ module.exports = {
         accent: 'rgb(var(--accent) / <alpha-value>)',
         // accent at 15% — selection washes, highlight, karaoke word bg
         'accent-soft': 'rgb(var(--accent) / 0.15)',
+        // the moonlight second hue (UI_DESIGN §1): focus rings, karaoke caret, ring highlights
+        glow: 'rgb(var(--glow) / <alpha-value>)',
         success: 'rgb(var(--success) / <alpha-value>)',
         danger: 'rgb(var(--danger) / <alpha-value>)',
         border: 'rgb(var(--border) / <alpha-value>)',
@@ -30,7 +32,7 @@ module.exports = {
         'track-warm-soft': 'rgb(var(--track-warm) / 0.15)',
         // Readiness «с запасом» band (T70) — ≥ 80 %
         gold: 'rgb(var(--gold) / <alpha-value>)',
-        // CEFR chip hue ramp (A1 coolest → C1 ember) — used via LevelChip only
+        // CEFR chip hue ramp (A1 coolest → C1 the accent) — used via LevelChip only
         'level-a1': 'rgb(var(--level-a1) / <alpha-value>)',
         'level-a2': 'rgb(var(--level-a2) / <alpha-value>)',
         'level-b1': 'rgb(var(--level-b1) / <alpha-value>)',

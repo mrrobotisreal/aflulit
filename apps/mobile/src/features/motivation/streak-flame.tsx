@@ -10,8 +10,8 @@ import type { FlameTier } from './goal-rings';
 
 /**
  * T84: the streak flame that grades the day (Today card; the widget draws the
- * same tiers natively in GoalRing.kt): unlit outline → pale yellow → bright
- * yellow → bright orange → bright orange-red with a soft yellow halo.
+ * same tiers natively in GoalRing.kt): unlit outline → pale blue → vibrant
+ * light blue → deep blue → deep purple with a soft light-blue halo (UI_DESIGN §1).
  */
 export function flameColor(tier: FlameTier, tokens: ColorTokens): string {
   switch (tier) {
@@ -43,12 +43,12 @@ export function StreakFlame({ tier, size }: { tier: FlameTier; size: number }) {
         >
           <Defs>
             <RadialGradient id="flame-glow" cx="50%" cy="55%" rx="50%" ry="50%">
-              {/* Mitch 2026-10-13: a YELLOW halo, clear behind the flame, so the
-                  orange-red flame stands out instead of reading as a sphere. */}
-              <Stop offset="0" stopColor={tokens.flameYellow} stopOpacity={0} />
-              <Stop offset="0.28" stopColor={tokens.flameYellow} stopOpacity={0.12} />
-              <Stop offset="0.5" stopColor={tokens.flameYellow} stopOpacity={0.45} />
-              <Stop offset="1" stopColor={tokens.flameYellow} stopOpacity={0} />
+              {/* A light-blue halo (flameHalo), clear behind the flame, so the deep
+                  purple flame stands out instead of reading as a sphere. */}
+              <Stop offset="0" stopColor={tokens.flameHalo} stopOpacity={0} />
+              <Stop offset="0.28" stopColor={tokens.flameHalo} stopOpacity={0.12} />
+              <Stop offset="0.5" stopColor={tokens.flameHalo} stopOpacity={0.45} />
+              <Stop offset="1" stopColor={tokens.flameHalo} stopOpacity={0} />
             </RadialGradient>
           </Defs>
           <Circle cx={glow / 2} cy={glow / 2} r={glow / 2} fill="url(#flame-glow)" />
