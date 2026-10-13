@@ -1,4 +1,4 @@
-package expo.modules.sumrakwidget
+package expo.modules.aflulitwidget
 
 import android.content.Context
 import android.content.Intent
@@ -42,7 +42,7 @@ import androidx.compose.ui.unit.sp
 import java.net.URLEncoder
 
 /**
- * The Сумрак home-screen widget (T40). Renders ONLY from the SharedPreferences
+ * The Aflulit home-screen widget (Sumrak T40). Renders ONLY from the SharedPreferences
  * snapshot — never the DB. Every failure path renders the fallback, never throws.
  * Colours mirror `src/theme/colors.ts`.
  */
@@ -102,12 +102,12 @@ internal fun paletteFor(context: Context): WidgetPalette {
 
 internal fun appUri(path: String, from: String? = "widget"): Uri {
   val query = if (from != null) "?from=$from" else ""
-  return Uri.parse("sumrak://$path$query")
+  return Uri.parse("aflulit://$path$query")
 }
 
 /**
  * A VIEW intent pinned to this app (never a chooser) — MainActivity owns the
- * `sumrak` scheme; NEW_TASK + CLEAR_TOP reuse a running task or start cold.
+ * `aflulit` scheme; NEW_TASK + CLEAR_TOP reuse a running task or start cold.
  */
 internal fun viewIntent(context: Context, uri: Uri): Intent =
   Intent(Intent.ACTION_VIEW, uri)
@@ -115,15 +115,15 @@ internal fun viewIntent(context: Context, uri: Uri): Intent =
     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
 
 /** Glance-state key the app bumps on every snapshot write, forcing a re-read. */
-internal val SNAPSHOT_REV = longPreferencesKey("sumrak_snapshot_rev")
+internal val SNAPSHOT_REV = longPreferencesKey("aflulit_snapshot_rev")
 
-class SumrakWidget : GlanceAppWidget() {
+class AflulitWidget : GlanceAppWidget() {
 
   override suspend fun provideGlance(context: Context, id: GlanceId) {
     val palette = paletteFor(context)
     provideContent {
       // Read the snapshot INSIDE composition, keyed on the Glance-state revision
-      // the app bumps on every write (SumrakWidgetModule.refreshAll). Reading it
+      // the app bumps on every write (AflulitWidgetModule.refreshAll). Reading it
       // once before provideContent froze the first value for the whole Glance
       // session — update() recomposed with the stale capture (S25 finding).
       val rev = currentState(SNAPSHOT_REV) ?: 0L
@@ -141,7 +141,7 @@ class SumrakWidget : GlanceAppWidget() {
     }
 
   companion object {
-    private const val TAG = "SumrakWidget"
+    private const val TAG = "AflulitWidget"
   }
 }
 
@@ -289,7 +289,7 @@ private fun GoalRingImage(context: Context, snap: Snapshot, palette: WidgetPalet
         glow = palette.flameYellow,
       ),
     )
-  }.onFailure { Log.w("SumrakWidget", "ring render failed, using bar", it) }.getOrNull()
+  }.onFailure { Log.w("AflulitWidget", "ring render failed, using bar", it) }.getOrNull()
   if (bitmap != null) {
     Image(
       provider = ImageProvider(bitmap),

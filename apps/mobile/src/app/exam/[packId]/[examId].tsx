@@ -1,4 +1,4 @@
-import type { Exam } from '@sumrak/schema';
+import type { Exam } from '@aflulit/schema';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as React from 'react';
 import { Alert } from 'react-native';

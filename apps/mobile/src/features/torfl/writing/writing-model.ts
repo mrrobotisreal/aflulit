@@ -1,4 +1,4 @@
-import type { Exam, ExamSubtest, WritingItem } from '@sumrak/schema';
+import type { Exam, ExamSubtest, WritingItem } from '@aflulit/schema';
 
 import { bulletCoverage, sentenceSplit } from '../grading/writing';
 

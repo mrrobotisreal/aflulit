@@ -4,7 +4,7 @@ import {
   PackTypeSchema,
   StableIdSchema,
   StorySourceSchema,
-} from '@sumrak/schema';
+} from '@aflulit/schema';
 import { z } from 'zod';
 import { REGISTER_SLUGS } from './registers.ts';
 

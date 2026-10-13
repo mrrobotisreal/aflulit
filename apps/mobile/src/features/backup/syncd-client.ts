@@ -5,7 +5,7 @@ import { MEDIA_FILE_RE, parseBackupFileName } from './naming';
 
 /**
  * HTTP client for syncd, the home-server backup service (T21, design §9).
- * The contract is SumrakAPI's three endpoints; every response body is
+ * The contract is AflulitAPI's three endpoints; every response body is
  * Zod-validated before use. Requests carry the bearer token in memory only —
  * it never appears in errors, logs, or analytics (T07/T20 rule).
  *
@@ -123,7 +123,7 @@ export class SyncdClient {
   }
 
   /**
-   * T63 media bundles stored on the home server (`sumrak-media-<runId>.json`),
+   * T63 media bundles stored on the home server (`aflulit-media-<runId>.json`),
    * every name the server lists that matches `MEDIA_FILE_RE`.
    */
   async listMediaBundles(): Promise<{ name: string; size: number }[]> {

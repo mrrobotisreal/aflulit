@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import type { NodeAudio } from '@sumrak/schema';
+import type { NodeAudio } from '@aflulit/schema';
 import {
   DEFAULT_MODEL_ID,
   isTaggedModel,

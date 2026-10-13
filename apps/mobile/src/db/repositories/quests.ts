@@ -1,7 +1,7 @@
 import { and, eq, gte, isNotNull, lt, sql } from 'drizzle-orm';
 
 import { dailyQuests, gameSessions } from '../schema';
-import type { SumrakDB } from '../types';
+import type { AflulitDB } from '../types';
 
 export type DailyQuestRow = typeof dailyQuests.$inferSelect;
 
@@ -18,7 +18,7 @@ export interface DayWindow {
  * no write path to any other feature (recorded decision). The pure kind
  * registry lives in features/motivation/quests.ts.
  */
-export function createQuestsRepo(db: SumrakDB) {
+export function createQuestsRepo(db: AflulitDB) {
   return {
     async get(date: string): Promise<DailyQuestRow | null> {
       const rows = await db.select().from(dailyQuests).where(eq(dailyQuests.date, date)).limit(1);

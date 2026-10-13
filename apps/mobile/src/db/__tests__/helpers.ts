@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import * as schema from '../schema';
-import type { SumrakDB } from '../types';
+import type { AflulitDB } from '../types';
 
 const migrationsFolder = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -15,14 +15,14 @@ const migrationsFolder = path.join(
 /**
  * Fresh in-memory database with ALL migrations applied from empty — every
  * test exercises the exact .sql files the device runs (including the FTS5
- * migration). The better-sqlite3 instance is cast to the shared SumrakDB
+ * migration). The better-sqlite3 instance is cast to the shared AflulitDB
  * handle; drizzle builders are thenable on the sync driver, so awaiting
  * works identically to the expo driver (see src/db/types.ts).
  */
-export function createTestDb(): SumrakDB {
+export function createTestDb(): AflulitDB {
   const sqlite = new Database(':memory:');
   sqlite.pragma('foreign_keys = ON');
   const db = drizzle(sqlite, { schema });
   migrate(db, { migrationsFolder });
-  return db as unknown as SumrakDB;
+  return db as unknown as AflulitDB;
 }

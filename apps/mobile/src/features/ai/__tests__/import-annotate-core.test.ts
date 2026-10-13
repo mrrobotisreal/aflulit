@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { parsePack, reconstructSentenceRu } from '@sumrak/schema';
+import { parsePack, reconstructSentenceRu } from '@aflulit/schema';
 import { describe, expect, it, vi, type Mock } from 'vitest';
 
 import { AiError } from '../errors';

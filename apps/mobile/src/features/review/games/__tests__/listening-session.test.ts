@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { createTestDb } from '@/db/__tests__/helpers';
 import { createRepositories, type Repositories } from '@/db/repositories';
 import { audioTracks, wordStamps } from '@/db/schema';
-import type { SumrakDB } from '@/db/types';
+import type { AflulitDB } from '@/db/types';
 import { foldForAnswer } from '@/lib/text';
 
 import { resolveListeningAudio } from '../listening/audio-source';
@@ -216,7 +216,7 @@ describe('buildListeningSession', () => {
   });
 
   it('returns empty for an empty bank', async () => {
-    const db = createTestDb() as SumrakDB;
+    const db = createTestDb() as AflulitDB;
     const repos = createRepositories(db);
     expect(await buildListeningSession(repos)).toEqual([]);
   });

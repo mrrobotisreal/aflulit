@@ -6,22 +6,22 @@
  * names.
  */
 
-export const BACKUP_FILE_RE = /^sumrak-backup-(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})Z\.json$/;
+export const BACKUP_FILE_RE = /^aflulit-backup-(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})Z\.json$/;
 
 /**
- * T63 media bundles (SPEAKING_SCENARIOS §10.3): `sumrak-media-<runId>.json`,
+ * T63 media bundles (SPEAKING_SCENARIOS §10.3): `aflulit-media-<runId>.json`,
  * one per finished scenario run, immutable, never pruned. The run id is a
  * `newId()` row id (base36 time + random — `[a-z0-9-]`), so the name is
  * separator-free like the snapshot names; the syncd server mirrors this
  * pattern (`internal/naming` `MediaFileRe`).
  */
-export const MEDIA_FILE_RE = /^sumrak-media-([a-z0-9][a-z0-9-]{3,79})\.json$/;
+export const MEDIA_FILE_RE = /^aflulit-media-([a-z0-9][a-z0-9-]{3,79})\.json$/;
 
 export function mediaFileName(runId: string): string {
   if (!/^[a-z0-9][a-z0-9-]{3,79}$/.test(runId)) {
     throw new Error('run id is not a valid media bundle stem');
   }
-  return `sumrak-media-${runId}.json`;
+  return `aflulit-media-${runId}.json`;
 }
 
 /** The run id inside a media bundle name, else null. */
@@ -33,7 +33,7 @@ export function parseMediaFileName(name: string): string | null {
 export function backupFileName(at: Date): string {
   const p = (n: number, w = 2) => String(n).padStart(w, '0');
   return (
-    `sumrak-backup-${p(at.getUTCFullYear(), 4)}${p(at.getUTCMonth() + 1)}${p(at.getUTCDate())}` +
+    `aflulit-backup-${p(at.getUTCFullYear(), 4)}${p(at.getUTCMonth() + 1)}${p(at.getUTCDate())}` +
     `-${p(at.getUTCHours())}${p(at.getUTCMinutes())}${p(at.getUTCSeconds())}Z.json`
   );
 }

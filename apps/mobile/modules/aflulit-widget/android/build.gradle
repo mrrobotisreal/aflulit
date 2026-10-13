@@ -14,11 +14,11 @@ plugins {
 
 apply plugin: 'org.jetbrains.kotlin.plugin.compose'
 
-group = 'io.winapps.sumrak'
+group = 'aflulit.creatv.io'
 version = '0.1.0'
 
 android {
-  namespace "expo.modules.sumrakwidget"
+  namespace "expo.modules.aflulitwidget"
   defaultConfig {
     versionCode 1
     versionName '0.1.0'

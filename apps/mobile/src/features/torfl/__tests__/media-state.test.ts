@@ -15,7 +15,7 @@ describe('parseExamMediaLedger', () => {
   it('accepts a well-formed ledger whole', () => {
     const ledger = {
       v: 1,
-      attempts: { 'abc-1': { state: 'uploaded', name: 'sumrak-media-exam-abc-1.json' } },
+      attempts: { 'abc-1': { state: 'uploaded', name: 'aflulit-media-exam-abc-1.json' } },
     };
     expect(ExamMediaLedgerSchema.parse(ledger)).toEqual(ledger);
     expect(parseExamMediaLedger(ledger)).toEqual(ledger);
@@ -26,13 +26,13 @@ describe('parseExamMediaLedger', () => {
       parseExamMediaLedger({
         v: 1,
         attempts: {
-          ok: { state: 'pending', name: 'sumrak-media-exam-ok.json' },
+          ok: { state: 'pending', name: 'aflulit-media-exam-ok.json' },
           badState: { state: 'done', name: 'x.json' },
           noName: { state: 'uploaded' },
           '': { state: 'uploaded', name: 'x.json' },
         },
       }),
-    ).toEqual({ v: 1, attempts: { ok: { state: 'pending', name: 'sumrak-media-exam-ok.json' } } });
+    ).toEqual({ v: 1, attempts: { ok: { state: 'pending', name: 'aflulit-media-exam-ok.json' } } });
     expect(parseExamMediaLedger(null)).toEqual(DEFAULT_EXAM_MEDIA_LEDGER);
     expect(parseExamMediaLedger('nope')).toEqual(DEFAULT_EXAM_MEDIA_LEDGER);
     expect(parseExamMediaLedger({ v: 2, attempts: [] })).toEqual(DEFAULT_EXAM_MEDIA_LEDGER);

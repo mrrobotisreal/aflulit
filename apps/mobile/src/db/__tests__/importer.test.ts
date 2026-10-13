@@ -1,15 +1,15 @@
-import type { Pack } from '@sumrak/schema';
-import { SchemaValidationError } from '@sumrak/schema';
+import type { Pack } from '@aflulit/schema';
+import { SchemaValidationError } from '@aflulit/schema';
 import { sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
-import comedyJson from '@sumrak/schema/fixtures/packs/a1-comedy-090/pack.json';
-import hallwayJson from '@sumrak/schema/fixtures/packs/a1-course-unit-090/pack.json';
-import greenhouseJson from '@sumrak/schema/fixtures/packs/a1-course-unit-093/pack.json';
-import pack1Json from '@sumrak/schema/fixtures/packs/a1-creepypasta-001/pack.json';
-import pack2Json from '@sumrak/schema/fixtures/packs/a1-creepypasta-002/pack.json';
-import familyJson from '@sumrak/schema/fixtures/packs/a2-family-090/pack.json';
-import newsJson from '@sumrak/schema/fixtures/packs/a2-news-090/pack.json';
+import comedyJson from '@aflulit/schema/fixtures/packs/a1-comedy-090/pack.json';
+import hallwayJson from '@aflulit/schema/fixtures/packs/a1-course-unit-090/pack.json';
+import greenhouseJson from '@aflulit/schema/fixtures/packs/a1-course-unit-093/pack.json';
+import pack1Json from '@aflulit/schema/fixtures/packs/a1-creepypasta-001/pack.json';
+import pack2Json from '@aflulit/schema/fixtures/packs/a1-creepypasta-002/pack.json';
+import familyJson from '@aflulit/schema/fixtures/packs/a2-family-090/pack.json';
+import newsJson from '@aflulit/schema/fixtures/packs/a2-news-090/pack.json';
 
 import { importPack, removePack } from '../importer';
 import { createBankRepo } from '../repositories/bank';

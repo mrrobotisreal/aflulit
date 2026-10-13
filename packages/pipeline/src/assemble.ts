@@ -15,7 +15,7 @@ import {
   type Sentence,
   type Story,
   type Token,
-} from '@sumrak/schema';
+} from '@aflulit/schema';
 import { alignSentence } from './align.ts';
 import { DraftError, type DraftIssue } from './errors.ts';
 import type { DraftSentence, DraftTokenRow, ParsedDraft } from './draft.ts';
@@ -31,7 +31,7 @@ import { draftScenarioSentences, type ParsedScenarioDraft } from './scenario-dra
  * All the "fail loudly" checks that need draft line numbers happen here —
  * missing lemma/translation on word tokens, punctuation rows carrying
  * annotations, bad CEFR cells, misaligned token tables, duplicate ids across
- * drafts. The final Zod parse against `@sumrak/schema`'s PackSchema is the
+ * drafts. The final Zod parse against `@aflulit/schema`'s PackSchema is the
  * backstop gate (design §8: annotate's output is schema-validated before it is
  * ever written); with the pre-checks above it should never fire, but if it
  * does its issues are reported rather than swallowed.

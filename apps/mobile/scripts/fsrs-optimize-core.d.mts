@@ -1,7 +1,7 @@
 /** Type declarations for fsrs-optimize-core.mjs (T39), so TypeScript tests can import it. */
 
-export const REVLOG_KIND: 'sumrak-review-log';
-export const PARAMS_KIND: 'sumrak-fsrs-params';
+export const REVLOG_KIND: 'aflulit-review-log';
+export const PARAMS_KIND: 'aflulit-fsrs-params';
 export const FORMAT_VERSION: 1;
 export const LOW_REVIEW_THRESHOLD: number;
 export const DEFAULT_NEXT_DAY_HOUR: number;
@@ -44,7 +44,7 @@ export function lowReviewWarning(reviewCount: number): string | undefined;
 
 export interface ParamsFile {
   v: 1;
-  kind: 'sumrak-fsrs-params';
+  kind: 'aflulit-fsrs-params';
   w: number[];
   fittedAt: string;
   reviewCount: number;

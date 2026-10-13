@@ -534,8 +534,8 @@ export const instructionCopy = defineCopy<{
     en: 'The speech-recognition model is missing, so answers cannot be graded. Install “Russian speech recognition” in Settings and come back — or skip the subtest.',
   },
   gateMic: {
-    ru: 'Микрофон запрещён: разреши запись звука для Сумрака в настройках системы и вернись — или пропусти субтест.',
-    en: 'The microphone is blocked: allow audio recording for Sumrak in system settings and come back — or skip the subtest.',
+    ru: 'Микрофон запрещён: разреши запись звука для Aflulit в настройках системы и вернись — или пропусти субтест.',
+    en: 'The microphone is blocked: allow audio recording for Aflulit in system settings and come back — or skip the subtest.',
   },
   openSpeechSettings: { ru: 'Открыть настройки речи', en: 'Open speech settings' },
   audioMissing: {

@@ -1,6 +1,6 @@
-import { ExamSchema, type Exam, type Pack } from '@sumrak/schema';
-import examPackJson from '@sumrak/schema/fixtures/packs/a1-exam-fixture/pack.json';
-import a2PackJson from '@sumrak/schema/fixtures/packs/a2-exam-fixture/pack.json';
+import { ExamSchema, type Exam, type Pack } from '@aflulit/schema';
+import examPackJson from '@aflulit/schema/fixtures/packs/a1-exam-fixture/pack.json';
+import a2PackJson from '@aflulit/schema/fixtures/packs/a2-exam-fixture/pack.json';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createTestDb } from '@/db/__tests__/helpers';

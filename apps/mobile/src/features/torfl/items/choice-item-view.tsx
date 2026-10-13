@@ -1,4 +1,4 @@
-import type { ChoiceItem } from '@sumrak/schema';
+import type { ChoiceItem } from '@aflulit/schema';
 import * as React from 'react';
 import { Pressable, Text as RNText, Vibration, View } from 'react-native';
 

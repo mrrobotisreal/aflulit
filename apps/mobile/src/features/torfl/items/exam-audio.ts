@@ -1,5 +1,5 @@
-import type { ExamPart, ExamItem, StoryRef } from '@sumrak/schema';
-import { resolveItemAudio } from '@sumrak/schema';
+import type { ExamPart, ExamItem, StoryRef } from '@aflulit/schema';
+import { resolveItemAudio } from '@aflulit/schema';
 
 import type { Repositories } from '@/db/repositories';
 import type { AudioTrackRow, SentenceWithTokens, WordStampRow } from '@/db/repositories/content';

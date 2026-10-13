@@ -1,4 +1,4 @@
-import { TORFL_SUBTEST_ORDER, type ExamSubtestKind } from '@sumrak/schema';
+import { TORFL_SUBTEST_ORDER, type ExamSubtestKind } from '@aflulit/schema';
 
 import type { IoniconName } from '@/features/library/categories';
 

@@ -9,7 +9,7 @@ import * as React from 'react';
 import { classifyPack, type Classified } from '@/features/library/categories';
 import type { TorflLevel } from '@/features/torfl/level-profile';
 import type { ExamMode, ExamScope } from '@/features/torfl/model';
-import type { ExamSubtestKind } from '@sumrak/schema';
+import type { ExamSubtestKind } from '@aflulit/schema';
 import { queryClient } from '@/lib/query-client';
 import { profileKeyFor } from '@/features/word-forms/profile-core';
 

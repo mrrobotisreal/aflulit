@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { ExerciseSpecSchema, type ExerciseSpec } from '@sumrak/schema';
+import { ExerciseSpecSchema, type ExerciseSpec } from '@aflulit/schema';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import * as React from 'react';

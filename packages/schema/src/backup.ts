@@ -12,7 +12,7 @@ import { z } from 'zod';
  */
 export const BackupEnvelopeSchema = z.strictObject({
   /** Discriminator so a stray file is never mistaken for a backup. */
-  format: z.literal('sumrak-backup'),
+  format: z.literal('aflulit-backup'),
   /** Envelope format version (this shape = 1). Bump on breaking change. */
   version: z.literal(1),
   /** When the snapshot was taken (ISO 8601 with offset). */

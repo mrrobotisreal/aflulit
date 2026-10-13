@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { safeParsePack, scenarioLines, type Pack } from '@sumrak/schema';
+import { safeParsePack, scenarioLines, type Pack } from '@aflulit/schema';
 import { planAudioRun, runAudition, runFinalize, runMouthOnly } from '../src/audio.ts';
 import { annotateDrafts } from '../src/annotate.ts';
 import { ElevenLabsClient } from '../src/elevenlabs.ts';
@@ -29,7 +29,7 @@ const FIXTURE_DRAFT = join(import.meta.dirname, '..', 'fixtures', 'radio-check.s
 
 const tempDirs: string[] = [];
 function tempDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'sumrak-t57-'));
+  const dir = mkdtempSync(join(tmpdir(), 'aflulit-t57-'));
   tempDirs.push(dir);
   return dir;
 }

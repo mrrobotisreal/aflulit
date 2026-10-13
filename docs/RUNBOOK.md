@@ -1,4 +1,4 @@
-# Сумрак — Runbook
+# Aflulit — Runbook (inherited from Sumrak; T17 rewrites)
 
 Operational how-tos for the things done rarely enough to forget. Written (and
 followed verbatim as a test) in T22. Dev/release build mechanics live in the
@@ -10,9 +10,9 @@ diagnostics.
 ## 1. Add new content (a story pack)
 
 Prereqs: repo installed (`pnpm install`), `ffmpeg` on PATH, `ELEVENLABS_API_KEY`
-exported or in a gitignored `.env` at the `Sumrak` repo root, and a local clone
-of the private content repo as a **sibling of this repo** (`../sumrak-content`,
-i.e. the `sumrak-content` directory at the workspace root).
+exported or in a gitignored `.env` at the `Aflulit` repo root, and a local clone
+of the private content repo as a **sibling of this repo** (`../aflulit-content`,
+i.e. the `aflulit-content` directory at the workspace root).
 
 1. **Author the draft(s).** One markdown file per story; a pack with N stories =
    N drafts sharing identical `pack:` frontmatter. The complete, self-contained
@@ -20,7 +20,7 @@ i.e. the `sumrak-content` directory at the workspace root).
    is `packages/pipeline/docs/AUTHORING.md` — a fresh Claude session can author
    from that doc alone. Story sources live in `../Stories/<StoryName>/<LEVEL>/`
    (workspace convention), e.g. `../Stories/TheOldMirror/A1/the-old-mirror.draft.md`.
-2. **Annotate & validate** (from the `Sumrak` repo root):
+2. **Annotate & validate** (from the `Aflulit` repo root):
    ```sh
    pnpm pipeline annotate path/to/story1.draft.md path/to/story2.draft.md -o /tmp/pack-check.json
    ```
@@ -42,7 +42,7 @@ i.e. the `sumrak-content` directory at the workspace root).
    **Stamps are forced-aligned to the Opus (T80).** `audio` re-derives every
    word stamp from the encoded audio (provider character times collapse
    pauses and drift). It needs the aligner venv (AUTHORING «Timestamps»:
-   `SUMRAK_ALIGN_PYTHON`, optional `SUMRAK_ALIGN_DEVICE=mps`) and checks it
+   `AFLULIT_ALIGN_PYTHON`, optional `AFLULIT_ALIGN_DEVICE=mps`) and checks it
    before spending anything. Before publishing run
    `pnpm pipeline stamp-audit ../Stories/_build/<pack-id>` — it must exit 0
    (median ≤ 40 ms, p95 ≤ 120 ms, no step, drift ≤ 20 ms/min). To fix an
@@ -50,14 +50,14 @@ i.e. the `sumrak-content` directory at the workspace root).
 ../Stories/_build/<pack-id>`, then audit again.
 4. **Publish** (commits into the content repo; `--push` is opt-in):
    ```sh
-   pnpm pipeline publish ../Stories/_build/<pack-id> --content ../sumrak-content --push
+   pnpm pipeline publish ../Stories/_build/<pack-id> --content ../aflulit-content --push
    ```
    Updating an existing pack: bump `pack.version` in every draft first —
    publish refuses same-version content drift. `publish` runs `stamp-audit`
    and refuses a failing pack; `--allow-stamp-risk` overrides and logs the
    audit to `<pack-dir>/BUILD_NOTES.md` (use only with a reason in the CT).
 5. **Sync on the phone.** Settings → Content sync must have the repo
-   (`mrrobotisreal/sumrak-content`) and a fine-grained PAT (Contents:
+   (`mrrobotisreal/aflulit-content`) and a fine-grained PAT (Contents:
    read-write) saved. Then Library → pull-to-refresh (or Packs → Check for
    updates). Audio can defer to Wi-Fi per the Wi-Fi-only toggle.
 
@@ -80,7 +80,7 @@ travel, M14 / ADR-0016).** Same five steps, with three differences:
   drafts, `pack.version` bumped in every draft, the same `_build/<pack-id>`
   dir (so earlier opus files are carried), `--stories <new-id>` on the audio
   run; never reorder or re-id old items (the SAR-stories rule,
-  `../sumrak-content/series/sar-stories/SERIES.md` §2).
+  `../aflulit-content/series/sar-stories/SERIES.md` §2).
 - **Publish** as usual; the manifest entry now carries `category`, which the
   app's Библиотека shelves read (T44–T45).
 
@@ -103,7 +103,7 @@ Everything is on-device and on-demand; nothing ships in the APK.
 
 Backups are encrypted snapshots of **user data only** (word bank, reviews,
 journal, progress, settings — never content packs, never secrets). Sources:
-GitHub (`sumrak-content/backups/`), the home server (`syncd` over Tailscale),
+GitHub (`aflulit-content/backups/`), the home server (`syncd` over Tailscale),
 or a local exported file.
 
 On a fresh install (or after data loss):
@@ -141,7 +141,7 @@ On a fresh install (or after data loss):
   the error appears in the log.
 - **DB debug** (dev builds only): Settings → Developer → Database debug.
   Its «Fixture packs (M14)» buttons (T44) import the M14 test packs
-  `a2-news-090` / `a2-podcast-090` / `a1-comedy-090` from `@sumrak/schema`
+  `a2-news-090` / `a2-podcast-090` / `a1-comedy-090` from `@aflulit/schema`
   fixtures — a newspaper article with subtitle + source, a podcast episode,
   and a comedy story — so the category chips, reader header source line and
   badges can be exercised without a content sync (idempotent; re-tap shows
@@ -153,11 +153,11 @@ On a fresh install (or after data loss):
   device DB on a debuggable build:
 
   ```sh
-  adb shell run-as io.winapps.sumrak sqlite3 files/SQLite/sumrak.db \
+  adb shell run-as aflulit.creatv.io sqlite3 files/SQLite/aflulit.db \
     "SELECT source, COUNT(*) FROM review_log GROUP BY source"
   ```
 
-  or pull `sumrak.db` **plus** its `-wal` and `-shm` sidecars (the T44
+  or pull `aflulit.db` **plus** its `-wal` and `-shm` sidecars (the T44
   trap — the WAL holds the newest rows) and open the three locally. The
   Словарь's familiarity sort counts only `flashcard` and NULL rows on
   ru-en / en-ru cards.
@@ -188,12 +188,12 @@ everything else (other genres, podcasts, travel, dialogues, games, review)
 
 ```sh
 export PATH="/opt/homebrew/bin:$PATH"   # ffmpeg + ffprobe from Homebrew
-pnpm --filter sumrak-mobile encode:ambient            # skips unchanged masters (sha256)
-pnpm --filter sumrak-mobile encode:ambient -- --force  # re-encode everything
+pnpm --filter aflulit-mobile encode:ambient            # skips unchanged masters (sha256)
+pnpm --filter aflulit-mobile encode:ambient -- --force  # re-encode everything
 ```
 
 - **Masters** live outside the repo in the workspace-root `assets/audio/`
-  (`../assets/audio` from the `Sumrak` repo root): the Suno WAVs plus
+  (`../assets/audio` from the `Aflulit` repo root): the Suno WAVs plus
   `creepy-bg-music-no-vocals.mp3` for horror. The theme → file table is the
   `SOURCES` constant at the top of `apps/mobile/scripts/encode-ambient-beds.mjs`.
 - **−26 LUFS / −2 dBTP** is the level every bed is normalised to. It equals the
@@ -321,7 +321,7 @@ with **Cancel**. Facts to rely on:
 Read the durable state directly on a debuggable build:
 
 ```sh
-adb shell run-as io.winapps.sumrak sqlite3 files/SQLite/sumrak.db \
+adb shell run-as aflulit.creatv.io sqlite3 files/SQLite/aflulit.db \
   "SELECT value FROM settings WHERE key = 'grammar.batch'"
 ```
 
@@ -426,7 +426,7 @@ glossary coverage report) and **«Scenario audio»** (per-line renders on
 Multilingual v2, variant steering, `--player-audio` coach clips,
 `--audition` / `--seed radio-a1/host=<seed>`, `--mouth-only`, the cost gate).
 The founding pack's bible — cast roster, voices, cue notes, the numbering —
-is `../../sumrak-content/series/scenarios/SCENARIOS.md` once CT020 writes it.
+is `../../aflulit-content/series/scenarios/SCENARIOS.md` once CT020 writes it.
 
 **The art rule.** Mitch's PNG layers live at
 `Stories/scenarios/<family>/art/sized/` (workspace root). The CT session copies
@@ -435,7 +435,7 @@ is `../../sumrak-content/series/scenarios/SCENARIOS.md` once CT020 writes it.
 (≈ 4.7 MB per family — Wi-Fi-gated on the phone like large audio), sets the
 host's `portrait.body` / `eyelids`, and measures **`mouthAnchor`** with the
 **anchor picker**: dev build → Settings → Developer → **Scene gallery**
-(`sumrak://dev-scene`), pick the family, drag the mouth box over the closed
+(`aflulit://dev-scene`), pick the family, drag the mouth box over the closed
 lips, copy the printed `{ x, y, w, h, rotate }` fractions into the draft. The
 podcast host measured `{ x 0.49, y 0.257, w 0.12, h 0.032, rotate 10 }` on the
 1200×1600 body. **Re-publishing a rung with better art or re-auditioned lines
@@ -447,7 +447,7 @@ pnpm pipeline audio Stories/scenarios/<family>/*.scenario.md \
   -o ../Stories/_build/<pack-id> --audition 2            # pick a seed per (scenario, character)
 pnpm pipeline audio … -o ../Stories/_build/<pack-id> \
   --seed <scenario-id>/<host-id>=<seed> --player-audio    # finalize + coach clips
-pnpm pipeline publish ../Stories/_build/<pack-id> --content ../sumrak-content --push
+pnpm pipeline publish ../Stories/_build/<pack-id> --content ../aflulit-content --push
 ```
 
 The size line prints `scene/` separately («of which scene/ 4.68 MB»).
@@ -461,11 +461,11 @@ Optional. Settings → Speech recognition → **Assist model** installs
 without it the app falls back to the glossary (`translit` forms) → the online
 model → the «не знаю» nudge. Every Whisper archive is over GitHub's 100 MB
 tree limit, so it downloads as an asset of the `models` **Release** on
-`sumrak-content` (manifest `release: {tag, asset}`, PAT bearer +
+`aflulit-content` (manifest `release: {tag, asset}`, PAT bearer +
 `Accept: application/octet-stream`), then the k2-fsa mirror as the fallback.
 
 T59's benchmark (20 synthetic «Как сказать <word>» clips per set, macOS `say`
-renders — re-run on Mitch's own voice with `sumrak://dev-assist`):
+renders — re-run on Mitch's own voice with `aflulit://dev-assist`):
 
 | candidate              | glossary-fuzzy recovery (3 sets, ≥ 0.75) | exact word     | decode (median) | resident |
 | ---------------------- | ---------------------------------------- | -------------- | --------------- | -------- |
@@ -518,13 +518,13 @@ directory into one **`SMB1`** blob (`'SMB1'` · u32 header length · JSON
 sizes only, never a transcript), seals it with the **same passphrase key and
 envelope as the snapshots** (`kind: 'media'` in the envelope header; T20 files
 carry no `kind` and read as snapshots) and uploads it under the name
-**`sumrak-media-<runId>.json`** to every enabled target:
+**`aflulit-media-<runId>.json`** to every enabled target:
 
-- **GitHub**: `sumrak-content/backups/media/` (the snapshots stay in
+- **GitHub**: `aflulit-content/backups/media/` (the snapshots stay in
   `backups/`);
-- **syncd**: `PUT /backup?name=sumrak-media-<runId>.json` — the server
-  accepts the media name since the SumrakAPI change of 2026-09-27 (build +
-  deploy `syncd` from `SumrakAPI` `0142268` or later, `deploy/README.md`).
+- **syncd**: `PUT /backup?name=aflulit-media-<runId>.json` — the server
+  accepts the media name since the AflulitAPI change of 2026-09-27 (build +
+  deploy `syncd` from `AflulitAPI` `0142268` or later, `deploy/README.md`).
 
 State on `scenario_runs.mediaBundleState`: `null` (not yet) → `pending`
 (offline / target unreachable) → `uploaded` | `failed` (a target rejected it
@@ -567,14 +567,14 @@ through the Android share sheet, no audio).
 
 ### 8.6 Judge lab and scene gallery (dev builds)
 
-- **Judge lab** — Settings → Developer → Judge lab (`sumrak://dev-judge`):
+- **Judge lab** — Settings → Developer → Judge lab (`aflulit://dev-judge`):
   pick any installed scenario turn, type or speak an answer, see the verdict
   (`matched` / `miss` / `no-speech`), slots hit, paraphrase score, near-miss,
   branch key, the meta-intent chain, and the live endpointing meter with the
   `START` / `LOUD` chips. adb-drivable:
-  `adb shell am start -a android.intent.action.VIEW -d "sumrak://dev-judge?turn=<turnId>&say=<text>"`.
+  `adb shell am start -a android.intent.action.VIEW -d "aflulit://dev-judge?turn=<turnId>&say=<text>"`.
 - **Scene gallery** — Settings → Developer → Scene gallery
-  (`sumrak://dev-scene?line=<sentenceId|index>&rate=0.8`): every installed
+  (`aflulit://dev-scene?line=<sentenceId|index>&rate=0.8`): every installed
   cast in every pose, the mouth driven by a chosen line, the perf probe
   (gfxinfo ≤ 1.6 % janky on the S25 is the T61 baseline) and the **anchor
   picker** of §8.1.
@@ -614,7 +614,7 @@ faithful **timed mock exams** of the five-subtest format (Письмо →
 Лексика. Грамматика → Чтение → Аудирование → Говорение). Design
 `../../docs/design/TORFL_EXAM_PREP.md`, decision ADR-0020 (workspace root).
 Entry points: Библиотека → the **ТРКИ** chip (the pinned hub card),
-Today's «ТРКИ» card, `sumrak://torfl`.
+Today's «ТРКИ» card, `aflulit://torfl`.
 
 ### 9.1 What is where
 
@@ -682,7 +682,7 @@ Wi-Fi» and the subtest can be skipped. Skipped subtests are excluded from
 the verdict (never 0 %). Settings → ТРКИ: English under the RU instructions,
 the optional break screen between subtests, the drill timer.
 
-Dev builds only: `sumrak://exam/run/<attemptId>?devDurationSec=45` shrinks
+Dev builds only: `aflulit://exam/run/<attemptId>?devDurationSec=45` shrinks
 every subtest to N seconds (`devDurationOverrideSec` ignores it in release —
 `exam-finish.test.ts` pins that; re-run it before any release build).
 
@@ -705,8 +705,8 @@ for» / «Storage cap» policy for both, «Prune now», the trash = both roots):
 Pruning deletes files only; the rows (transcript, points, AI comments) stay.
 **Media bundles**: after a finished attempt's transcodes, its dir is packed as
 `SMB1`, sealed with the backup key (`kind: 'media'`) and uploaded to both
-targets as **`sumrak-media-exam-<attemptid>.json`** — the attempt id
-**lowercased**, because syncd's `MediaFileRe` (SumrakAPI
+targets as **`aflulit-media-exam-<attemptid>.json`** — the attempt id
+**lowercased**, because syncd's `MediaFileRe` (AflulitAPI
 `internal/naming/naming.go:24`) accepts lowercase stems only; no API change.
 State lives in the **`torfl.media`** settings row (`{ v:1, attempts: { id: {
 state, name } } }` — `exam_attempts` has no bundle columns and T74 shipped no
@@ -748,7 +748,7 @@ model (Settings → Speech recognition); the screen says so otherwise.
 ### 9.9 A2 (ТБУ) — «ТРКИ-А2» (M19, T75 + T76)
 
 A second, fully separate shelf: Library chip **«ТРКИ-А2»** (category `torfl-a2`),
-its own hub (`/torfl?level=A2`, `sumrak://torfl?level=A2`), readiness, exam deck,
+its own hub (`/torfl?level=A2`, `aflulit://torfl?level=A2`), readiness, exam deck,
 history and exam date (`torfl.examDateA2`). Design
 `../../docs/design/TORFL_A2_EXAM_PREP.md`, ADR-0021.
 
@@ -855,16 +855,16 @@ output file has no lemmas or text.
 1. **Get the review history.**
    - **Route A (preferred, no cable tricks).** On the phone: Settings →
      Scheduling → **«Export review history»**. It writes
-     `sumrak-review-log-<date>.json` into the app's backup folder (the SAF
+     `aflulit-review-log-<date>.json` into the app's backup folder (the SAF
      backup directory). Copy that file to the Mac (e.g. `~/Downloads/`).
    - **Route B (dev only, debuggable build).** Pull the DB:
      ```
-     adb shell am force-stop io.winapps.sumrak
-     adb exec-out run-as io.winapps.sumrak cat files/SQLite/sumrak.db > sumrak.db
-     adb exec-out run-as io.winapps.sumrak cat files/SQLite/sumrak.db-wal > sumrak.db-wal
-     adb exec-out run-as io.winapps.sumrak cat files/SQLite/sumrak.db-shm > sumrak.db-shm
-     cp sumrak.db sumrak-copy.db && cp sumrak.db-wal sumrak-copy.db-wal
-     sqlite3 sumrak-copy.db 'PRAGMA wal_checkpoint(TRUNCATE)'
+     adb shell am force-stop aflulit.creatv.io
+     adb exec-out run-as aflulit.creatv.io cat files/SQLite/aflulit.db > aflulit.db
+     adb exec-out run-as aflulit.creatv.io cat files/SQLite/aflulit.db-wal > aflulit.db-wal
+     adb exec-out run-as aflulit.creatv.io cat files/SQLite/aflulit.db-shm > aflulit.db-shm
+     cp aflulit.db aflulit-copy.db && cp aflulit.db-wal aflulit-copy.db-wal
+     sqlite3 aflulit-copy.db 'PRAGMA wal_checkpoint(TRUNCATE)'
      ```
      Checkpoint a **copy** so the pulled original stays untouched. `run-as`
      is refused on the release build; use Route A there. Route B reads the
@@ -872,12 +872,12 @@ output file has no lemmas or text.
      Mac's).
 2. **Run the optimizer** from the app directory:
    ```
-   cd apps/mobile && node scripts/fsrs-optimize.mjs ~/Downloads/sumrak-review-log-<date>.json
+   cd apps/mobile && node scripts/fsrs-optimize.mjs ~/Downloads/aflulit-review-log-<date>.json
    ```
    Options: `--out <file>` (default `fsrs-params-<YYYY-MM-DD>.json` in the
    current directory), `--tz America/Denver` (default: the export's timezone,
    else this Mac's), `--next-day-hour 4` (the day boundary, default 4 am).
-   For Route B: `node scripts/fsrs-optimize.mjs sumrak-copy.db`.
+   For Route B: `node scripts/fsrs-optimize.mjs aflulit-copy.db`.
 3. **Read the summary.** The fitted log loss should be **≤ the default log
    loss**; the script prints a note if it is not, and in that case choose
    «Revert to defaults» (step 5) rather than importing. If a

@@ -16,7 +16,7 @@ import { Text } from '@/components/ui/text';
 import { repos } from '@/db';
 import { useRunDebrief, useScenario } from '@/db/hooks';
 import { SETTING_KEYS } from '@/db/repositories/settings';
-import type { Ending } from '@sumrak/schema';
+import type { Ending } from '@aflulit/schema';
 import { isBackupConfigured } from '@/features/backup/config';
 import { friendlyBackupMessage } from '@/features/backup/errors';
 import { xpForScenarioRun } from '@/features/motivation/xp';

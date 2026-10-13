@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import type { Exam } from '@sumrak/schema';
+import type { Exam } from '@aflulit/schema';
 import { useRouter } from 'expo-router';
 import * as React from 'react';
 import { AppState } from 'react-native';

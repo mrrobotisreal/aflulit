@@ -9,7 +9,7 @@
  *   (the binding derives delta_t itself) → computeParameters (FSRS-6, short
  *   term on, 1 relearning step) → round to 4 dp → bounds check against
  *   ts-fsrs CLAMP_PARAMETERS → evaluate fitted AND ts-fsrs default_w on the
- *   same items → `sumrak-fsrs-params` file object.
+ *   same items → `aflulit-fsrs-params` file object.
  *
  * Binding CSV (verified against @open-spaced-repetition/binding 0.5.0):
  *   card_id,review_time,review_rating,review_state,review_duration
@@ -27,8 +27,8 @@ import {
   convertCsvToFsrsItems,
 } from '@open-spaced-repetition/binding';
 
-export const REVLOG_KIND = 'sumrak-review-log';
-export const PARAMS_KIND = 'sumrak-fsrs-params';
+export const REVLOG_KIND = 'aflulit-review-log';
+export const PARAMS_KIND = 'aflulit-fsrs-params';
 export const FORMAT_VERSION = 1;
 /** FSRS guidance: optimization is unreliable below ~1000 reviews. */
 export const LOW_REVIEW_THRESHOLD = 1000;
@@ -89,7 +89,7 @@ export function normalizeRows(rawRows) {
   });
 }
 
-/** Parse and validate an in-app `sumrak-review-log` export (the exact T39 shape). */
+/** Parse and validate an in-app `aflulit-review-log` export (the exact T39 shape). */
 export function parseExportJson(text) {
   let obj;
   try {
@@ -238,7 +238,7 @@ export function lowReviewWarning(reviewCount) {
   );
 }
 
-/** Build the exact `sumrak-fsrs-params` v1 file object the app's importer validates. */
+/** Build the exact `aflulit-fsrs-params` v1 file object the app's importer validates. */
 export function buildParamsFile({
   w,
   fittedAt,

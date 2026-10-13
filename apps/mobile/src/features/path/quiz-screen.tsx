@@ -1,4 +1,4 @@
-import type { ExerciseSpec } from '@sumrak/schema';
+import type { ExerciseSpec } from '@aflulit/schema';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import * as React from 'react';

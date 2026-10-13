@@ -1,10 +1,10 @@
-# Authoring drafts for Сумрак (Sumrak)
+# Authoring drafts for Aflulit (inherited from Sumrak; T03 rewrites this for Hebrew)
 
 **This document is self-contained.** If you are a Claude session asked to author a new story draft, everything you need is here: the draft file grammar, the annotation rules, the gotchas, and a complete worked example. You do not need the app, the design doc, or network access — only this doc and the `pipeline` CLI.
 
 ## What a draft is
 
-A **draft** is one markdown file containing **one story**: its metadata, its sentences (Russian + English), and a full token-by-token annotation table for every sentence. The pipeline turns drafts into a validated `pack.json` — the content format the Sumrak app imports. The pipeline **never invents content**: every word's dictionary form and gloss must be authored by you, and any gap stops the build with a `file:line:` error.
+A **draft** is one markdown file containing **one story**: its metadata, its sentences (Russian + English), and a full token-by-token annotation table for every sentence. The pipeline turns drafts into a validated `pack.json` — the content format the Aflulit app imports. The pipeline **never invents content**: every word's dictionary form and gloss must be authored by you, and any gap stops the build with a `file:line:` error.
 
 A **pack** is the unit the app installs. A pack with several stories = several draft files (one per story) that share identical `pack:` frontmatter, passed to the CLI together in reading order.
 
@@ -12,7 +12,7 @@ Since T25 there is a second draft kind: **dialogue drafts** (one file = one bran
 
 ## Running the pipeline
 
-From the `Sumrak` repo root:
+From the `Aflulit` repo root:
 
 ```bash
 # draft(s) → pack.json (validated against the shared Zod schema before writing)
@@ -35,7 +35,7 @@ pnpm pipeline audio s1.draft.md s2.draft.md -o packs/my-pack \
 # Iterate story-by-story with --stories / --tracks — pack.json merges.
 
 # publish the finished pack dir into the content repo (commit; push is opt-in)
-pnpm pipeline publish packs/my-pack --content ../sumrak-content --push
+pnpm pipeline publish packs/my-pack --content ../aflulit-content --push
 ```
 
 **Voice ids must resolve to a voice on the ElevenLabs account** — the resolver matches the alias before " - tagline" in the account's voice list. Copy the id from a recently published draft rather than inventing one; a wrong id fails at the first render call (annotate only shape-checks it). Since ADR-0016 the default voice is **`elevenlabs:Mr. Wintrow`** (Mitch's professional clone on the new account, `professional`, id `HQ4Xi3gPf8Q6bJUlao6z`) — a direction that names a `register:` and no `voice:` renders with it. Character voices are cast per family in its `SERIES.md`; confirm against the account before an audio session (the old account's My-Voices library — `Anton`, `Ivan`, `Lunya - Little Fairy` … — is **not** on the new one; see `sentenceAudio` below for carrying such lines).
@@ -116,7 +116,7 @@ first sentence only). None of it is story content: drafts are authored from the
 STRIPPED body, and a small converter (`Stories/_build/<pack>/cues-from-doc.py`,
 modes `--strip` / `--rekey` / `--apply`) writes the `voice:` blocks by exact
 sentence-text match, failing loudly on any mismatch. The reusable contract is
-`sumrak-content/series/lost-shadow/SERIES.md` §2.1.
+`aflulit-content/series/lost-shadow/SERIES.md` §2.1.
 
 **Speech/narration split for inline-attributed dialogue (CT015):** when a
 story's dialogue carries attribution and action _inside_ dash paragraphs
@@ -133,7 +133,7 @@ sentence, or a single sentence mixing speech and attribution («— Коннер
 authored to it verbatim. Very short character runs («— Да?») render fine on
 `eleven_v3` but should be gated per run with ASR (a run that hallucinates on
 two seeds folds back to the narrator by removing its marker). The contract is
-`sumrak-content/series/roadwork/SERIES.md` §2.1 (additions 1–3).
+`aflulit-content/series/roadwork/SERIES.md` §2.1 (additions 1–3).
 
 `pipeline publish` refuses same-version content changes: bump `pack.version`
 in every draft of the pack instead.
@@ -169,7 +169,7 @@ pnpm pipeline stamp-audit <pack-dir|pack.json>… [--track id] [--json out.json]
 pnpm pipeline restamp <pack-dir|pack.json> [--track id] [-o out.json]
 pnpm pipeline audio drafts… -o <pack-dir> --seed …      # re-stamps by default
 pnpm pipeline audio drafts… -o <pack-dir> --no-restamp  # keep provider stamps
-pnpm pipeline publish <pack-dir> --content ../sumrak-content [--allow-stamp-risk]
+pnpm pipeline publish <pack-dir> --content ../aflulit-content [--allow-stamp-risk]
 ```
 
 - `stamp-audit` reports per track: median / p95 |offset| (published start vs the
@@ -192,10 +192,10 @@ pnpm pipeline publish <pack-dir> --content ../sumrak-content [--allow-stamp-risk
   now also warns when the stamped tail ends > 1 s before the audio does.
 
 **Runtime.** Python 3.12 venv with `torch torchaudio transformers numpy`
-(`/opt/homebrew/bin/python3.12 -m venv ~/.venvs/sumrak-align && ~/.venvs/sumrak-align/bin/pip install torch torchaudio transformers numpy`).
-Point the pipeline at it with `SUMRAK_ALIGN_PYTHON=~/.venvs/sumrak-align/bin/python`
-(optional `SUMRAK_ALIGN_DEVICE=mps` — about 10× faster on Apple silicon; cache
-dir `SUMRAK_ALIGN_CACHE`, default `~/.cache/sumrak-align`, keyed by
+(`/opt/homebrew/bin/python3.12 -m venv ~/.venvs/aflulit-align && ~/.venvs/aflulit-align/bin/pip install torch torchaudio transformers numpy`).
+Point the pipeline at it with `AFLULIT_ALIGN_PYTHON=~/.venvs/aflulit-align/bin/python`
+(optional `AFLULIT_ALIGN_DEVICE=mps` — about 10× faster on Apple silicon; cache
+dir `AFLULIT_ALIGN_CACHE`, default `~/.cache/aflulit-align`, keyed by
 sha256(audio + words)). The first run downloads the 1.2 GB model into the
 Hugging Face cache (`HF_HOME`; set `HF_HUB_OFFLINE=1` afterwards). A full sweep
 of all 493 published tracks (11.1 h of audio) took ≈ 75 min on MPS; one
@@ -598,7 +598,7 @@ No `SPEAKER:` in choices — choices always speak as `player`. A node with `CHOI
 - `packages/pipeline/fixtures/broken/` — deliberately broken drafts showing the big failure classes (missing lemma, misaligned table, dead branch, trap cycle, dangling references; for scenarios: a dangling `on` target, `EXPECT:` without `RETRY:`, `branchOn` on a free slot, plus two broken `pack.json`s — half-voiced and mouth-track mismatch; for exams (`exam-*`, annotate them with `exam-fixture/rd-01` + `ls-01`): a dangling `storyId`, a non-contiguous span, Σ points ≠ `maxPoints`, `answer` out of range, a speaking item in a reading subtest, a monologue group of 3, a bullet cue with punctuation, and the half-voiced `exam-half-voiced.pack.json`) and their error messages.
 - `packages/schema/src/pack.ts` + `packages/schema/src/dialogue.ts` (+ `scenario.ts`, `exam.ts`) — the Zod schemas every emitted pack must satisfy (the pipeline runs them for you).
 
-## Content guidance for Sumrak stories
+## Content guidance for stories (Sumrak-era; T03 rewrites)
 
 Target reader: an adult A1→C1 learner who loves Dark-Somnium-style creepypasta. For story packs:
 
@@ -617,9 +617,9 @@ The news, education, podcast, documentary and travel shelves are fed by the same
 - **documentary** (`register: voiceover`): measured third person; numbers, dates and measurements stated plainly; place names in full — a multi-word place name is one `name` token per word (the roadwork bible's «Северная Каролина» rule), and a river / range / city keeps its capital in the lemma.
 - **travel** (`register: guide`): second person «вы» throughout; imperatives — «посмотрите», «поверните», «попробуйте»; sensory adjectives (light, smell, sound, texture); the guide's own opinion is allowed («одно из моих любимых»).
 
-**News drafts in practice (CT019, the first `category: news` pack):** a news article arrives as an editorially final `ARTICLE.md` whose `## Текст / Body` carries `[…]` lines of free Russian stage direction («Диктор объявляет новый сюжет:») immediately before a paragraph or a `###` heading; a scratch converter (`Stories/_build/a2-news-001/cues-from-doc.py --cue-kind context`, modes `--strip` / `--rekey` / `--apply` / `--table`) strips them into `stripped/item-NN.txt` (the pack text, byte for byte — headings become plain sentence blocks with no terminal period) and re-keys each to the FIRST sentence of its paragraph as a `contextCues` entry, so the `voice:` block carries only `id` / `register: anchor` / `deliveryNotes` / `contextCues`. **Ukrainian proper names are written in Ukrainian orthography inside the Russian text** («Київ», «Володимир Зеленський», «Крим»), indeclinable, `name` rows with lemma = surface, no level, and are **sent to ElevenLabs exactly as written** (never transliterated for the voice); the ASR-WER gate excludes those tokens. Any scratch script with a `[а-я]` word regex must be widened to `[а-яёіїєґ]` or those names vanish from its counts. The reusable contract is `sumrak-content/series/news/SERIES.md` §1 (the naming canon) and §2.1 (the converter).
+**News drafts in practice (CT019, the first `category: news` pack):** a news article arrives as an editorially final `ARTICLE.md` whose `## Текст / Body` carries `[…]` lines of free Russian stage direction («Диктор объявляет новый сюжет:») immediately before a paragraph or a `###` heading; a scratch converter (`Stories/_build/a2-news-001/cues-from-doc.py --cue-kind context`, modes `--strip` / `--rekey` / `--apply` / `--table`) strips them into `stripped/item-NN.txt` (the pack text, byte for byte — headings become plain sentence blocks with no terminal period) and re-keys each to the FIRST sentence of its paragraph as a `contextCues` entry, so the `voice:` block carries only `id` / `register: anchor` / `deliveryNotes` / `contextCues`. **Ukrainian proper names are written in Ukrainian orthography inside the Russian text** («Київ», «Володимир Зеленський», «Крим»), indeclinable, `name` rows with lemma = surface, no level, and are **sent to ElevenLabs exactly as written** (never transliterated for the voice); the ASR-WER gate excludes those tokens. Any scratch script with a `[а-я]` word regex must be widened to `[а-яёіїєґ]` or those names vanish from its counts. The reusable contract is `aflulit-content/series/news/SERIES.md` §1 (the naming canon) and §2.1 (the converter).
 
-**Anthology packs grow by appending** (the SAR-stories rule, `sumrak-content/series/sar-stories/SERIES.md` §2; `LIBRARY_CATEGORIES.md` §6): one open-ended pack per shelf and rung — `a2-news-001`, `a2-edu-001`, `a2-podcast-001`, `a2-doc-001`, `a2-travel-001` (the level prefix follows the rung; a second rung is a new pack id). New items are new drafts appended **after** the existing ones at a `pack.version` bump; old items are never reordered, re-ided or re-rendered; one build dir per pack forever so every earlier opus is carried.
+**Anthology packs grow by appending** (the SAR-stories rule, `aflulit-content/series/sar-stories/SERIES.md` §2; `LIBRARY_CATEGORIES.md` §6): one open-ended pack per shelf and rung — `a2-news-001`, `a2-edu-001`, `a2-podcast-001`, `a2-doc-001`, `a2-travel-001` (the level prefix follows the rung; a second rung is a new pack id). New items are new drafts appended **after** the existing ones at a `pack.version` bump; old items are never reordered, re-ided or re-rendered; one build dir per pack forever so every earlier opus is carried.
 
 ## Scenario drafts (`*.scenario.md` — M17, T56)
 
@@ -865,7 +865,7 @@ They also print the **glossary coverage report**: every **content lemma the cast
 
 ### Scenario audio (T57)
 
-> **Scenario host voices — the six fixed voice IDs (Mitch, 2026-10-04).** The six «Сценарии» hosts render ONLY from these ElevenLabs voice ids, no exceptions: Кирилл `8dhAblFTpeeEB1XoNWkd` · Елена Сергеевна `24cpwcP86kWKZVm5xL51` · Оксана `jbdzge6XKKuimi00dJwg` · Витя `KZH0fz8sc0VdgvPJ9sYb` · лейтенант Громов `KCHQFvRLLOBtTYbW6N09` · Незнакомец `ArHXzPPSKFNaYrb6JndW`. Write the raw id into the draft (`voice: 'elevenlabs:8dhAblFTpeeEB1XoNWkd'` — `resolveVoiceId` passes a 20-character id through untouched) rather than the voice's display name: the account keeps retired look-alike designs under similar names, and a name lookup could silently re-cast a host. The per-family drivers `packages/pipeline/_<host>-v4-render.mts` (and `_<host>-a2-v4-render.mts`) pin the same ids. The coach stays `River` on Multilingual v2. Roster + history: `sumrak-content/series/scenarios/SCENARIOS.md` §2.
+> **Scenario host voices — the six fixed voice IDs (Mitch, 2026-10-04).** The six «Сценарии» hosts render ONLY from these ElevenLabs voice ids, no exceptions: Кирилл `8dhAblFTpeeEB1XoNWkd` · Елена Сергеевна `24cpwcP86kWKZVm5xL51` · Оксана `jbdzge6XKKuimi00dJwg` · Витя `KZH0fz8sc0VdgvPJ9sYb` · лейтенант Громов `KCHQFvRLLOBtTYbW6N09` · Незнакомец `ArHXzPPSKFNaYrb6JndW`. Write the raw id into the draft (`voice: 'elevenlabs:8dhAblFTpeeEB1XoNWkd'` — `resolveVoiceId` passes a 20-character id through untouched) rather than the voice's display name: the account keeps retired look-alike designs under similar names, and a name lookup could silently re-cast a host. The per-family drivers `packages/pipeline/_<host>-v4-render.mts` (and `_<host>-a2-v4-render.mts`) pin the same ids. The coach stays `River` on Multilingual v2. Roster + history: `aflulit-content/series/scenarios/SCENARIOS.md` §2.
 
 `pipeline audio` renders a scenario **per line** on Multilingual v2 — every `SAY:`, `CONFUSED:`/`HINT:`/`SECOND:`, `REACT:`, glossary `EXPLAIN:`/`HOWTOSAY:` and nudge becomes its own Opus file in the speaking character's library voice at `audio/<scenario-id>/<sentence-id>.opus`, with word stamps (the ≥95 % aligner gate + monotonicity per line; an untrusted alignment ships that line with no stamps) and a **mouth track** written into the line's `audio.mouth`. The per-line core (`line-audio.ts`) is the one dialogues use; scenarios add the variant steering and the mouth track.
 
@@ -1058,7 +1058,7 @@ Schema errors (everything in this section that says "must") fail `annotate` with
 
 ### Ids (the TORFL convention)
 
-Story ids: `rd-<NN>` reading texts · `ls-<NN>` listening scripts · `ex-<NN>` examiner lines · `md-<slug>` model answers · `lx-<topic>` lexicon topics. Sentence ids: `tf<level><pack-code><NN>-sNN`, e.g. `tfa1m01r01-s01` = A1, mock 01 (`m01`; drill and study packs take the code the CT bible assigns — e.g. `lx` for the lexicon, `fx` for the T67 fixture), story kind + number `r01` (`r` reading, `l` listening, `e` examiner, `d` model answer), sentence 01. It is a convention the pipeline does not enforce (sentence ids only have to be unique pack-wide), so follow the bible. Exam ids: `a1-mock-NN`, drill ids per the CT bible. The CT bible `sumrak-content/series/torfl/TORFL.md` is the canonical id table.
+Story ids: `rd-<NN>` reading texts · `ls-<NN>` listening scripts · `ex-<NN>` examiner lines · `md-<slug>` model answers · `lx-<topic>` lexicon topics. Sentence ids: `tf<level><pack-code><NN>-sNN`, e.g. `tfa1m01r01-s01` = A1, mock 01 (`m01`; drill and study packs take the code the CT bible assigns — e.g. `lx` for the lexicon, `fx` for the T67 fixture), story kind + number `r01` (`r` reading, `l` listening, `e` examiner, `d` model answer), sentence 01. It is a convention the pipeline does not enforce (sentence ids only have to be unique pack-wide), so follow the bible. Exam ids: `a1-mock-NN`, drill ids per the CT bible. The CT bible `aflulit-content/series/torfl/TORFL.md` is the canonical id table.
 
 ### A2 (ТБУ) mocks (M19, T75)
 

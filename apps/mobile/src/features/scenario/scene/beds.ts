@@ -5,7 +5,7 @@ import { SCENE_BED_SOURCES } from './bed-sources';
  * UNDER the cast's speech — not study soundtracks (never routed through the
  * M15 controller). The known slugs are the six families' rooms + `none`;
  * the registry lists only the slugs whose Opus exists in
- * `assets/audio/scene/` (encoded by `pnpm --filter sumrak-mobile encode:scene`
+ * `assets/audio/scene/` (encoded by `pnpm --filter aflulit-mobile encode:scene`
  * at −32 LUFS from the workspace-root `assets/audio/scene/` masters),
  * reconciled against the `beds.json` ledger by `scene-beds.test.ts`.
  *

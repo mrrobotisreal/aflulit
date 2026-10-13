@@ -103,7 +103,7 @@ describe('buildReviewLogExport', () => {
 describe('reviewLogFileName', () => {
   it('uses the local calendar date', () => {
     expect(reviewLogFileName(new Date(2026, 0, 5, 9, 30))).toBe(
-      'sumrak-review-log-2026-01-05.json',
+      'aflulit-review-log-2026-01-05.json',
     );
   });
 });

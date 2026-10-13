@@ -2,27 +2,27 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Asset } from 'expo-asset';
 import { Directory, File, Paths } from 'expo-file-system';
 
-import pack1 from '@sumrak/schema/fixtures/packs/a1-creepypasta-001/pack.json';
-import pack2 from '@sumrak/schema/fixtures/packs/a1-creepypasta-002/pack.json';
-import pack3 from '@sumrak/schema/fixtures/packs/a1-prompts-001/pack.json';
+import pack1 from '@aflulit/schema/fixtures/packs/a1-creepypasta-001/pack.json';
+import pack2 from '@aflulit/schema/fixtures/packs/a1-creepypasta-002/pack.json';
+import pack3 from '@aflulit/schema/fixtures/packs/a1-prompts-001/pack.json';
 
 import { initAnalyticsSink, track } from '@/services/analytics';
 
 import { importPack, reimportLocalPacks } from './importer';
 import type { Repositories } from './repositories';
 import { SETTING_KEYS } from './repositories/settings';
-import type { SumrakDB } from './types';
+import type { AflulitDB } from './types';
 
 /** Bundled narration audio, keyed by pack id → AudioTrack.file relative path. */
 const BUNDLED_AUDIO: Record<string, Record<string, number>> = {
   'a1-creepypasta-001': {
     'audio/knock-in-the-wall-anton-creepy.opus':
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      require('@sumrak/schema/fixtures/packs/a1-creepypasta-001/audio/knock-in-the-wall-anton-creepy.opus'),
+      require('@aflulit/schema/fixtures/packs/a1-creepypasta-001/audio/knock-in-the-wall-anton-creepy.opus'),
   },
 };
 
-const LEGACY_THEME_STORAGE_KEY = 'sumrak-theme';
+const LEGACY_THEME_STORAGE_KEY = 'aflulit-theme';
 
 /**
  * First-run (and every-run, idempotently) bootstrap, called once migrations
@@ -36,7 +36,7 @@ const LEGACY_THEME_STORAGE_KEY = 'sumrak-theme';
  * 4. backfill FSRS cards for bank items that predate T06 (or predate a
  *    direction activating in T12/T14) — idempotent, no-op when healthy.
  */
-export async function runBootstrap(db: SumrakDB, repos: Repositories): Promise<void> {
+export async function runBootstrap(db: AflulitDB, repos: Repositories): Promise<void> {
   initAnalyticsSink((event, props) => void repos.stats.logEvent(event, props));
 
   await migrateLegacyThemeSetting(repos);

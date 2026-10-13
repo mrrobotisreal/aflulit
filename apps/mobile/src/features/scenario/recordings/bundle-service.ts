@@ -43,9 +43,9 @@ import { transcodeQueue } from './transcode-queue';
  * Media bundles (T63, SPEAKING_SCENARIOS §10.3): after a run finishes and
  * its transcodes are done, `bundleRun(runId)` packs the run dir into one
  * `SMB1` blob, seals it with the T20 key (`kind: 'media'`), names it
- * `sumrak-media-<runId>.json` and uploads it to every enabled target —
+ * `aflulit-media-<runId>.json` and uploads it to every enabled target —
  * GitHub under `backups/media/`, syncd through `putBackup` (the server
- * accepts the media name since the paired SumrakAPI change). State on the
+ * accepts the media name since the paired AflulitAPI change). State on the
  * run row: `null → pending → uploaded | failed`; the pump (`pumpBundles`)
  * retries `pending` + `failed` runs from the auto-backup trigger points and
  * picks up never-bundled finished runs (a kill before scheduling). Bundles
@@ -63,7 +63,7 @@ export type BundleState = 'pending' | 'uploaded' | 'failed';
  * two sources — a scenario RUN (`scenario_runs` bundle columns, T63) and an
  * exam ATTEMPT (`recordings/exam/<attemptId>/`, state in the `torfl.media`
  * ledger). A source knows its id, its root, its bundle NAME on the targets
- * (`sumrak-media-<runId>.json` · `sumrak-media-exam-<attemptid>.json` — the
+ * (`aflulit-media-<runId>.json` · `aflulit-media-exam-<attemptid>.json` — the
  * attempt id LOWERCASED for the syncd `MediaFileRe`), how to read / write
  * its state and which files to pack.
  */

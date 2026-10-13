@@ -1,4 +1,4 @@
-import type { Exam, ExamSubtestKind } from '@sumrak/schema';
+import type { Exam, ExamSubtestKind } from '@aflulit/schema';
 
 import { scoreSpeakingSubtest } from '../grading/speaking';
 import { gradeWritingOffline } from '../grading/writing';

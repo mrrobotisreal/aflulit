@@ -38,7 +38,7 @@ export interface Register {
 export const DEFAULT_VOICE = 'elevenlabs:Mr. Wintrow';
 
 export const REGISTERS: Record<RegisterSlug, Register> = {
-  // The CT011e v2 settings pinned in sumrak-content/series/no-end-house/
+  // The CT011e v2 settings pinned in aflulit-content/series/no-end-house/
   // SERIES.md §5.6 (CT011e, 2026-09-19): "the clone's own defaults stability
   // 0.5 / style 0 / similarityBoost 0.75 / useSpeakerBoost true" — no speed
   // pinned there, so 1.00.

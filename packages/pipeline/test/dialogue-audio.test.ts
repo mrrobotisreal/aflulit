@@ -3,7 +3,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { safeParsePack, type Pack } from '@sumrak/schema';
+import { safeParsePack, type Pack } from '@aflulit/schema';
 import { planAudioRun, runAudition, runFinalize } from '../src/audio.ts';
 import { planDialogueItems } from '../src/dialogue-audio.ts';
 import { annotateDrafts } from '../src/annotate.ts';
@@ -20,7 +20,7 @@ const FIXTURE_DRAFT = join(import.meta.dirname, '..', 'fixtures', 'the-dinner.di
 
 const tempDirs: string[] = [];
 function tempDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'sumrak-t26-'));
+  const dir = mkdtempSync(join(tmpdir(), 'aflulit-t26-'));
   tempDirs.push(dir);
   return dir;
 }

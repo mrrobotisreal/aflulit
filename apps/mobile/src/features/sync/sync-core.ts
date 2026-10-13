@@ -1,4 +1,4 @@
-import type { Manifest, ManifestEntry, ManifestFile } from '@sumrak/schema';
+import type { Manifest, ManifestEntry, ManifestFile } from '@aflulit/schema';
 
 import type { SyncStateRow } from '@/db/repositories/sync-state';
 

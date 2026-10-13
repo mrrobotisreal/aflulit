@@ -3,7 +3,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { resolveContinueTarget, type ContinueTarget } from '@/features/reader/continue-target';
 
 import { stories, storyProgress } from '../schema';
-import type { SumrakDB } from '../types';
+import type { AflulitDB } from '../types';
 
 export type StoryProgressRow = typeof storyProgress.$inferSelect;
 
@@ -20,7 +20,7 @@ export function readStateOf(row: StoryProgressRow | null | undefined): ReadState
  * finished-story fact the Library indicator and later progress/path
  * tickets (T17/T18) read.
  */
-export function createReadingRepo(db: SumrakDB) {
+export function createReadingRepo(db: AflulitDB) {
   return {
     async getProgress(packId: string, storyId: string): Promise<StoryProgressRow | null> {
       const rows = await db

@@ -1,6 +1,6 @@
 import json,re,difflib,subprocess,numpy as np,os
 R='/Users/mitchwintrow/Workspaces/Russian/'
-P=R+'sumrak-content/packs/'
+P=R+'aflulit-content/packs/'
 D=R+'Stories/_build/stamp-audit-2026-10-10/'
 def norm(s): return re.sub(r'[^а-я]','',s.lower().replace('ё','е'))
 def pack_json(pack,after=None):

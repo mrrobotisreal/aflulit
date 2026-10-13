@@ -5,7 +5,7 @@ import {
   type ExamSubtest,
   type StoryRef,
   type TypedItem,
-} from '@sumrak/schema';
+} from '@aflulit/schema';
 
 /**
  * The objective scoring core (T70, TORFL_EXAM_PREP §6.1) — PURE (no DB, no

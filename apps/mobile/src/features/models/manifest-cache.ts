@@ -1,4 +1,4 @@
-import { parseModelsManifest, type ModelsManifest } from '@sumrak/schema';
+import { parseModelsManifest, type ModelsManifest } from '@aflulit/schema';
 import { File, Paths } from 'expo-file-system';
 
 import type { GithubContentClient } from '@/features/sync/github-client';

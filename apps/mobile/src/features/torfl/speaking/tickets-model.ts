@@ -1,4 +1,4 @@
-import type { Exam, SpeakingMonologueItem, SpeakingTurnItem } from '@sumrak/schema';
+import type { Exam, SpeakingMonologueItem, SpeakingTurnItem } from '@aflulit/schema';
 
 import type { ExamSummaryLike } from '../hub-model';
 import type { TorflLevel } from '../level-profile';

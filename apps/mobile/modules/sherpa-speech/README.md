@@ -1,6 +1,6 @@
 # sherpa-speech — local Expo module (T11 + T12 + T59)
 
-On-device Russian speech for Сумрак, wrapping [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx):
+On-device speech for Aflulit (Russian until T08 swaps in Hebrew Whisper), wrapping [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx):
 
 - **TTS (T11)**: Piper VITS Russian voices (Руслан / Ирина / Денис / Дмитрий), streamed to an `AudioTrack` as synthesis chunks arrive.
 - **ASR (T12)**: offline Zipformer transducer (Russian, int8) + mic capture (AudioRecord → 16 kHz mono PCM16 WAV — the exact input format the recognizer wants, since Android's MediaRecorder can't produce WAV). TTS and ASR run on separate single-thread executors so neither queues behind the other.
@@ -55,7 +55,7 @@ Same pattern via `src/features/pronunciation/asr-manager.ts`: `sherpa-onnx-zipfo
 
 ## Assist model (T59)
 
-`src/features/pronunciation/assist-manager.ts` + `assist-catalog.ts`: one Whisper multilingual archive from the k2-fsa `asr-models` release assets (int8 encoder + int8 decoder + tokens are what the module loads; the fp32 twins ship in the same archive and are simply not opened), installed under `documentDirectory/assist-models/<dirName>/`, resolved manifest-first through the T23 resolver like every other model. Which size is pinned (tiny / base / small) is the T59 benchmark's decision — see the T59 row in `docs/SUMRAK_TICKETS.md`.
+`src/features/pronunciation/assist-manager.ts` + `assist-catalog.ts`: one Whisper multilingual archive from the k2-fsa `asr-models` release assets (int8 encoder + int8 decoder + tokens are what the module loads; the fp32 twins ship in the same archive and are simply not opened), installed under `documentDirectory/assist-models/<dirName>/`, resolved manifest-first through the T23 resolver like every other model. Which size is pinned (tiny / base / small) is the T59 benchmark's decision — see the Sumrak T59 row in `../Russian/docs/SUMRAK_TICKETS.md`.
 
 ## Upgrading sherpa-onnx
 

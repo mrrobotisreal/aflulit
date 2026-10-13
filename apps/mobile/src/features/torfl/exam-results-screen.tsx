@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import type { Exam } from '@sumrak/schema';
+import type { Exam } from '@aflulit/schema';
 import { useRouter } from 'expo-router';
 import * as React from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';

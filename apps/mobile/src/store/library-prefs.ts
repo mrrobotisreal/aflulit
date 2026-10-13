@@ -1,4 +1,4 @@
-import { StableIdSchema } from '@sumrak/schema';
+import { StableIdSchema } from '@aflulit/schema';
 import { create } from 'zustand';
 
 import { repos } from '@/db';

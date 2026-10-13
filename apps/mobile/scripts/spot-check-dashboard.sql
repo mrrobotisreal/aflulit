@@ -2,10 +2,10 @@
 -- repo's definitions, for reconciling on-screen numbers against the
 -- device DB (ticket item 7 + acceptance criteria). Usage:
 --
---   mkdir -p /tmp/sumrak-db && cd /tmp/sumrak-db
---   for f in sumrak.db sumrak.db-shm sumrak.db-wal; do
---     adb exec-out "run-as io.winapps.sumrak cat files/SQLite/$f" > $f; done
---   sqlite3 sumrak.db < <path-to>/spot-check-dashboard.sql
+--   mkdir -p /tmp/aflulit-db && cd /tmp/aflulit-db
+--   for f in aflulit.db aflulit.db-shm aflulit.db-wal; do
+--     adb exec-out "run-as aflulit.creatv.io cat files/SQLite/$f" > $f; done
+--   sqlite3 aflulit.db < <path-to>/spot-check-dashboard.sql
 --
 -- Definitions (recorded T18 decisions):
 --   bands by MIN reviewed ru-en/en-ru card stability: <7 shaky · 7–30 young · ≥30 mature

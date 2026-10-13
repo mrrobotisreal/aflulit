@@ -1,4 +1,4 @@
-import type { ExamSubtestKind } from '@sumrak/schema';
+import type { ExamSubtestKind } from '@aflulit/schema';
 
 import type { ExamVerdict } from './model';
 import { TORFL_PROFILES, type TorflLevel } from './level-profile';

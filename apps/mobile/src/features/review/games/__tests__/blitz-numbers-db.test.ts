@@ -5,7 +5,7 @@ import { createTestDb } from '@/db/__tests__/helpers';
 import { createRepositories } from '@/db/repositories';
 import { SETTING_KEYS } from '@/db/repositories/settings';
 import { cards, dailyActivity, reviewLog } from '@/db/schema';
-import type { SumrakDB } from '@/db/types';
+import type { AflulitDB } from '@/db/types';
 
 import {
   BLITZ_DURATION_MS,
@@ -40,7 +40,7 @@ function seeded(seed: number): () => number {
 }
 
 async function seedWord(
-  db: SumrakDB,
+  db: AflulitDB,
   repos: ReturnType<typeof createRepositories>,
   lemma: string,
   stability: number | null,

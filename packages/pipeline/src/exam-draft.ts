@@ -1,4 +1,4 @@
-import { ExamSchema, type Exam } from '@sumrak/schema';
+import { ExamSchema, type Exam } from '@aflulit/schema';
 import YAML, { LineCounter, isNode } from 'yaml';
 import { z } from 'zod';
 import { normalizeDeep, splitFrontmatter } from './draft.ts';

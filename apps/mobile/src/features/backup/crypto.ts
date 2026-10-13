@@ -1,4 +1,4 @@
-import { parseBackupEnvelope, type BackupEnvelope } from '@sumrak/schema';
+import { parseBackupEnvelope, type BackupEnvelope } from '@aflulit/schema';
 import { gcm } from '@noble/ciphers/aes.js';
 import { pbkdf2Async } from '@noble/hashes/pbkdf2.js';
 import { sha256 } from '@noble/hashes/sha2.js';
@@ -11,7 +11,7 @@ import { BackupError } from './errors';
 /**
  * Pure crypto core for backup snapshots (T20; T21's syncd target reuses this
  * unchanged). Pipeline: payload JSON → gzip → AES-256-GCM → base64 inside
- * the envelope (schema in @sumrak/schema — self-describing: salt + iteration
+ * the envelope (schema in @aflulit/schema — self-describing: salt + iteration
  * count ride in every file so a fresh device needs only the passphrase).
  *
  * Everything here is deterministic given its inputs: randomness (salt, IV)
@@ -75,7 +75,7 @@ export function encryptBackupBytes(
   const gzipped = gzipSync(plaintext);
   const ciphertext = gcm(key, params.iv).encrypt(gzipped);
   return {
-    format: 'sumrak-backup',
+    format: 'aflulit-backup',
     version: 1,
     createdAt: params.createdAt.toISOString(),
     ...(params.appVersion ? { appVersion: params.appVersion } : {}),

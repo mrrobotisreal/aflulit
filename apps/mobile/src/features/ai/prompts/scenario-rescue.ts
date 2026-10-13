@@ -1,4 +1,4 @@
-import type { Slot } from '@sumrak/schema';
+import type { Slot } from '@aflulit/schema';
 
 import type { ChatMessage } from '../client';
 

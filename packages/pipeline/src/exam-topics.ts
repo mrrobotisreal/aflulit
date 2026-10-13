@@ -1,4 +1,4 @@
-import type { ExamSubtestKind } from '@sumrak/schema';
+import type { ExamSubtestKind } from '@aflulit/schema';
 
 /**
  * The TORFL §3.4 topic slugs (A1) plus the TORFL_A2_EXAM_PREP §4 additions

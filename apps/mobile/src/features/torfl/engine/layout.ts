@@ -1,4 +1,4 @@
-import { resolveItemAudio, type ExamPart, type ExamSubtest } from '@sumrak/schema';
+import { resolveItemAudio, type ExamPart, type ExamSubtest } from '@aflulit/schema';
 
 /**
  * Subtest layout (T71) — PURE. The flat item order of a subtest, and the

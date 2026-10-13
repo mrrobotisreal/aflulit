@@ -12,7 +12,7 @@ import {
   type AnyColumn,
   type SQL,
 } from 'drizzle-orm';
-import { ExamSchema, type Exam, type ExamSubtestKind } from '@sumrak/schema';
+import { ExamSchema, type Exam, type ExamSubtestKind } from '@aflulit/schema';
 import { createEmptyCard, Rating, type Card as FsrsCard, type Grade } from 'ts-fsrs';
 import type { z } from 'zod';
 
@@ -41,7 +41,7 @@ import { track } from '@/services/analytics';
 
 import { newId } from '../ids';
 import { examAttempts, examItemCards, examResponses, exams } from '../schema';
-import type { SumrakDB } from '../types';
+import type { AflulitDB } from '../types';
 import { getReviewScheduler } from './reviews';
 
 /**
@@ -255,7 +255,7 @@ export function levelIs(level: TorflLevel, packId: AnyColumn): SQL {
   return sql`COALESCE(${exams.level}, CASE WHEN ${packId} LIKE 'a2-%' THEN 'A2' ELSE 'A1' END) = ${level}`;
 }
 
-export function createExamsRepo(db: SumrakDB) {
+export function createExamsRepo(db: AflulitDB) {
   const parseWarned = new Set<string>();
   /** Parsed-exam memo keyed by `packId/examId`, invalidated when the stored JSON changes (pack update). */
   const examCache = new Map<string, { json: string; exam: Exam | null }>();

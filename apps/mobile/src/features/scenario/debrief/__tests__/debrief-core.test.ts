@@ -296,7 +296,7 @@ describe('transcriptText', () => {
         },
       ],
     });
-    expect(text).toContain('Сумрак · Сценарий — У врача (A1)');
+    expect(text).toContain('Aflulit · Сценарий — У врача (A1)');
     expect(text).toContain('Концовка: Выздоравливайте');
     expect(text).toContain(
       'Ходов 2 · чистых 1 · промахов 1 · подсказок 0 · пропусков 0 · средний балл 72',

@@ -1,5 +1,5 @@
-import { ExamSchema, type Exam, type Pack } from '@sumrak/schema';
-import examPackJson from '@sumrak/schema/fixtures/packs/a1-exam-fixture/pack.json';
+import { ExamSchema, type Exam, type Pack } from '@aflulit/schema';
+import examPackJson from '@aflulit/schema/fixtures/packs/a1-exam-fixture/pack.json';
 import { sql } from 'drizzle-orm';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -11,7 +11,7 @@ import { scoreChoice, scoreTyped } from '@/features/torfl/scoring';
 import { importPack } from '../importer';
 import { createRepositories } from '../repositories';
 import { State } from '../repositories/reviews';
-import type { SumrakDB } from '../types';
+import type { AflulitDB } from '../types';
 import { createTestDb } from './helpers';
 
 vi.mock('@/services/analytics', () => ({ track: vi.fn() }));
@@ -28,7 +28,7 @@ const DRILL = ExamSchema.parse(PACK.exams!.find((e) => e.id === 'a1-drill-fx')) 
 const MOCK = ExamSchema.parse(PACK.exams!.find((e) => e.id === 'a1-mock-fx')) as Exam;
 const T0 = 1_790_000_000_000;
 
-let db: SumrakDB;
+let db: AflulitDB;
 let repos: ReturnType<typeof createRepositories>;
 const count = async (table: string) =>
   (await db.all<{ n: number }>(sql.raw(`SELECT COUNT(*) AS n FROM ${table}`)))[0]!.n;

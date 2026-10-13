@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /*
- * Sumrak theme tokens — single source of truth for color VALUES
+ * Aflulit theme tokens — single source of truth for color VALUES
  * (UI_DESIGN.md §1). Space-separated RGB so Tailwind alpha modifiers work.
  *
  * Dark is the default identity ("dark, atmospheric, restrained horror");

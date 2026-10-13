@@ -1,11 +1,11 @@
-package expo.modules.sumrakwidget
+package expo.modules.aflulitwidget
 
 // Cross-process contract for the home-screen widget (T40). Mirror of
 // apps/mobile/src/features/motivation/widget-contract.ts — keep both in sync
 // (widget-snapshot.test.ts asserts these literals against the TS constants).
 
 /** SharedPreferences file name. */
-const val PREFS_NAME = "sumrak_widget"
+const val PREFS_NAME = "aflulit_widget"
 
 /** SharedPreferences key holding the JSON snapshot string. */
 const val KEY_SNAPSHOT = "snapshot"

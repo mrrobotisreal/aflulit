@@ -1,4 +1,4 @@
-package expo.modules.sumrakwidget
+package expo.modules.aflulitwidget
 
 import android.content.Context
 import android.util.Log
@@ -15,9 +15,9 @@ import kotlinx.coroutines.launch
  * synchronously, then triggers a widget refresh on a background scope. Native
  * failures are logged and never thrown into JS.
  */
-class SumrakWidgetModule : Module() {
+class AflulitWidgetModule : Module() {
   override fun definition() = ModuleDefinition {
-    Name("SumrakWidget")
+    Name("AflulitWidget")
 
     Function("writeSnapshot") { json: String ->
       val context = appContext.reactContext ?: return@Function
@@ -48,13 +48,13 @@ class SumrakWidgetModule : Module() {
   }
 
   companion object {
-    private const val TAG = "SumrakWidget"
+    private const val TAG = "AflulitWidget"
 
     /** Re-renders every placed instance (Glance 1.1.1 has no `updateAll`; use the manager's ids). */
     internal suspend fun refreshAll(context: Context) {
-      val widget = SumrakWidget()
+      val widget = AflulitWidget()
       val manager = GlanceAppWidgetManager(context)
-      for (id in manager.getGlanceIds(SumrakWidget::class.java)) {
+      for (id in manager.getGlanceIds(AflulitWidget::class.java)) {
         // Bump the revision so a live Glance session re-reads the snapshot.
         updateAppWidgetState(context, id) { prefs -> prefs[SNAPSHOT_REV] = System.currentTimeMillis() }
         widget.update(context, id)

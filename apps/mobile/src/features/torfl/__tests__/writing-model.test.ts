@@ -1,6 +1,6 @@
-import { ExamSchema, type Exam } from '@sumrak/schema';
-import a1ExamPack from '@sumrak/schema/fixtures/packs/a1-exam-fixture/pack.json';
-import a2ExamPack from '@sumrak/schema/fixtures/packs/a2-exam-fixture/pack.json';
+import { ExamSchema, type Exam } from '@aflulit/schema';
+import a1ExamPack from '@aflulit/schema/fixtures/packs/a1-exam-fixture/pack.json';
+import a2ExamPack from '@aflulit/schema/fixtures/packs/a2-exam-fixture/pack.json';
 import { describe, expect, it } from 'vitest';
 
 import {

@@ -18,7 +18,7 @@
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync, copyFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import { PackSchema, scenarioLines, type Pack, type Scenario } from '@sumrak/schema';
+import { PackSchema, scenarioLines, type Pack, type Scenario } from '@aflulit/schema';
 import { ElevenLabsClient, isTaggedModel } from './src/elevenlabs.ts';
 import { resolveEnvVar } from './src/env.ts';
 import { renderLine, finalizeLine, RequestPacer, type LineRenderSpec } from './src/line-audio.ts';
@@ -142,7 +142,7 @@ if (mode === 'audition') {
 } else if (mode === 'finalize') {
   const renderDir = join(OUT, 'render');
   mkdirSync(renderDir, { recursive: true });
-  const lines = new Map<string, import('@sumrak/schema').LineAudio>();
+  const lines = new Map<string, import('@aflulit/schema').LineAudio>();
   // carry already-finalized v3 lines (resume support) + everything of the coach from chris-v1
   const prevFile = join(OUT, 'pack.json');
   if (existsSync(prevFile)) {

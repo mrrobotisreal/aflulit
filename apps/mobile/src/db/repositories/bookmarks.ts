@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 import { newId } from '../ids';
 import { bookmarks } from '../schema';
-import type { SumrakDB } from '../types';
+import type { AflulitDB } from '../types';
 
 /**
  * Story/sentence bookmarks (T24, V2 §7.1). Content refs are unenforced
@@ -32,7 +32,7 @@ export interface ToggleResult {
   added: boolean;
 }
 
-export function createBookmarksRepo(db: SumrakDB) {
+export function createBookmarksRepo(db: AflulitDB) {
   function parseRows(rows: unknown[]): BookmarkRow[] {
     return rows.map((r) => BookmarkRowSchema.parse(r));
   }

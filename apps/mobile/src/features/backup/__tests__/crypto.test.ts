@@ -35,7 +35,7 @@ describe('backup crypto', () => {
   it('round-trips payload JSON through gzip + AES-GCM, preserving ё and NFC', async () => {
     const payload = JSON.stringify({ тест: 'тёмный лес', mixed: 'ещё раз — ok', n: 42 });
     const envelope = seal(payload);
-    expect(envelope.format).toBe('sumrak-backup');
+    expect(envelope.format).toBe('aflulit-backup');
     expect(envelope.cipher.iterations).toBe(ITERATIONS);
     expect(decryptBackupEnvelope(envelope, key)).toBe(payload);
   });

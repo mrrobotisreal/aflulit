@@ -15,7 +15,7 @@ import { deriveBackupKey, KDF_ITERATIONS_DEFAULT, KDF_SALT_BYTES } from './crypt
  * expo-secure-store (Android Keystore-backed) ONLY. The raw passphrase is
  * never stored anywhere — it exists transiently in the setup/restore forms.
  */
-const KEY_STORE_KEY = 'sumrak.backup.key';
+const KEY_STORE_KEY = 'aflulit.backup.key';
 
 const KdfConfigSchema = z.strictObject({
   saltB64: z.string().min(1),

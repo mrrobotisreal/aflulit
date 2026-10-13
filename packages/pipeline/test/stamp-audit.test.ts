@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync } from 'no
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import type { Pack, Sentence } from '@sumrak/schema';
+import type { Pack, Sentence } from '@aflulit/schema';
 import {
   assertOnlyTimestampsChanged,
   auditPack,
@@ -50,7 +50,7 @@ const sentences: Sentence[] = Array.from({ length: N / 6 }, (_, s) => ({
 }));
 
 function makeAudio(): { dir: string; file: string; durationMs: number } {
-  const dir = mkdtempSync(join(tmpdir(), 'sumrak-t80sa-'));
+  const dir = mkdtempSync(join(tmpdir(), 'aflulit-t80sa-'));
   dirs.push(dir);
   const durationMs = trueStart(N) + 500;
   // sum of gated sines, one per word
@@ -285,7 +285,7 @@ describe('structural + lemma lint', () => {
 describe('publish gate', () => {
   const { dir, durationMs } = makeAudio();
   const content = () => {
-    const c = mkdtempSync(join(tmpdir(), 'sumrak-t80pub-'));
+    const c = mkdtempSync(join(tmpdir(), 'aflulit-t80pub-'));
     dirs.push(c);
     execFileSync('git', ['init', '-q', '-b', 'main'], { cwd: c });
     execFileSync('git', ['config', 'user.email', 't@t'], { cwd: c });

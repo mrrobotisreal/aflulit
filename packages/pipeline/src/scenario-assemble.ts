@@ -17,7 +17,7 @@ import {
   type ScenarioTurn,
   type Sentence,
   type Slot,
-} from '@sumrak/schema';
+} from '@aflulit/schema';
 import type { DraftIssue } from './errors.ts';
 import type { DraftSentence } from './draft.ts';
 import type { ParsedScenarioDraft } from './scenario-draft.ts';

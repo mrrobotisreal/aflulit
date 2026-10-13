@@ -20,11 +20,11 @@ import {
   type Manifest,
   type ManifestEntry,
   type Pack,
-} from '@sumrak/schema';
+} from '@aflulit/schema';
 
 /**
  * `pipeline publish` (T09, design §8 step 4): put a finished pack dir into
- * the `sumrak-content` repo — copy files, recompute sha256 hashes + byte
+ * the `aflulit-content` repo — copy files, recompute sha256 hashes + byte
  * sizes, update `manifest.json`, and commit (push only with `--push`).
  *
  * Version discipline: a pack with changed content but an unbumped version is

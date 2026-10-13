@@ -1,6 +1,6 @@
 import { emitMotivationEvent } from '@/services/motivation-bus';
 
-import type { SumrakDB } from '../types';
+import type { AflulitDB } from '../types';
 import { createBankRepo } from './bank';
 import { createBookmarksRepo } from './bookmarks';
 import { createContentRepo } from './content';
@@ -29,7 +29,7 @@ import { createWordFormsRepo } from './word-forms';
  * is idempotent, and running it on deduped adds too quietly heals items
  * that predate T06.
  */
-export function createRepositories(db: SumrakDB) {
+export function createRepositories(db: AflulitDB) {
   const reviews = createReviewsRepo(db);
   return {
     content: createContentRepo(db),

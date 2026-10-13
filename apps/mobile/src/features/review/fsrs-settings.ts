@@ -34,7 +34,7 @@ const WEIGHT_BOUNDS: [number, number][] = CLAMP_PARAMETERS(W17_W18_Ceiling, true
 export const OptimizerFileSchema = z
   .object({
     v: z.literal(1),
-    kind: z.literal('sumrak-fsrs-params'),
+    kind: z.literal('aflulit-fsrs-params'),
     w: z.array(z.number()).length(W_COUNT),
     fittedAt: z.string(),
     reviewCount: z.number().int(),
@@ -69,8 +69,8 @@ export function parseOptimizerFile(text: string): ParseOptimizerResult {
   }
   if (raw === null || typeof raw !== 'object') return { ok: false, reason: 'not a params file' };
   const obj = raw as Record<string, unknown>;
-  if (obj.kind !== 'sumrak-fsrs-params')
-    return { ok: false, reason: 'not a Sumrak FSRS params file' };
+  if (obj.kind !== 'aflulit-fsrs-params')
+    return { ok: false, reason: 'not an Aflulit FSRS params file' };
   if (obj.v !== 1) return { ok: false, reason: `unsupported version ${String(obj.v)}` };
   if (!Array.isArray(obj.w)) return { ok: false, reason: 'missing weights (w)' };
   if (obj.w.length !== W_COUNT) {

@@ -12,7 +12,7 @@ import { SETTING_KEYS } from '@/db/repositories/settings';
  * (same as the PAT): after a full wipe the restored settings bring the host
  * back but the token must be re-entered.
  */
-const TOKEN_STORE_KEY = 'sumrak.backup.syncd.token';
+const TOKEN_STORE_KEY = 'aflulit.backup.syncd.token';
 
 const SyncdConfigSchema = z.strictObject({
   /** Base URL of the service on the tailnet, e.g. "http://homeserver:8787". */

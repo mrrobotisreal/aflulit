@@ -17,7 +17,7 @@ export type BackupErrorCode =
   | 'syncd-unreachable'
   /** syncd target failed for a non-reachability reason (bad token, HTTP error). */
   | 'syncd'
-  /** File is not a sumrak-backup envelope (or is a corrupted one). */
+  /** File is not a aflulit-backup envelope (or is a corrupted one). */
   | 'invalid-envelope'
   /** Wrong passphrase OR ciphertext corruption — AES-GCM cannot tell them apart. */
   | 'decrypt-failed'
@@ -65,7 +65,7 @@ export function friendlyBackupMessage(err: unknown): string {
     case 'syncd':
       return `Home server backup failed: ${e.message}. Check the host and token in Settings → Backup.`;
     case 'invalid-envelope':
-      return 'That file is not a Sumrak backup (or it is corrupted).';
+      return 'That file is not an Aflulit backup (or it is corrupted).';
     case 'decrypt-failed':
       return 'Could not decrypt the backup — wrong passphrase, or the file is corrupted. Nothing was changed.';
     case 'invalid-payload':

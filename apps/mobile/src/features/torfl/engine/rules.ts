@@ -1,4 +1,4 @@
-import type { ExamSubtest } from '@sumrak/schema';
+import type { ExamSubtest } from '@aflulit/schema';
 
 import type { TorflPrefs } from '../settings-core';
 

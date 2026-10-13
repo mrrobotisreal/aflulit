@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
-import type { SpeakingMonologueItem, SpeakingTurnItem } from '@sumrak/schema';
+import type { SpeakingMonologueItem, SpeakingTurnItem } from '@aflulit/schema';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as React from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, View } from 'react-native';

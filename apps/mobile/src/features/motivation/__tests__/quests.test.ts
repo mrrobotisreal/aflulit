@@ -9,7 +9,7 @@ import {
   journalEntries,
   storyProgress,
 } from '@/db/schema';
-import type { SumrakDB } from '@/db/types';
+import type { AflulitDB } from '@/db/types';
 import { seedStory } from '@/features/review/games/__tests__/seed';
 import { addDaysToKey, localDayWindow } from '@/lib/dates';
 
@@ -136,7 +136,7 @@ function makeEnv(
 }
 
 /** A game_sessions row ended inside `day` (noon local). */
-async function finishSession(db: SumrakDB, mode: string, day: string, completed: boolean) {
+async function finishSession(db: AflulitDB, mode: string, day: string, completed: boolean) {
   const t = localDayWindow(day).start + 12 * 3_600_000;
   await db.insert(gameSessions).values({
     id: `${mode}-${day}-${Math.random()}`,

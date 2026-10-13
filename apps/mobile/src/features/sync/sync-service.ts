@@ -1,4 +1,4 @@
-import { parseManifest, type ManifestEntry } from '@sumrak/schema';
+import { parseManifest, type ManifestEntry } from '@aflulit/schema';
 import * as Crypto from 'expo-crypto';
 import { Directory, File, Paths } from 'expo-file-system';
 import * as Network from 'expo-network';

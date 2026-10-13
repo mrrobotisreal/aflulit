@@ -9,7 +9,7 @@ import {
   type Ending,
   type ScenarioCharacter,
   type ScenarioScene,
-} from '@sumrak/schema';
+} from '@aflulit/schema';
 import { z } from 'zod';
 
 import { track } from '@/services/analytics';
@@ -29,7 +29,7 @@ import {
   sentences,
   tokens,
 } from '../schema';
-import type { SumrakDB } from '../types';
+import type { AflulitDB } from '../types';
 import type { SentenceWithTokens } from './content';
 
 /**
@@ -280,7 +280,7 @@ function parseJsonText(raw: string | null): unknown {
   }
 }
 
-export function createScenariosRepo(db: SumrakDB) {
+export function createScenariosRepo(db: AflulitDB) {
   const parseWarned = new Set<string>();
 
   /** Zod-on-read with the one-app_error-per-row rule; `null` on failure. */

@@ -4,7 +4,7 @@ import {
   type ExamItem,
   type ExamSubtest,
   type ExamSubtestKind,
-} from '@sumrak/schema';
+} from '@aflulit/schema';
 
 import { OPTION_LETTERS, acceptedDisplay, scoreItem, type ItemOutcome } from './scoring';
 import { isAnswered, type ExamAnswer, type ExamResults } from './model';

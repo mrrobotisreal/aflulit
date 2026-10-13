@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 import { STABILITY_MATURE_MIN, STABILITY_YOUNG_MIN } from '@/lib/mastery';
 import { computeStreak } from '@/lib/streak';
 
-import type { SumrakDB } from '../types';
+import type { AflulitDB } from '../types';
 
 /**
  * Progress-dashboard aggregations (T18, design §7.6). Read-only: this repo
@@ -186,7 +186,7 @@ const CORE_JOIN = sql`
     GROUP BY b.lemma_norm
   )`;
 
-export function createDashboardRepo(db: SumrakDB) {
+export function createDashboardRepo(db: AflulitDB) {
   return {
     /**
      * Core-vocabulary coverage (T38, V2 §7.7): each installed reference

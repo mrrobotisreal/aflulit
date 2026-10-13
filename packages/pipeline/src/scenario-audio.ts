@@ -10,7 +10,7 @@ import {
   type ScenarioLine,
   type ScenarioLineKind,
   type Sentence,
-} from '@sumrak/schema';
+} from '@aflulit/schema';
 import type { ElevenLabsClient, VoiceSettings } from './elevenlabs.ts';
 import {
   finalizeLine,

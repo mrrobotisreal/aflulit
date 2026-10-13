@@ -8,10 +8,10 @@
  *
  * 1. A `release` signingConfig that reads the keystore location and
  *    credentials from environment variables (never from the repo):
- *      SUMRAK_KEYSTORE_PATH      absolute path to the .keystore file
- *      SUMRAK_KEYSTORE_PASSWORD  keystore password
- *      SUMRAK_KEY_ALIAS          key alias
- *      SUMRAK_KEY_PASSWORD       key password
+ *      AFLULIT_KEYSTORE_PATH      absolute path to the .keystore file
+ *      AFLULIT_KEYSTORE_PASSWORD  keystore password
+ *      AFLULIT_KEY_ALIAS          key alias
+ *      AFLULIT_KEY_PASSWORD       key password
  *    When the env vars are absent at *Gradle* time, the release buildType
  *    falls back to the debug key (same behavior as stock Expo) so ordinary
  *    dev workflows never break; scripts/release-android.sh refuses to run
@@ -30,12 +30,12 @@ const { withAppBuildGradle, withGradleProperties } = require('expo/config-plugin
 const SIGNING_BLOCK = `        release {
             // Injected by plugins/with-release-signing.js (T22). Reads the
             // keystore from env — no key material in the repo, ever.
-            def sumrakStore = System.getenv("SUMRAK_KEYSTORE_PATH")
-            if (sumrakStore) {
-                storeFile file(sumrakStore)
-                storePassword System.getenv("SUMRAK_KEYSTORE_PASSWORD")
-                keyAlias System.getenv("SUMRAK_KEY_ALIAS")
-                keyPassword System.getenv("SUMRAK_KEY_PASSWORD")
+            def aflulitStore = System.getenv("AFLULIT_KEYSTORE_PATH")
+            if (aflulitStore) {
+                storeFile file(aflulitStore)
+                storePassword System.getenv("AFLULIT_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("AFLULIT_KEY_ALIAS")
+                keyPassword System.getenv("AFLULIT_KEY_PASSWORD")
             }
         }
 `;
@@ -57,7 +57,7 @@ function withReleaseSigning(config) {
   return withAppBuildGradle(config, (config) => {
     let gradle = config.modResults.contents;
 
-    if (!gradle.includes('SUMRAK_KEYSTORE_PATH')) {
+    if (!gradle.includes('AFLULIT_KEYSTORE_PATH')) {
       // Add the release signingConfig right after the stock debug one.
       gradle = gradle.replace(
         /(signingConfigs\s*\{\s*\n\s*debug\s*\{[\s\S]*?\n\s*\}\n)/,
@@ -67,7 +67,7 @@ function withReleaseSigning(config) {
       // Point the release buildType at it when the env is present.
       gradle = gradle.replace(
         /(release\s*\{[^}]*?)signingConfig signingConfigs\.debug/,
-        '$1signingConfig System.getenv("SUMRAK_KEYSTORE_PATH") ? signingConfigs.release : signingConfigs.debug',
+        '$1signingConfig System.getenv("AFLULIT_KEYSTORE_PATH") ? signingConfigs.release : signingConfigs.debug',
       );
     }
 

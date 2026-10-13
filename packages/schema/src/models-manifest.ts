@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { StableIdSchema } from './common';
 
 /**
- * `models-manifest.json` at the `sumrak-content` repo root (T23, V2 §2):
+ * `models-manifest.json` at the `aflulit-content` repo root (T23, V2 §2):
  * the index of self-hosted speech-model archives mirrored from the k2-fsa
  * release assets into `models/{tts,asr}/`. Deliberately a separate file and
  * schema from the pack `manifest.json` — the pack manifest's schemaVersion

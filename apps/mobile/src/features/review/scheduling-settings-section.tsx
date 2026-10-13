@@ -359,7 +359,7 @@ function OptimizerSheet({
                   setText(t);
                   if (error) setError(null);
                 }}
-                placeholder='{"v":1,"kind":"sumrak-fsrs-params", …}'
+                placeholder='{"v":1,"kind":"aflulit-fsrs-params", …}'
                 placeholderTextColor={tokens.textMuted}
                 multiline
                 autoCorrect={false}

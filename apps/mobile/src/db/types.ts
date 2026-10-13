@@ -11,4 +11,4 @@ import type * as schema from './schema';
  * BEGIN/COMMIT (see importer) rather than driver `.transaction()`, whose
  * callback sync-ness differs between the two drivers.
  */
-export type SumrakDB = BaseSQLiteDatabase<'sync', unknown, typeof schema>;
+export type AflulitDB = BaseSQLiteDatabase<'sync', unknown, typeof schema>;

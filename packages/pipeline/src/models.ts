@@ -15,12 +15,12 @@ import {
   ModelsManifestSchema,
   type ModelsManifest,
   type ModelsManifestEntry,
-} from '@sumrak/schema';
+} from '@aflulit/schema';
 
 /**
  * `pipeline models mirror` (T23, V2 §2): copy the exact speech-model archives
  * the app pins today from the public k2-fsa release assets into the private
- * `sumrak-content` repo (`models/{tts,asr}/`), and emit `models-manifest.json`
+ * `aflulit-content` repo (`models/{tts,asr}/`), and emit `models-manifest.json`
  * at the repo root. The app's catalogs then resolve model ids against that
  * manifest first, with the k2-fsa URLs kept as last-resort fallback.
  *
@@ -293,7 +293,7 @@ export async function runModelsMirror(
   const models = opts.models ?? MIRROR_MODELS;
   const download = opts.download ?? fetchDownloader;
   const releases = opts.releases ?? ghReleaseStore(contentRepoDir);
-  const tmpDir = mkdtempSync(join(tmpdir(), 'sumrak-models-'));
+  const tmpDir = mkdtempSync(join(tmpdir(), 'aflulit-models-'));
   const reports: MirrorModelReport[] = [];
   const releaseAssets = new Map<string, string[]>();
 

@@ -1,4 +1,4 @@
-// @sumrak/pipeline — authoring pipeline: draft markdown → validated pack.json
+// @aflulit/pipeline — authoring pipeline: draft markdown → validated pack.json
 // (T08: annotate + validate) → narration audio + word stamps + publish (T09).
 // The CLI lives in src/cli.ts (`pnpm pipeline …` from the repo root).
 export { alignSentence, type AlignResult } from './align.ts';

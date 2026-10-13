@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import type { WritingItem } from '@sumrak/schema';
+import type { WritingItem } from '@aflulit/schema';
 import * as React from 'react';
 import {
   KeyboardAvoidingView,

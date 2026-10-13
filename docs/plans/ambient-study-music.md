@@ -4,7 +4,7 @@ Branch: `feature/ambient-music-controls`
 
 ## Current setup
 
-Sumrak is a pnpm monorepo. The Expo 57 / React Native app is in
+Aflulit (forked from Sumrak) is a pnpm monorepo. The Expo 57 / React Native app is in
 `apps/mobile`, with Expo Router navigation, Zustand UI state, and SQLite
 settings hydrated by `DbProvider` before screens mount. `expo-audio` is
 already installed. Reader narration owns a player with karaoke, word

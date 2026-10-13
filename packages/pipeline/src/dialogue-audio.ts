@@ -7,7 +7,7 @@ import {
   type NodeAudio,
   type Pack,
   type Sentence,
-} from '@sumrak/schema';
+} from '@aflulit/schema';
 import type { ElevenLabsClient } from './elevenlabs.ts';
 import {
   finalizeLine,

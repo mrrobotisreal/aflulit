@@ -1,5 +1,5 @@
-import { ExamSchema, type Pack } from '@sumrak/schema';
-import examPackJson from '@sumrak/schema/fixtures/packs/a1-exam-fixture/pack.json';
+import { ExamSchema, type Pack } from '@aflulit/schema';
+import examPackJson from '@aflulit/schema/fixtures/packs/a1-exam-fixture/pack.json';
 import { sql } from 'drizzle-orm';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -10,7 +10,7 @@ import { createRepositories } from '../repositories';
 import { ExamAttemptActiveError, ExamRating } from '../repositories/exams';
 import { State } from '../repositories/reviews';
 import { cards, examAttempts, examItemCards, examResponses, reviewLog } from '../schema';
-import type { SumrakDB } from '../types';
+import type { AflulitDB } from '../types';
 import { createTestDb } from './helpers';
 
 const trackMock = vi.hoisted(() => vi.fn());
@@ -31,7 +31,7 @@ const T0 = 1_790_000_000_000;
 const MIN = 60_000;
 const DAY = 86_400_000;
 
-let db: SumrakDB;
+let db: AflulitDB;
 let repos: ReturnType<typeof createRepositories>;
 
 function mockState(): ExamAttemptState {

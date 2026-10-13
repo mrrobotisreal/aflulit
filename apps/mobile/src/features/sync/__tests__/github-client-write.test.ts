@@ -22,7 +22,7 @@ afterEach(() => {
 
 const client = () =>
   new GithubContentClient(
-    { owner: 'mrrobotisreal', repo: 'sumrak-content', branch: 'main' },
+    { owner: 'mrrobotisreal', repo: 'aflulit-content', branch: 'main' },
     TOKEN,
   );
 
@@ -30,7 +30,7 @@ describe('GithubContentClient write/list methods (T20)', () => {
   it('listDirectory parses entries and requests the json media type', async () => {
     const fn = mockFetch(200, [
       {
-        name: 'sumrak-backup-20260823-030000Z.json',
+        name: 'aflulit-backup-20260823-030000Z.json',
         path: 'backups/x.json',
         sha: 'abc',
         size: 42,
@@ -40,7 +40,7 @@ describe('GithubContentClient write/list methods (T20)', () => {
     ]);
     const entries = await client().listDirectory('backups');
     expect(entries).toHaveLength(2);
-    expect(entries[0]).toMatchObject({ name: 'sumrak-backup-20260823-030000Z.json', sha: 'abc' });
+    expect(entries[0]).toMatchObject({ name: 'aflulit-backup-20260823-030000Z.json', sha: 'abc' });
 
     const [url, init] = fn.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toContain('/contents/backups?ref=main');
@@ -57,7 +57,7 @@ describe('GithubContentClient write/list methods (T20)', () => {
     await client().putFile('backups/b.json', 'AAAA', 'Backup b.json');
     const [url, init] = fn.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe(
-      'https://api.github.com/repos/mrrobotisreal/sumrak-content/contents/backups/b.json',
+      'https://api.github.com/repos/mrrobotisreal/aflulit-content/contents/backups/b.json',
     );
     expect(init.method).toBe('PUT');
     expect(JSON.parse(init.body as string)).toEqual({

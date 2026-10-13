@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { MIRROR_MODELS } from '@sumrak/pipeline';
+import { MIRROR_MODELS } from '@aflulit/pipeline';
 import { describe, expect, it } from 'vitest';
 
 import { ASR_MODEL } from '@/features/pronunciation/asr-catalog';

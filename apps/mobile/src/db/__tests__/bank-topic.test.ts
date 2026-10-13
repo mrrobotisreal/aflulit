@@ -1,5 +1,5 @@
-import type { Pack } from '@sumrak/schema';
-import newsPackJson from '@sumrak/schema/fixtures/packs/a2-news-090/pack.json';
+import type { Pack } from '@aflulit/schema';
+import newsPackJson from '@aflulit/schema/fixtures/packs/a2-news-090/pack.json';
 import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 

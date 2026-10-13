@@ -1,4 +1,4 @@
-import type { Sentence, Story } from '@sumrak/schema';
+import type { Sentence, Story } from '@aflulit/schema';
 
 /**
  * Narration text construction (T09). The text sent to ElevenLabs is built

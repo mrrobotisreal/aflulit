@@ -5,7 +5,7 @@ import type { StoredFsrsParams } from './fsrs-settings';
  * the section component so the copy rules and the export shape are unit-tested.
  */
 
-export const REVIEW_LOG_KIND = 'sumrak-review-log' as const;
+export const REVIEW_LOG_KIND = 'aflulit-review-log' as const;
 export const REVIEW_LOG_VERSION = 1 as const;
 
 /** «Optimized · 2026-10-09 · 1234 reviews» or the default-parameters line. */
@@ -56,7 +56,7 @@ export interface ReviewLogExport {
 }
 
 /**
- * The `sumrak-review-log` v1 file body (the shape `fsrs-optimize-core.mjs`
+ * The `aflulit-review-log` v1 file body (the shape `fsrs-optimize-core.mjs`
  * parses). Only the six documented columns — no lemma, no text.
  */
 export function buildReviewLogExport(
@@ -80,12 +80,12 @@ export function buildReviewLogExport(
   };
 }
 
-/** `sumrak-review-log-<YYYY-MM-DD>.json` from the local calendar date of `now`. */
+/** `aflulit-review-log-<YYYY-MM-DD>.json` from the local calendar date of `now`. */
 export function reviewLogFileName(now: Date): string {
   const y = now.getFullYear();
   const m = String(now.getMonth() + 1).padStart(2, '0');
   const d = String(now.getDate()).padStart(2, '0');
-  return `sumrak-review-log-${y}-${m}-${d}.json`;
+  return `aflulit-review-log-${y}-${m}-${d}.json`;
 }
 
 /** Result copy for the export row. */

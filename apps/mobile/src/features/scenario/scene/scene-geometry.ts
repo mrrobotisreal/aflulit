@@ -1,4 +1,4 @@
-import type { ScenarioScene } from '@sumrak/schema';
+import type { ScenarioScene } from '@aflulit/schema';
 
 /**
  * Scene geometry (T61, SPEAKING_SCENARIOS §8.1) — pure, no RN imports. Every

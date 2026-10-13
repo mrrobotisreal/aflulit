@@ -4,8 +4,8 @@ import {
   type Pack,
   type SpeakingMonologueItem,
   type SpeakingTurnItem,
-} from '@sumrak/schema';
-import examPackJson from '@sumrak/schema/fixtures/packs/a1-exam-fixture/pack.json';
+} from '@aflulit/schema';
+import examPackJson from '@aflulit/schema/fixtures/packs/a1-exam-fixture/pack.json';
 import { describe, expect, it } from 'vitest';
 
 import {

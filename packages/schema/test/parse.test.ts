@@ -96,7 +96,7 @@ describe('manifest schema edge cases', () => {
 
 describe('backup envelope (T20 format)', () => {
   const envelope = {
-    format: 'sumrak-backup',
+    format: 'aflulit-backup',
     version: 1,
     createdAt: '2026-08-21T10:00:00Z',
     cipher: {

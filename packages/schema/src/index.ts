@@ -1,4 +1,4 @@
-// @sumrak/schema — Zod schemas + TS types for content packs, the content-repo
+// @aflulit/schema — Zod schemas + TS types for content packs, the content-repo
 // manifest, and the backup envelope. Single source of truth shared by the app
 // importer (T03), content sync (T07), and the authoring pipeline (T08).
 export {

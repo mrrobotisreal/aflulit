@@ -4,7 +4,7 @@ import {
   EndingSchema,
   LocalizedTextSchema,
   StableIdSchema,
-} from '@sumrak/schema';
+} from '@aflulit/schema';
 import YAML from 'yaml';
 import { parseFrontmatterWith, splitFrontmatter } from './draft.ts';
 import { DraftError, type DraftIssue } from './errors.ts';

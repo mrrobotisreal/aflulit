@@ -1,13 +1,13 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
-import type { Pack } from '@sumrak/schema';
+import type { Pack } from '@aflulit/schema';
 import { assemblePack } from './assemble.ts';
 import { parseDialogueDraft, sniffDraftKind, type ParsedDialogueDraft } from './dialogue-draft.ts';
 import { parseDraft, type ParsedDraft } from './draft.ts';
 import { parseExamDraft, type ParsedExamDraft } from './exam-draft.ts';
 import { loadExtras, type PackExtras } from './extras.ts';
 import { parseScenarioDraft, type ParsedScenarioDraft } from './scenario-draft.ts';
-import { scenarioLines } from '@sumrak/schema';
+import { scenarioLines } from '@aflulit/schema';
 
 /**
  * `pipeline annotate`: draft file(s) → validated pack.json.

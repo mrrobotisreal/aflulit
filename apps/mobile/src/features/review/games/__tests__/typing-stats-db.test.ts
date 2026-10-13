@@ -5,7 +5,7 @@ import { createTestDb } from '@/db/__tests__/helpers';
 import { createRepositories } from '@/db/repositories';
 import { SETTING_KEYS } from '@/db/repositories/settings';
 import { bankItems, cards, dailyActivity } from '@/db/schema';
-import type { SumrakDB } from '@/db/types';
+import type { AflulitDB } from '@/db/types';
 
 import { pickNextWord, type TypingAttempt } from '../typing/engine';
 import { DEFAULT_TYPING_STATS, mergeTypingStats, parseTypingStats } from '../typing/stats';
@@ -19,7 +19,7 @@ import { finishTypingRound, loadTypingStats, startTypingRound } from '../typing/
 
 /** Bank word with its ru-en and en-ru cards set to a stability (days) and reps. */
 async function seedWord(
-  db: SumrakDB,
+  db: AflulitDB,
   repos: ReturnType<typeof createRepositories>,
   lemma: string,
   stability: number | null,

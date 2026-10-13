@@ -1,6 +1,6 @@
 import { normalizeRu } from '@/db/normalize';
 import { packs, sentences, stories, tokens } from '@/db/schema';
-import type { SumrakDB } from '@/db/types';
+import type { AflulitDB } from '@/db/types';
 
 /**
  * Direct content-table seeding for T13 game tests. Bypasses the importer on
@@ -26,7 +26,7 @@ export interface SeedStory {
 
 let packSeq = 0;
 
-export async function seedStory(db: SumrakDB, spec: SeedStory): Promise<void> {
+export async function seedStory(db: AflulitDB, spec: SeedStory): Promise<void> {
   const level = spec.level ?? 'A1';
   const existingPack = await db.select().from(packs);
   if (!existingPack.some((p) => p.id === spec.packId)) {

@@ -9,7 +9,7 @@ import { z } from 'zod';
  *
  * `state` mirrors `scenario_runs.mediaBundleState` (pending → uploaded |
  * failed); `name` is the bundle's file name on both targets
- * (`sumrak-media-exam-<attemptid>.json`, lowercase). The row is a user
+ * (`aflulit-media-exam-<attemptid>.json`, lowercase). The row is a user
  * setting, so it rides the snapshot like every other setting (§4.6): after
  * a wipe + restore the debrief still knows which attempts have an archived
  * bundle and offers «Скачать запись». Pure module, Node-tested.
@@ -59,7 +59,7 @@ export function parseExamMediaLedger(raw: unknown): ExamMediaLedger {
 
 /**
  * The bundle stem for an exam attempt: `exam-<attemptId lowercased>`.
- * SumrakAPI `internal/naming/naming.go:24` accepts `^sumrak-media-([a-z0-9]
+ * AflulitAPI `internal/naming/naming.go:24` accepts `^aflulit-media-([a-z0-9]
  * [a-z0-9-]{3,79})\.json$` — lowercase only — while app ids may carry
  * uppercase; lowercasing is the whole fix (no API change, ticket §3).
  */

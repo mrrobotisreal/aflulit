@@ -12,7 +12,7 @@ import {
   tokens,
   wordStamps,
 } from '../schema';
-import type { SumrakDB } from '../types';
+import type { AflulitDB } from '../types';
 
 export type PackRow = typeof packs.$inferSelect;
 export type StoryRow = typeof stories.$inferSelect;
@@ -76,7 +76,7 @@ export interface TokenSearchHit {
  * disposable (rebuilt on reimport) — nothing here mutates; writes happen
  * only in the importer.
  */
-export function createContentRepo(db: SumrakDB) {
+export function createContentRepo(db: AflulitDB) {
   return {
     async listPacks(): Promise<(PackRow & { storyCount: number })[]> {
       // NB: written as literal SQL with explicit qualification — interpolating

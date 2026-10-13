@@ -1,5 +1,5 @@
-import { ExamSchema, type Exam } from '@sumrak/schema';
-import a2Pack from '@sumrak/schema/fixtures/packs/a2-exam-fixture/pack.json';
+import { ExamSchema, type Exam } from '@aflulit/schema';
+import a2Pack from '@aflulit/schema/fixtures/packs/a2-exam-fixture/pack.json';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import {

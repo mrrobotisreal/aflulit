@@ -51,7 +51,7 @@ export function safFileName(uri: string): string {
   } catch {
     decoded = last;
   }
-  // Document ids look like "primary:SumrakBackups/sumrak-backup-…json".
+  // Document ids look like "primary:AflulitBackups/aflulit-backup-…json".
   const slash = decoded.lastIndexOf('/');
   return slash >= 0 ? decoded.slice(slash + 1) : decoded;
 }

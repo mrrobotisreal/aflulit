@@ -1,4 +1,4 @@
-import { EXAM_SUBTEST_KINDS } from '@sumrak/schema';
+import { EXAM_SUBTEST_KINDS } from '@aflulit/schema';
 import { describe, expect, it } from 'vitest';
 
 import {

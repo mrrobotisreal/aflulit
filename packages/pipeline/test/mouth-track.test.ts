@@ -3,7 +3,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { scenarioLines } from '@sumrak/schema';
+import { scenarioLines } from '@aflulit/schema';
 import {
   isRoundVowelWord,
   ladderLevel,
@@ -164,7 +164,7 @@ describe('isRoundVowelWord', () => {
 
 describe('parseWav16 + mouthTrackForFile (real ffmpeg)', () => {
   it('decodes a generated tone/silence file and tracks it', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'sumrak-mouth-test-'));
+    const dir = mkdtempSync(join(tmpdir(), 'aflulit-mouth-test-'));
     tempDirs.push(dir);
     const wav = join(dir, 'tone.wav');
     // 0.4 s silence, 0.4 s tone at amplitude 0.5 (RMS ≈ −9 dBFS → 4), 0.4 s silence.

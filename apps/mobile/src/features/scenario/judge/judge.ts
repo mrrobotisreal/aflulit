@@ -1,4 +1,4 @@
-import type { Slot } from '@sumrak/schema';
+import type { Slot } from '@aflulit/schema';
 
 import { scoreAttempt, scoringTokens, type WordScore } from '@/features/pronunciation/scoring';
 

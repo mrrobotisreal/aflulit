@@ -1,4 +1,4 @@
-import type { ExamSubtestKind } from '@sumrak/schema';
+import type { ExamSubtestKind } from '@aflulit/schema';
 import { Rating, type Grade } from 'ts-fsrs';
 
 import { TORFL_PROFILES, type TorflLevel } from './level-profile';

@@ -12,7 +12,7 @@ import {
 
 const validFile = () => ({
   v: 1,
-  kind: 'sumrak-fsrs-params',
+  kind: 'aflulit-fsrs-params',
   w: [...DEFAULT_W],
   fittedAt: '2026-10-09T10:00:00Z',
   reviewCount: 1234,

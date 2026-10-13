@@ -1,4 +1,4 @@
-import type { ExamSubtestKind } from '@sumrak/schema';
+import type { ExamSubtestKind } from '@aflulit/schema';
 import { describe, expect, it } from 'vitest';
 
 import { predictVerdict as predictViaReadiness } from '../readiness';

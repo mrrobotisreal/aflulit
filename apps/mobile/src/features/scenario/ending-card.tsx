@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { LevelChip, type CefrLevel } from '@/components/level-chip';
 import { Text } from '@/components/ui/text';
-import type { Ending } from '@sumrak/schema';
+import type { Ending } from '@aflulit/schema';
 import type { ScenarioRunStats } from '@/db/repositories/scenarios';
 import { useAppTheme } from '@/theme/use-app-theme';
 

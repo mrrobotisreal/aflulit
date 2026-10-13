@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'n
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { parsePack, type Pack } from '@sumrak/schema';
+import { parsePack, type Pack } from '@aflulit/schema';
 import {
   annotateDrafts,
   DraftError,

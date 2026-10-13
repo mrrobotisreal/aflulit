@@ -107,7 +107,7 @@ function LabButton({
 export default function DevJudgeScreen() {
   const { tokens: theme } = useAppTheme();
   /**
-   * adb-drivable (dev only): `sumrak://dev-judge?turn=t03&say=...` picks the
+   * adb-drivable (dev only): `aflulit://dev-judge?turn=t03&say=...` picks the
    * first installed scenario + the turn and judges the transcript;
    * `&wav=/data/local/tmp/x.wav` transcribes a pushed WAV first (the ASR path
    * without a mic). `n` is a nonce so the same query can be re-fired.

@@ -6,7 +6,7 @@ import { levelFromParam } from '@/features/torfl/level-profile';
 const FROM: readonly HubOpenedFrom[] = ['library', 'today', 'deeplink'];
 
 /**
- * `sumrak://torfl` lands here with no `from` → 'deeplink'. `?level=A2` opens the
+ * `aflulit://torfl` lands here with no `from` → 'deeplink'. `?level=A2` opens the
  * A2 hub; no param (or an unknown one) → A1 (back-compat).
  */
 export default function TorflHubRoute() {

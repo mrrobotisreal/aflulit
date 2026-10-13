@@ -13,9 +13,9 @@ import { track } from '@/services/analytics';
 type WidgetScreen = 'daily' | 'reader' | 'app';
 
 /**
- * Pure: the analytics screen for a sumrak:// URL, or null when it isn't a
+ * Pure: the analytics screen for a aflulit:// URL, or null when it isn't a
  * widget tap. WHATWG URL parsing of a custom scheme puts the first segment in
- * the host (`sumrak://review/daily` → host `review`, path `/daily`), so the
+ * the host (`aflulit://review/daily` → host `review`, path `/daily`), so the
  * route is host + path — reading the path alone never matched (S25 finding).
  */
 export function widgetScreenFromUrl(url: string): WidgetScreen | null {

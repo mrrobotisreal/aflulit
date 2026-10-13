@@ -1,7 +1,7 @@
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { MOUTH_TRACK_STEP_MS, type Sentence, type WordStamp } from '@sumrak/schema';
+import { MOUTH_TRACK_STEP_MS, type Sentence, type WordStamp } from '@aflulit/schema';
 import { decodeToWav } from './opus.ts';
 
 /**
@@ -195,7 +195,7 @@ export function mouthTrackForFile(
   stamps: readonly WordStamp[] | undefined,
   sentence: Pick<Sentence, 'id' | 'tokens'> | undefined,
 ): string {
-  const work = mkdtempSync(join(tmpdir(), 'sumrak-mouth-'));
+  const work = mkdtempSync(join(tmpdir(), 'aflulit-mouth-'));
   try {
     const wav = join(work, 'line.wav');
     decodeToWav(audioFile, wav);

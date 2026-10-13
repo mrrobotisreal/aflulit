@@ -7,7 +7,7 @@ import {
   ScenarioSceneSchema,
   StableIdSchema,
   type NudgeKind,
-} from '@sumrak/schema';
+} from '@aflulit/schema';
 import { z } from 'zod';
 import { parseFrontmatterWith, splitFrontmatter } from './draft.ts';
 import { DraftError, type DraftIssue } from './errors.ts';

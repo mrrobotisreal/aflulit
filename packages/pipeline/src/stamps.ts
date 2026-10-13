@@ -1,4 +1,4 @@
-import type { WordStamp } from '@sumrak/schema';
+import type { WordStamp } from '@aflulit/schema';
 import type { NarrationText } from './narration.ts';
 
 /**

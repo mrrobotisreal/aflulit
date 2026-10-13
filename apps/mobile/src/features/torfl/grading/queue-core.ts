@@ -1,4 +1,4 @@
-import type { Exam, ExamSubtestKind } from '@sumrak/schema';
+import type { Exam, ExamSubtestKind } from '@aflulit/schema';
 
 import type { ChatRequest } from '@/features/ai/client';
 import { AiError, isRetriable, toAiError } from '@/features/ai/errors';

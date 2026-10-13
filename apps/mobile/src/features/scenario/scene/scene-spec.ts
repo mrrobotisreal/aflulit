@@ -1,4 +1,4 @@
-import type { ScenarioCharacter, ScenarioScene } from '@sumrak/schema';
+import type { ScenarioCharacter, ScenarioScene } from '@aflulit/schema';
 
 import type { ScenarioDetail } from '@/db/repositories/scenarios';
 

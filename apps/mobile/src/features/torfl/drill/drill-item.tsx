@@ -1,4 +1,4 @@
-import type { ChoiceItem, TypedItem } from '@sumrak/schema';
+import type { ChoiceItem, TypedItem } from '@aflulit/schema';
 import { File } from 'expo-file-system';
 import * as React from 'react';
 import { ActivityIndicator, ScrollView, View } from 'react-native';

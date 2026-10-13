@@ -5,10 +5,9 @@ import { SETTING_KEYS } from '@/db/repositories/settings';
 import { DEFAULT_REPO, getRepoConfig, setRepoConfig } from '../config';
 
 /**
- * T09: the content repo was renamed sumrack-content → sumrak-content on
- * GitHub (2026-08-21). A device that saved its settings before the rename
- * still stores the old name; `getRepoConfig` must heal it in place so sync
- * survives the day the redirect stops working.
+ * Content-repo config round trip. Sumrak's legacy-name healing (its content
+ * repo was once misspelled) was deleted in Aflulit T01 — the default
+ * `mrrobotisreal/aflulit-content` has never had another name.
  */
 
 // vi.mock calls are hoisted above the imports at run time; the store must be
@@ -36,33 +35,7 @@ beforeEach(() => {
   settingsStore.clear();
 });
 
-describe('getRepoConfig legacy-name healing', () => {
-  it('rewrites the misspelled sumrack-content to sumrak-content and persists it', async () => {
-    settingsStore.set(SETTING_KEYS.contentRepo, {
-      owner: 'mrrobotisreal',
-      repo: 'sumrack-content',
-      branch: 'main',
-    });
-
-    const config = await getRepoConfig();
-    expect(config).toEqual({ owner: 'mrrobotisreal', repo: 'sumrak-content', branch: 'main' });
-    // Healed value was written back, not just returned.
-    expect(settingsStore.get(SETTING_KEYS.contentRepo)).toEqual({
-      owner: 'mrrobotisreal',
-      repo: 'sumrak-content',
-      branch: 'main',
-    });
-  });
-
-  it('leaves a same-named repo under a different owner alone', async () => {
-    settingsStore.set(SETTING_KEYS.contentRepo, {
-      owner: 'someone-else',
-      repo: 'sumrack-content',
-    });
-    const config = await getRepoConfig();
-    expect(config?.repo).toBe('sumrack-content');
-  });
-
+describe('getRepoConfig', () => {
   it('passes the correct name through untouched', async () => {
     await setRepoConfig(DEFAULT_REPO);
     const config = await getRepoConfig();

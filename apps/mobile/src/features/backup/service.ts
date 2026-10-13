@@ -1,4 +1,4 @@
-import type { BackupEnvelope } from '@sumrak/schema';
+import type { BackupEnvelope } from '@aflulit/schema';
 import Constants from 'expo-constants';
 import * as Crypto from 'expo-crypto';
 

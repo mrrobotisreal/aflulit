@@ -1,4 +1,4 @@
-import { SentenceSchema, TokenSchema, type Token } from '@sumrak/schema';
+import { SentenceSchema, TokenSchema, type Token } from '@aflulit/schema';
 import { z } from 'zod';
 
 import { splitSentences } from '@/features/import/import-core';

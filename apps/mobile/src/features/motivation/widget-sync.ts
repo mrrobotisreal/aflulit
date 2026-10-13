@@ -13,18 +13,18 @@ import { WidgetSnapshotSchema, buildWidgetSnapshot } from './widget-snapshot';
 /**
  * Device-side writer for the home-screen widget snapshot (T40). Gathers the
  * same inputs the Today screen uses, Zod-validates the snapshot, and hands the
- * JSON to the native `SumrakWidget` module. Fire-and-forget: every error is
+ * JSON to the native `AflulitWidget` module. Fire-and-forget: every error is
  * swallowed into the error log, and there is no analytics event per write.
  *
  * The native module is loaded OPTIONALLY so a dev client built before the
  * module existed no-ops instead of crashing (`requireNativeModule` would throw).
  */
 
-interface SumrakWidgetNative {
+interface AflulitWidgetNative {
   writeSnapshot(json: string): void;
 }
 
-const native = requireOptionalNativeModule<SumrakWidgetNative>('SumrakWidget');
+const native = requireOptionalNativeModule<AflulitWidgetNative>('AflulitWidget');
 
 let inFlight = false;
 let pending = false;

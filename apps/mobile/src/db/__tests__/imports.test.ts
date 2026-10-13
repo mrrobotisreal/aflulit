@@ -1,4 +1,4 @@
-import { parsePack } from '@sumrak/schema';
+import { parsePack } from '@aflulit/schema';
 import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 

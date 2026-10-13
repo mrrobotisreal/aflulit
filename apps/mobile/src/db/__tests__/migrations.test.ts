@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 
 import journal from '../../../drizzle/meta/_journal.json';
 import * as schema from '../schema';
-import type { SumrakDB } from '../types';
+import type { AflulitDB } from '../types';
 import { createTestDb } from './helpers';
 
 const migrationsFolder = path.join(
@@ -24,7 +24,7 @@ const migrationsFolder = path.join(
  * split), then the returned handle can be passed to `migrate()` again to
  * apply the remaining entries.
  */
-function createDbUpTo(lastTag: string): { sqlite: Database.Database; db: SumrakDB } {
+function createDbUpTo(lastTag: string): { sqlite: Database.Database; db: AflulitDB } {
   const sqlite = new Database(':memory:');
   sqlite.pragma('foreign_keys = ON');
   const entries = journal.entries;
@@ -44,15 +44,15 @@ function createDbUpTo(lastTag: string): { sqlite: Database.Database; db: SumrakD
       .run(`test-${entry.tag}`, entry.when);
   }
   const db = drizzle(sqlite, { schema });
-  return { sqlite, db: db as unknown as SumrakDB };
+  return { sqlite, db: db as unknown as AflulitDB };
 }
 
-async function columnNames(db: SumrakDB, table: string): Promise<string[]> {
+async function columnNames(db: AflulitDB, table: string): Promise<string[]> {
   const rows = await db.all<{ name: string }>(sql.raw(`PRAGMA table_info(${table})`));
   return rows.map((r) => r.name);
 }
 
-async function indexNames(db: SumrakDB, table: string): Promise<string[]> {
+async function indexNames(db: AflulitDB, table: string): Promise<string[]> {
   const rows = await db.all<{ name: string }>(sql.raw(`PRAGMA index_list(${table})`));
   return rows.map((r) => r.name);
 }
@@ -231,7 +231,7 @@ describe('migrations from empty DB', () => {
 });
 
 /** T68 shape assertions shared by the fresh + upgrade cases (TORFL_EXAM_PREP §4.1/§4.2). */
-async function expectExamTables(db: SumrakDB) {
+async function expectExamTables(db: AflulitDB) {
   expect(await columnNames(db, 'exams')).toEqual([
     'pack_id',
     'exam_id',
@@ -315,7 +315,7 @@ async function expectExamTables(db: SumrakDB) {
 }
 
 /** T58 shape assertions shared by the fresh + upgrade cases (SPEAKING_SCENARIOS §4.1/§4.2). */
-async function expectScenarioTables(db: SumrakDB) {
+async function expectScenarioTables(db: AflulitDB) {
   expect(await columnNames(db, 'scenarios')).toEqual([
     'pack_id',
     'id',
@@ -576,7 +576,7 @@ const GRAMMAR_LESSON_COLUMNS = [
 ];
 
 /** T52 shape assertions shared by the fresh + upgrade cases (WORD_FORMS §2.2/§2.3). */
-async function expectWordProfileTables(db: SumrakDB) {
+async function expectWordProfileTables(db: AflulitDB) {
   expect(await columnNames(db, 'word_profiles')).toEqual(WORD_PROFILE_COLUMNS);
   expect(await columnNames(db, 'grammar_lessons')).toEqual(GRAMMAR_LESSON_COLUMNS);
   expect(await indexNames(db, 'word_profiles')).toEqual(

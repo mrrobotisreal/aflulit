@@ -1,4 +1,4 @@
-import { scenarioLines, type GlossaryEntry, type Scenario } from '@sumrak/schema';
+import { scenarioLines, type GlossaryEntry, type Scenario } from '@aflulit/schema';
 
 /**
  * Glossary coverage report (T56, SCENARIOS §2.3): every CONTENT lemma the

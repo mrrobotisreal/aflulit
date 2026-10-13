@@ -1,6 +1,6 @@
-# sumrak-widget — home-screen widget (T40)
+# aflulit-widget — home-screen widget (Sumrak T40; Aflulit strings/palette = T18)
 
-A Kotlin **Glance** home-screen widget for Сумрак: goal ring + streak flame + due-review count, with tap targets for the daily session and the continue-reading story. The widget never touches the database. The app writes a tiny JSON snapshot into SharedPreferences, and the widget renders only that snapshot.
+A Kotlin **Glance** home-screen widget for Aflulit: goal ring + streak flame + due-review count, with tap targets for the daily session and the continue-reading story. The widget never touches the database. The app writes a tiny JSON snapshot into SharedPreferences, and the widget renders only that snapshot.
 
 The JS surface is `index.ts` (typed `requireNativeModule`). The device writer lives in `apps/mobile/src/features/motivation/widget-sync.ts`. This module stays a thin native wrapper.
 
@@ -8,7 +8,7 @@ The JS surface is `index.ts` (typed `requireNativeModule`). The device writer li
 
 | Item                   | Value           | Kotlin (`WidgetContract.kt`) | TS (`widget-contract.ts`) |
 | ---------------------- | --------------- | ---------------------------- | ------------------------- |
-| SharedPreferences file | `sumrak_widget` | `PREFS_NAME`                 | `WIDGET_PREFS_NAME`       |
+| SharedPreferences file | `aflulit_widget` | `PREFS_NAME`                 | `WIDGET_PREFS_NAME`       |
 | Key (JSON string)      | `snapshot`      | `KEY_SNAPSHOT`               | `WIDGET_SNAPSHOT_KEY`     |
 | Schema version         | `1`             | `SNAPSHOT_VERSION`           | `WIDGET_SNAPSHOT_VERSION` |
 | Stale window           | 36 h            | `STALE_MS`                   | `WIDGET_STALE_MS`         |
@@ -24,10 +24,10 @@ The snapshot schema is `WidgetSnapshotSchema` in `widget-snapshot.ts`: `{ v, str
 `android/` is generated and gitignored, so nothing in it can be relied on. Everything the widget needs lives in this directory:
 
 1. **Autolinking.** Expo discovers `modules/*/expo-module.config.json` automatically. Verify with `npx expo-modules-autolinking resolve -p android | grep -i widget`.
-2. **Receiver and resources via the module's own manifest.** `android/src/main/AndroidManifest.xml` declares `SumrakWidgetReceiver`. Library manifests merge into the app's manifest on every build, so the receiver is recreated after `prebuild --clean`. There is no config plugin and no edit to the generated `android/`.
+2. **Receiver and resources via the module's own manifest.** `android/src/main/AndroidManifest.xml` declares `AflulitWidgetReceiver`. Library manifests merge into the app's manifest on every build, so the receiver is recreated after `prebuild --clean`. There is no config plugin and no edit to the generated `android/`.
 3. **Glance and Compose.** `android/build.gradle` applies the Compose compiler plugin the way `@expo/ui` does, enables `buildFeatures { compose true }`, and depends on `androidx.glance:glance-appwidget:1.1.1` and `glance-material3:1.1.1`.
 
-Verified 2026-10-09: `npx expo prebuild --platform android --clean --no-install` followed by `cd android && JAVA_HOME=$(/usr/libexec/java_home -v 17) ./gradlew :app:assembleDebug -x lint` passed, and the merged manifest contains `SumrakWidgetReceiver`. A second `--clean` prebuild and a fresh assemble also passed. The debug APK is 139,283,221 bytes (132.8 MB).
+Verified 2026-10-09: `npx expo prebuild --platform android --clean --no-install` followed by `cd android && JAVA_HOME=$(/usr/libexec/java_home -v 17) ./gradlew :app:assembleDebug -x lint` passed, and the merged manifest contains `AflulitWidgetReceiver`. A second `--clean` prebuild and a fresh assemble also passed. The debug APK is 139,283,221 bytes (132.8 MB).
 
 ## Ring decision
 
@@ -55,11 +55,11 @@ The native `writeSnapshot` commits with `commit()` and then refreshes every plac
 
 ## Deep links
 
-Taps use `sumrak://review/daily?from=widget` and `sumrak://reader/<packId>/<storyId>?from=widget`, with ids URL-encoded. `WidgetLinkTracker` (mounted in `_layout.tsx`) records `widget_opened` with `{ screen, from: 'widget' }` once per URL. expo-router does the navigation; the tracker never pushes a route.
+Taps use `aflulit://review/daily?from=widget` and `aflulit://reader/<packId>/<storyId>?from=widget`, with ids URL-encoded. `WidgetLinkTracker` (mounted in `_layout.tsx`) records `widget_opened` with `{ screen, from: 'widget' }` once per URL. expo-router does the navigation; the tracker never pushes a route.
 
 ## Rebuild steps (native change)
 
-After any change under `modules/sumrak-widget/android/`:
+After any change under `modules/aflulit-widget/android/`:
 
 ```sh
 cd apps/mobile
@@ -74,7 +74,7 @@ The `*.kt` and `res/` changes need a rebuilt dev client. The orchestrator instal
 On a debuggable build:
 
 ```sh
-adb exec-out run-as io.winapps.sumrak cat shared_prefs/sumrak_widget.xml
+adb exec-out run-as aflulit.creatv.io cat shared_prefs/aflulit_widget.xml
 ```
 
 To demo each state, use the `__DEV__` **Widget (T40)** section on the dev-db screen:

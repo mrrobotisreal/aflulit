@@ -19,7 +19,7 @@ import {
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const KOTLIN_DIR = path.resolve(
   HERE,
-  '../../../../modules/sumrak-widget/android/src/main/java/expo/modules/sumrakwidget',
+  '../../../../modules/aflulit-widget/android/src/main/java/expo/modules/aflulitwidget',
 );
 
 const NOW = Date.UTC(2026, 9, 9, 12, 0, 0);

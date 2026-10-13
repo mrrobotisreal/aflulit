@@ -1,4 +1,4 @@
-import type { Exam, WritingItem } from '@sumrak/schema';
+import type { Exam, WritingItem } from '@aflulit/schema';
 
 import type { ExamSummaryLike } from '../hub-model';
 

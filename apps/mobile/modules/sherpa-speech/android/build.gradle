@@ -3,7 +3,7 @@ plugins {
   id 'expo-module-gradle-plugin'
 }
 
-group = 'io.winapps.sumrak'
+group = 'aflulit.creatv.io'
 version = '0.1.0'
 
 android {

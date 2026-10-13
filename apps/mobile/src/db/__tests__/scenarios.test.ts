@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
-import { scenarioLines, type Pack } from '@sumrak/schema';
-import scenarioPackJson from '@sumrak/schema/fixtures/packs/a1-scenario-fixture/pack.json';
+import { scenarioLines, type Pack } from '@aflulit/schema';
+import scenarioPackJson from '@aflulit/schema/fixtures/packs/a1-scenario-fixture/pack.json';
 
 import { coachSentenceId, importPack, removePack } from '../importer';
 import { createContentRepo } from '../repositories/content';

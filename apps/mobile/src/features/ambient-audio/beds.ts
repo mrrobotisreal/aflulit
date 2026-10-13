@@ -5,7 +5,7 @@ import { AMBIENT_BED_SOURCES, type AmbientBedSlug } from './sources';
  * soundtrack, by theme, in rotation order. Hand-written (Metro needs literal
  * `require()` calls — they live in `sources.ts`, keyed by slug); `beds.test.ts`
  * reconciles it against the generated ledger `assets/audio/ambient/beds.json`
- * (slugs, order, durations). Re-encode with `pnpm --filter sumrak-mobile encode:ambient`.
+ * (slugs, order, durations). Re-encode with `pnpm --filter aflulit-mobile encode:ambient`.
  */
 
 export type AmbientThemeId = 'horror' | 'news' | 'comedy' | 'action' | 'education';

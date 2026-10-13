@@ -1,5 +1,5 @@
-import { ExamSchema, type Exam, type Pack } from '@sumrak/schema';
-import examPackJson from '@sumrak/schema/fixtures/packs/a1-exam-fixture/pack.json';
+import { ExamSchema, type Exam, type Pack } from '@aflulit/schema';
+import examPackJson from '@aflulit/schema/fixtures/packs/a1-exam-fixture/pack.json';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -27,7 +27,7 @@ import type { ExamAnswer, ExamGrading } from '@/features/torfl/model';
 
 import { importPack } from '../importer';
 import { createRepositories } from '../repositories';
-import type { SumrakDB } from '../types';
+import type { AflulitDB } from '../types';
 import { createTestDb } from './helpers';
 
 vi.mock('@/services/analytics', () => ({ track: vi.fn() }));
@@ -63,7 +63,7 @@ const RUN: ResolvedRun = {
   extras: {},
 };
 
-let db: SumrakDB;
+let db: AflulitDB;
 let repos: ReturnType<typeof createRepositories>;
 
 beforeEach(async () => {

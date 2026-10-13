@@ -1,4 +1,4 @@
-import type { WritingItem } from '@sumrak/schema';
+import type { WritingItem } from '@aflulit/schema';
 
 import { buildExamWritingMessages } from '@/features/ai/prompts/exam-writing';
 

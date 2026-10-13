@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
-import type { WritingItem } from '@sumrak/schema';
+import type { WritingItem } from '@aflulit/schema';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as React from 'react';
 import {

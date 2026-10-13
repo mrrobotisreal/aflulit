@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import type { AudioTrack, Pack, Sentence, WordStamp } from '@sumrak/schema';
+import type { AudioTrack, Pack, Sentence, WordStamp } from '@aflulit/schema';
 
 /**
  * Word-stamp accuracy audit + forced-alignment restamp (T80).
@@ -119,9 +119,9 @@ export function loadFrameDb(audioFile: string): Float64Array {
 // ──────────────────────────── aligner ────────────────────────────
 
 export interface PythonAlignerOptions {
-  /** Python with torch + torchaudio + transformers (default $SUMRAK_ALIGN_PYTHON or python3). */
+  /** Python with torch + torchaudio + transformers (default $AFLULIT_ALIGN_PYTHON or python3). */
   python?: string;
-  /** Result cache dir (default $SUMRAK_ALIGN_CACHE or ~/.cache/sumrak-align). */
+  /** Result cache dir (default $AFLULIT_ALIGN_CACHE or ~/.cache/aflulit-align). */
   cacheDir?: string;
   device?: string;
   engine?: 'ctc-ru' | 'whisper';
@@ -131,9 +131,9 @@ const TOOL = resolve(dirname(new URL(import.meta.url).pathname), '..', 'tools', 
 
 /** The shipped aligner: tools/forced_align.py, cached by sha256(audio + words). */
 export function pythonAligner(opts: PythonAlignerOptions = {}): Aligner {
-  const python = opts.python ?? process.env.SUMRAK_ALIGN_PYTHON ?? 'python3';
+  const python = opts.python ?? process.env.AFLULIT_ALIGN_PYTHON ?? 'python3';
   const cacheDir =
-    opts.cacheDir ?? process.env.SUMRAK_ALIGN_CACHE ?? join(homedir(), '.cache', 'sumrak-align');
+    opts.cacheDir ?? process.env.AFLULIT_ALIGN_CACHE ?? join(homedir(), '.cache', 'aflulit-align');
   const engine = opts.engine ?? 'ctc-ru';
   return (audioFile, words) => {
     const key = createHash('sha256')
@@ -143,7 +143,7 @@ export function pythonAligner(opts: PythonAlignerOptions = {}): Aligner {
       .digest('hex');
     const cached = join(cacheDir, `${key}.json`);
     if (existsSync(cached)) return (JSON.parse(readFileSync(cached, 'utf8')) as AlignOut).words;
-    const work = mkdtempSync(join(tmpdir(), 'sumrak-align-'));
+    const work = mkdtempSync(join(tmpdir(), 'aflulit-align-'));
     try {
       const wordsFile = join(work, 'words.json');
       const outFile = join(work, 'out.json');
@@ -161,7 +161,7 @@ export function pythonAligner(opts: PythonAlignerOptions = {}): Aligner {
           '--engine',
           engine,
           '--device',
-          opts.device ?? process.env.SUMRAK_ALIGN_DEVICE ?? 'cpu',
+          opts.device ?? process.env.AFLULIT_ALIGN_DEVICE ?? 'cpu',
         ],
         { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
       );
@@ -182,14 +182,14 @@ export function pythonAligner(opts: PythonAlignerOptions = {}): Aligner {
 }
 /** Fail fast (before any paid render) when the aligner venv is missing. */
 export function alignerPreflight(opts: PythonAlignerOptions = {}): void {
-  const python = opts.python ?? process.env.SUMRAK_ALIGN_PYTHON ?? 'python3';
+  const python = opts.python ?? process.env.AFLULIT_ALIGN_PYTHON ?? 'python3';
   const res = spawnSync(python, ['-c', 'import torch, torchaudio, transformers, numpy'], {
     encoding: 'utf8',
   });
   if (res.status !== 0) {
     throw new Error(
       `forced-alignment venv not usable (${python}): ${(res.stderr || String(res.error)).trim().split('\n').pop()}\n` +
-        'Set SUMRAK_ALIGN_PYTHON to a python3.12 venv with torch torchaudio transformers numpy ' +
+        'Set AFLULIT_ALIGN_PYTHON to a python3.12 venv with torch torchaudio transformers numpy ' +
         '(AUTHORING «Timestamps»), or pass --no-restamp to keep the provider stamps (they will fail stamp-audit).',
     );
   }

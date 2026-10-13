@@ -3,7 +3,7 @@ import { openDatabaseSync } from 'expo-sqlite';
 
 import * as schema from './schema';
 
-export const DATABASE_NAME = 'sumrak.db';
+export const DATABASE_NAME = 'aflulit.db';
 
 /**
  * The one on-device database connection. `enableChangeListener` powers
@@ -16,5 +16,5 @@ export const expoSqlite = openDatabaseSync(DATABASE_NAME, { enableChangeListener
 expoSqlite.execSync('PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;');
 
 // Concrete ExpoSQLiteDatabase type (useMigrations needs it); assignable to
-// the shared SumrakDB handle the repositories accept.
+// the shared AflulitDB handle the repositories accept.
 export const db = drizzle(expoSqlite, { schema });

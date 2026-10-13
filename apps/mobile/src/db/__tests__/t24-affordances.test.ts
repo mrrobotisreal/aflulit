@@ -1,8 +1,8 @@
-import type { Pack } from '@sumrak/schema';
+import type { Pack } from '@aflulit/schema';
 import { describe, expect, it } from 'vitest';
 
-import pack1Json from '@sumrak/schema/fixtures/packs/a1-creepypasta-001/pack.json';
-import pack2Json from '@sumrak/schema/fixtures/packs/a1-creepypasta-002/pack.json';
+import pack1Json from '@aflulit/schema/fixtures/packs/a1-creepypasta-001/pack.json';
+import pack2Json from '@aflulit/schema/fixtures/packs/a1-creepypasta-002/pack.json';
 
 import { STABILITY_MATURE_MIN, STABILITY_YOUNG_MIN } from '@/lib/mastery';
 
@@ -12,7 +12,7 @@ import { createBookmarksRepo } from '../repositories/bookmarks';
 import { createContentRepo } from '../repositories/content';
 import { cards } from '../schema';
 import { createTestDb } from './helpers';
-import type { SumrakDB } from '../types';
+import type { AflulitDB } from '../types';
 
 const pack1 = pack1Json as unknown as Pack;
 const pack2 = pack2Json as unknown as Pack;
@@ -134,7 +134,7 @@ describe('bookmarks repository', () => {
 
 /** Insert a reviewed card with a chosen stability (direction defaults to core). */
 async function seedCard(
-  db: SumrakDB,
+  db: AflulitDB,
   bankItemId: string,
   stability: number,
   opts: { direction?: 'ru-en' | 'en-ru' | 'listening' | 'production'; reps?: number } = {},
@@ -158,7 +158,7 @@ async function seedCard(
 }
 
 describe('bank mastery filter + counts', () => {
-  async function seed(db: SumrakDB) {
+  async function seed(db: AflulitDB) {
     const bank = createBankRepo(db);
     const mk = (lemma: string) =>
       bank.addWord({ lemma, surface: lemma, translation: 'x' }).then((r) => r.item.id);

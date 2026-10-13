@@ -1,4 +1,4 @@
-package expo.modules.sumrakwidget
+package expo.modules.aflulitwidget
 
 import android.graphics.Bitmap
 import android.graphics.BlurMaskFilter

@@ -1,4 +1,4 @@
-import { parsePack } from '@sumrak/schema';
+import { parsePack } from '@aflulit/schema';
 
 import { db, importPack, removePack, repos } from '@/db';
 import { queryKeys } from '@/db/hooks';
@@ -17,7 +17,7 @@ import {
 } from './import-core';
 
 /**
- * Wired Share-to-Сумрак flows (T28): intake → durable request rows, the
+ * Wired Share-to-Aflulit flows (T28): intake → durable request rows, the
  * commit gate (T29 calls `commitRequestAsPack` with its AI annotation), the
  * dev-only stub path, and local-pack removal. Analytics carry counts and
  * char counts ONLY — never text content, titles, or the title-derived pack

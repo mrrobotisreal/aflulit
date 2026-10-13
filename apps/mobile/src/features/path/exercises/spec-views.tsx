@@ -1,4 +1,4 @@
-import type { ExerciseSpec } from '@sumrak/schema';
+import type { ExerciseSpec } from '@aflulit/schema';
 import * as React from 'react';
 import { Pressable, Text as RNText, TextInput, Vibration, View } from 'react-native';
 

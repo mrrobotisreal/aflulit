@@ -1,8 +1,8 @@
-import type { Pack } from '@sumrak/schema';
+import type { Pack } from '@aflulit/schema';
 import { describe, expect, it } from 'vitest';
 
-import pack1Json from '@sumrak/schema/fixtures/packs/a1-creepypasta-001/pack.json';
-import pack2Json from '@sumrak/schema/fixtures/packs/a1-creepypasta-002/pack.json';
+import pack1Json from '@aflulit/schema/fixtures/packs/a1-creepypasta-001/pack.json';
+import pack2Json from '@aflulit/schema/fixtures/packs/a1-creepypasta-002/pack.json';
 
 import { importPack } from '../importer';
 import { createContentRepo } from '../repositories/content';

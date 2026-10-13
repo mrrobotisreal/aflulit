@@ -1,4 +1,4 @@
-import type { SpeakingMonologueItem, SpeakingTurnItem } from '@sumrak/schema';
+import type { SpeakingMonologueItem, SpeakingTurnItem } from '@aflulit/schema';
 
 import {
   buildExamSpeakingMessages,

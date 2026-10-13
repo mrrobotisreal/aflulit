@@ -1,4 +1,4 @@
-import type { ExamSubtestKind } from '@sumrak/schema';
+import type { ExamSubtestKind } from '@aflulit/schema';
 
 import { ruPlural } from './hub-model';
 import type { TodayStep } from './readiness';

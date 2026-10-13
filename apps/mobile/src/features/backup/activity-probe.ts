@@ -1,7 +1,7 @@
 import { gt, gte, sql } from 'drizzle-orm';
 
 import { bankItems, journalEntries, notes, reviewLog } from '@/db/schema';
-import type { SumrakDB } from '@/db/types';
+import type { AflulitDB } from '@/db/types';
 
 /**
  * "Significant session" heuristic for the post-session auto-backup trigger
@@ -19,7 +19,7 @@ export interface ActivityProbe {
   significant: boolean;
 }
 
-export async function probeActivitySince(db: SumrakDB, sinceMs: number): Promise<ActivityProbe> {
+export async function probeActivitySince(db: AflulitDB, sinceMs: number): Promise<ActivityProbe> {
   const [reviewRow] = await db
     .select({ n: sql<number>`count(*)` })
     .from(reviewLog)

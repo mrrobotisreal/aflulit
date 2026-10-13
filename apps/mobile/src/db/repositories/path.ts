@@ -3,7 +3,7 @@ import { asc, eq, inArray, sql } from 'drizzle-orm';
 import { emitMotivationEvent } from '@/services/motivation-bus';
 
 import { packs, unitProgress } from '../schema';
-import type { SumrakDB } from '../types';
+import type { AflulitDB } from '../types';
 
 export type UnitProgressRow = typeof unitProgress.$inferSelect;
 
@@ -28,7 +28,7 @@ export interface UnitLemmaStats {
  * and the derived vocabulary-credit queries. Everything else the Path tab
  * shows comes from existing repos (reading progress, checkpoint_results).
  */
-export function createPathRepo(db: SumrakDB) {
+export function createPathRepo(db: AflulitDB) {
   return {
     /** Course-unit + checkpoint packs, path order: level then id. */
     async listPathPacks() {

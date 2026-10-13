@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { safeParsePack, type Pack, type SchemaIssue } from '@sumrak/schema';
+import { safeParsePack, type Pack, type SchemaIssue } from '@aflulit/schema';
 
 /**
  * `pipeline validate`: check an existing pack.json against the shared schema,

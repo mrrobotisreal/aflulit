@@ -33,7 +33,7 @@ import {
 } from './readiness';
 import { stepAction, type TodayAction, type TopicTarget } from './today';
 import { SUBTEST_ORDER } from './topics';
-import type { ExamSubtestKind } from '@sumrak/schema';
+import type { ExamSubtestKind } from '@aflulit/schema';
 import type { TorflLevel } from './level-profile';
 import type { ExamMode } from './model';
 import { getExamDate, setExamDate } from './settings';

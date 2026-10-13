@@ -1,4 +1,4 @@
-import type { ExamSubtest } from '@sumrak/schema';
+import type { ExamSubtest } from '@aflulit/schema';
 
 import { isAnswered, type ExamAnswer } from '../model';
 import { buildLayout } from './layout';

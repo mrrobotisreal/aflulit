@@ -88,10 +88,10 @@ function synthRows(cards: number, seed = 42): ReviewRow[] {
 }
 
 describe('export JSON parsing', () => {
-  it('accepts the exact sumrak-review-log v1 shape', () => {
+  it('accepts the exact aflulit-review-log v1 shape', () => {
     const text = JSON.stringify({
       v: 1,
-      kind: 'sumrak-review-log',
+      kind: 'aflulit-review-log',
       exportedAt: '2026-10-09T00:00:00.000Z',
       timezone: 'America/Denver',
       rows: [
@@ -107,7 +107,7 @@ describe('export JSON parsing', () => {
 
   it('rejects a wrong kind or version', () => {
     expect(() =>
-      parseExportJson(JSON.stringify({ v: 2, kind: 'sumrak-review-log', rows: [] })),
+      parseExportJson(JSON.stringify({ v: 2, kind: 'aflulit-review-log', rows: [] })),
     ).toThrow(FsrsOptimizeError);
     expect(() => parseExportJson(JSON.stringify({ v: 1, kind: 'other', rows: [] }))).toThrow(
       /Not a/,
@@ -182,7 +182,7 @@ describe('export → binding CSV', () => {
 });
 
 describe('output shape and guards', () => {
-  it('builds the exact sumrak-fsrs-params v1 object', () => {
+  it('builds the exact aflulit-fsrs-params v1 object', () => {
     const w = roundWeights(Array.from(default_w));
     const file = buildParamsFile({
       w,
@@ -207,7 +207,7 @@ describe('output shape and guards', () => {
       'defaultRmse',
     ]);
     expect(file.v).toBe(1);
-    expect(file.kind).toBe('sumrak-fsrs-params');
+    expect(file.kind).toBe('aflulit-fsrs-params');
     expect(file.w).toHaveLength(21);
   });
 
@@ -265,10 +265,10 @@ describe('real binding run', () => {
 });
 
 describe('CLI end-to-end (file DB with real migrations)', () => {
-  it('reads a pulled sumrak.db and writes a valid params file', () => {
+  it('reads a pulled aflulit.db and writes a valid params file', () => {
     const dir = mkdtempSync(path.join(tmpdir(), 't39-cli-'));
     try {
-      const dbPath = path.join(dir, 'sumrak.db');
+      const dbPath = path.join(dir, 'aflulit.db');
       const sqlite = new Database(dbPath);
       migrate(drizzle(sqlite, { schema }), { migrationsFolder: MIGRATIONS });
 
@@ -317,7 +317,7 @@ describe('CLI end-to-end (file DB with real migrations)', () => {
 
       const file = JSON.parse(readFileSync(outPath, 'utf8'));
       expect(file.v).toBe(1);
-      expect(file.kind).toBe('sumrak-fsrs-params');
+      expect(file.kind).toBe('aflulit-fsrs-params');
       expect(file.w).toHaveLength(21);
       expect(file.reviewCount).toBe(rows.length);
       expect(file.cardCount).toBe(seen.size);
@@ -360,7 +360,7 @@ describe('CLI end-to-end (file DB with real migrations)', () => {
         input,
         JSON.stringify({
           v: 1,
-          kind: 'sumrak-review-log',
+          kind: 'aflulit-review-log',
           exportedAt: '2026-10-09T00:00:00Z',
           timezone: 'UTC',
           rows: [],

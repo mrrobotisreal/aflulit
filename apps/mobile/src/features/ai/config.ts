@@ -14,7 +14,7 @@ import { SETTING_KEYS } from '@/db/repositories/settings';
  * read back into a text field, and no function here returns it to anything
  * but the request layer.
  */
-const OPENROUTER_KEY = 'sumrak.ai.openrouter.key';
+const OPENROUTER_KEY = 'aflulit.ai.openrouter.key';
 
 /**
  * Claude by default (design §12 decision #12). Ids are OpenRouter's.

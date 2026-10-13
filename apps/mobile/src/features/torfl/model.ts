@@ -4,7 +4,7 @@ import {
   type ExamItem,
   type ExamPart,
   type ExamSubtest,
-} from '@sumrak/schema';
+} from '@aflulit/schema';
 import { z } from 'zod';
 
 /**

@@ -4,7 +4,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { ModelsManifestSchema } from '@sumrak/schema';
+import { ModelsManifestSchema } from '@aflulit/schema';
 import {
   GITHUB_TREE_FILE_LIMIT,
   MIRROR_MODELS,

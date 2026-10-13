@@ -7,7 +7,7 @@ import {
   type Exam,
   type Pack,
   type StoryRef,
-} from '@sumrak/schema';
+} from '@aflulit/schema';
 import { EXAM_TOPIC_KIND } from './exam-topics.ts';
 
 /**

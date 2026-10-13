@@ -1,4 +1,4 @@
-import type { Slot } from '@sumrak/schema';
+import type { Slot } from '@aflulit/schema';
 
 import type {
   AttemptDetail,
@@ -167,7 +167,7 @@ export interface TranscriptInput {
 /** The «Share transcript» text — plain, no audio, no ids; what was said and what was expected. */
 export function transcriptText(input: TranscriptInput): string {
   const lines: string[] = [];
-  lines.push(`Сумрак · Сценарий — ${input.familyTitle} (${input.level})`);
+  lines.push(`Aflulit · Сценарий — ${input.familyTitle} (${input.level})`);
   if (input.finishedAt) lines.push(new Date(input.finishedAt).toLocaleString());
   if (input.endingTitle) lines.push(`Концовка: ${input.endingTitle}`);
   if (input.stats) {

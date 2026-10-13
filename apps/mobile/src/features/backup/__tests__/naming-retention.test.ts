@@ -12,14 +12,14 @@ import { planRetention, RETENTION_DAILY_DAYS } from '../retention';
 import { examBundleStem } from '@/features/torfl/media-state-core';
 
 function nameFor(dateKey: string, time = '030000'): string {
-  return `sumrak-backup-${dateKey.replaceAll('-', '')}-${time}Z.json`;
+  return `aflulit-backup-${dateKey.replaceAll('-', '')}-${time}Z.json`;
 }
 
 describe('backup naming', () => {
   it('formats in UTC and round-trips through the parser', () => {
     const at = new Date('2026-08-23T03:07:09Z');
     const name = backupFileName(at);
-    expect(name).toBe('sumrak-backup-20260823-030709Z.json');
+    expect(name).toBe('aflulit-backup-20260823-030709Z.json');
     const parsed = parseBackupFileName(name);
     expect(parsed).toEqual({
       name,
@@ -31,7 +31,7 @@ describe('backup naming', () => {
 
   it('rejects non-backup names and impossible calendar values', () => {
     expect(parseBackupFileName('manifest.json')).toBeNull();
-    expect(parseBackupFileName('sumrak-backup-20260823-030709.json')).toBeNull(); // no Z
+    expect(parseBackupFileName('aflulit-backup-20260823-030709.json')).toBeNull(); // no Z
     expect(parseBackupFileName(nameFor('2026-13-01'))).toBeNull(); // month 13
     expect(parseBackupFileName(nameFor('2026-02-30'))).toBeNull(); // Feb 30
   });
@@ -86,7 +86,7 @@ describe('retention ring buffer (30 daily + one per older month)', () => {
       backupFileName(new Date(Date.UTC(2026, 7, 1 + i, 3))),
     );
     const plan = planRetention([...names.slice(0, 4), ...fresh]);
-    const olderKept = plan.keep.filter((n) => n < 'sumrak-backup-202608').sort();
+    const olderKept = plan.keep.filter((n) => n < 'aflulit-backup-202608').sort();
     expect(olderKept).toEqual([nameFor('2026-01-20', '020000'), nameFor('2026-02-27', '020000')]);
     expect(plan.prune.sort()).toEqual([
       nameFor('2026-01-05', '020000'),
@@ -124,10 +124,10 @@ describe('retention ring buffer (30 daily + one per older month)', () => {
 });
 
 describe('media bundle naming (T63 §10.3)', () => {
-  it('formats sumrak-media-<runId>.json from a newId-style run id and parses back', () => {
+  it('formats aflulit-media-<runId>.json from a newId-style run id and parses back', () => {
     const runId = 'mg1x2k3a-abc12def00';
     const name = mediaFileName(runId);
-    expect(name).toBe(`sumrak-media-${runId}.json`);
+    expect(name).toBe(`aflulit-media-${runId}.json`);
     expect(MEDIA_FILE_RE.test(name)).toBe(true);
     expect(parseMediaFileName(name)).toBe(runId);
   });
@@ -136,33 +136,33 @@ describe('media bundle naming (T63 §10.3)', () => {
     const name = mediaFileName('mg1x2k3a-abc12def00');
     expect(parseBackupFileName(name)).toBeNull();
     expect(planRetention([name, nameFor('2026-01-01'), nameFor('2026-08-01')]).prune).toEqual([]);
-    expect(parseMediaFileName('sumrak-backup-20260823-030709Z.json')).toBeNull();
+    expect(parseMediaFileName('aflulit-backup-20260823-030709Z.json')).toBeNull();
   });
 
   it('refuses run ids that could escape the name (separators, uppercase, too short)', () => {
     expect(() => mediaFileName('../x')).toThrow();
     expect(() => mediaFileName('ABC-def')).toThrow();
     expect(() => mediaFileName('ab')).toThrow();
-    expect(parseMediaFileName('sumrak-media-../x.json')).toBeNull();
+    expect(parseMediaFileName('aflulit-media-../x.json')).toBeNull();
   });
 });
 
 describe('exam media bundle naming (T74, TORFL §8.5)', () => {
-  // SumrakAPI `internal/naming/naming.go:24` — the server-side acceptance regex, copied verbatim
+  // AflulitAPI `internal/naming/naming.go:24` — the server-side acceptance regex, copied verbatim
   // so a rename on either side breaks this test: lowercase stems only, 4–80 chars.
-  const SYNCD_MEDIA_FILE_RE = /^sumrak-media-([a-z0-9][a-z0-9-]{3,79})\.json$/;
+  const SYNCD_MEDIA_FILE_RE = /^aflulit-media-([a-z0-9][a-z0-9-]{3,79})\.json$/;
 
-  it('an exam bundle is sumrak-media-exam-<attemptid>.json with the id lowercased — accepted by syncd', () => {
+  it('an exam bundle is aflulit-media-exam-<attemptid>.json with the id lowercased — accepted by syncd', () => {
     const attemptId = 'MKXY1ABC-Q7zTuV00';
     const name = mediaFileName(examBundleStem(attemptId));
-    expect(name).toBe('sumrak-media-exam-mkxy1abc-q7ztuv00.json');
+    expect(name).toBe('aflulit-media-exam-mkxy1abc-q7ztuv00.json');
     expect(SYNCD_MEDIA_FILE_RE.test(name)).toBe(true);
     expect(MEDIA_FILE_RE.test(name)).toBe(true);
     expect(parseMediaFileName(name)).toBe('exam-mkxy1abc-q7ztuv00');
   });
 
   it('the uppercase id itself would have been refused — the lowercase stem is the fix', () => {
-    expect(SYNCD_MEDIA_FILE_RE.test('sumrak-media-exam-MKXY1ABC.json')).toBe(false);
+    expect(SYNCD_MEDIA_FILE_RE.test('aflulit-media-exam-MKXY1ABC.json')).toBe(false);
     expect(() => mediaFileName('exam-MKXY1ABC')).toThrow();
   });
 

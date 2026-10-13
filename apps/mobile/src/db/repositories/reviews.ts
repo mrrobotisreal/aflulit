@@ -20,7 +20,7 @@ import { localDayWindow, startOfNextLocalDay } from '@/lib/dates';
 
 import { newId } from '../ids';
 import { bankItems, cards, reviewLog, type CardDirection, type ReviewSource } from '../schema';
-import type { SumrakDB } from '../types';
+import type { AflulitDB } from '../types';
 
 export type CardRow = typeof cards.$inferSelect;
 export type ReviewLogRow = typeof reviewLog.$inferSelect;
@@ -184,7 +184,7 @@ export interface GradeResult {
  * later tickets (T12–T14, T17–T19) call into — game modes differ only in
  * how they arrive at a `Grade`.
  */
-export function createReviewsRepo(db: SumrakDB) {
+export function createReviewsRepo(db: AflulitDB) {
   /**
    * T82: the ONE due computation. Loads every due, servable card in
    * `directions` with its item context, then lets the pure `planDue` decide

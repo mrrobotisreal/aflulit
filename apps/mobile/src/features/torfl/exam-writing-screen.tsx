@@ -1,4 +1,4 @@
-import type { ExamSubtest } from '@sumrak/schema';
+import type { ExamSubtest } from '@aflulit/schema';
 import * as React from 'react';
 import { Alert, Pressable, View } from 'react-native';
 

@@ -11,7 +11,7 @@ import {
   type JournalPrompt,
   type Lesson,
   type PackTheme,
-} from '@sumrak/schema';
+} from '@aflulit/schema';
 import { normalizeDeep } from './draft.ts';
 import { DraftError, type DraftIssue } from './errors.ts';
 import { PackMetaSchema, type PackMeta } from './frontmatter.ts';

@@ -1,6 +1,6 @@
-import { ExamSchema, type Pack } from '@sumrak/schema';
-import examPackJson from '@sumrak/schema/fixtures/packs/a1-exam-fixture/pack.json';
-import a2ExamPackJson from '@sumrak/schema/fixtures/packs/a2-exam-fixture/pack.json';
+import { ExamSchema, type Pack } from '@aflulit/schema';
+import examPackJson from '@aflulit/schema/fixtures/packs/a1-exam-fixture/pack.json';
+import a2ExamPackJson from '@aflulit/schema/fixtures/packs/a2-exam-fixture/pack.json';
 import { asc, eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 

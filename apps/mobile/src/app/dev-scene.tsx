@@ -54,7 +54,7 @@ import { useAppTheme } from '@/theme/use-app-theme';
  * from the device picker) and read the `anchors.json` fragment. Every
  * action logs `[scene-lab]` JSON so an adb session can drive and read it.
  *
- * Deep-link driver: `sumrak://dev-scene?line=<sentenceId|index>&rate=0.8
+ * Deep-link driver: `aflulit://dev-scene?line=<sentenceId|index>&rate=0.8
  * &pose=speaking&png=1&layout=desk&n=<nonce>`.
  */
 

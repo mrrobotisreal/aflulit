@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import type { ChoiceItem, ExamItem, ExamSubtest, TypedItem } from '@sumrak/schema';
+import type { ChoiceItem, ExamItem, ExamSubtest, TypedItem } from '@aflulit/schema';
 import * as React from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

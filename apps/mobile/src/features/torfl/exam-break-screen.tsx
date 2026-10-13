@@ -8,7 +8,7 @@ import { useAppTheme } from '@/theme/use-app-theme';
 
 import { formatMinutes } from './hub-model';
 import { SUBTEST_LABELS } from './topics';
-import type { ExamSubtestKind } from '@sumrak/schema';
+import type { ExamSubtestKind } from '@aflulit/schema';
 
 /** The untimed break between subtests of a full mock (T71, TORFL §8.2). */
 export function ExamBreakScreen({

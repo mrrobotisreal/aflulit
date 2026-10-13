@@ -3,7 +3,7 @@ import type {
   ExamSubtest,
   SpeakingMonologueItem,
   SpeakingTurnItem,
-} from '@sumrak/schema';
+} from '@aflulit/schema';
 
 import { judgeAnswer, type JudgeResult } from '@/features/scenario/judge/judge';
 import { contentTokens } from '@/features/scenario/judge/slots';

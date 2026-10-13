@@ -146,7 +146,7 @@ describe('classifyPack — the §2.4 default table', () => {
     });
   });
 
-  it("origin 'local' (Share-to-Сумрак paste, type stories) → stories/null", () => {
+  it("origin 'local' (Share-to-Aflulit paste, type stories) → stories/null", () => {
     expect(classifyPack(pack({ origin: 'local' }))).toEqual({ category: 'stories', genre: null });
     // A local pack with an authored genre still keeps it (nothing is dropped).
     expect(classifyPack(pack({ origin: 'local', genre: 'absurd' }))).toEqual({

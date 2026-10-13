@@ -1,4 +1,4 @@
-import type { Exam, ExamItem, ExamPart, ExamSubtest, ExamSubtestKind } from '@sumrak/schema';
+import type { Exam, ExamItem, ExamPart, ExamSubtest, ExamSubtestKind } from '@aflulit/schema';
 
 import { torflLevelOf, type TorflLevel } from '../level-profile';
 import { examItemKey, findExamItem } from '../model';

@@ -7,7 +7,7 @@ import {
   type Scenario,
   type ScenarioTurn,
   type Slot,
-} from '@sumrak/schema';
+} from '@aflulit/schema';
 
 /**
  * Branch map (T25, design V2 §3.2): a plain-text tree of a dialogue's graph

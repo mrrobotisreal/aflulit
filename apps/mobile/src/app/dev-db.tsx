@@ -28,7 +28,7 @@ import {
 } from '@/features/ai/run-profile';
 import { classifyPack } from '@/features/library/categories';
 import { initialAttemptState, subtestItemCount } from '@/features/torfl/model';
-import { itemPoints } from '@sumrak/schema';
+import { itemPoints } from '@aflulit/schema';
 import { generateProfile } from '@/features/word-forms/profile-service';
 import { detectRuDatePath, formatRuDate } from '@/lib/ru-date';
 import { syncQueryKeys } from '@/features/sync/hooks';
@@ -75,21 +75,21 @@ const FIXTURE_PACKS = [
 type FixtureId = (typeof FIXTURE_PACKS)[number]['id'];
 
 const FIXTURE_JSON: Record<FixtureId, () => unknown> = {
-  'a2-news-090': () => require('@sumrak/schema/fixtures/packs/a2-news-090/pack.json'),
-  'a2-podcast-090': () => require('@sumrak/schema/fixtures/packs/a2-podcast-090/pack.json'),
-  'a1-comedy-090': () => require('@sumrak/schema/fixtures/packs/a1-comedy-090/pack.json'),
+  'a2-news-090': () => require('@aflulit/schema/fixtures/packs/a2-news-090/pack.json'),
+  'a2-podcast-090': () => require('@aflulit/schema/fixtures/packs/a2-podcast-090/pack.json'),
+  'a1-comedy-090': () => require('@aflulit/schema/fixtures/packs/a1-comedy-090/pack.json'),
   'a1-scenario-fixture': () =>
-    require('@sumrak/schema/fixtures/packs/a1-scenario-fixture/pack.json'),
-  'a1-exam-fixture': () => require('@sumrak/schema/fixtures/packs/a1-exam-fixture/pack.json'),
+    require('@aflulit/schema/fixtures/packs/a1-scenario-fixture/pack.json'),
+  'a1-exam-fixture': () => require('@aflulit/schema/fixtures/packs/a1-exam-fixture/pack.json'),
   'a1-torfl-lexicon-fixture': () =>
-    require('@sumrak/schema/fixtures/packs/a1-torfl-lexicon-fixture/pack.json'),
+    require('@aflulit/schema/fixtures/packs/a1-torfl-lexicon-fixture/pack.json'),
   'a1-torfl-prompts-fixture': () =>
-    require('@sumrak/schema/fixtures/packs/a1-torfl-prompts-fixture/pack.json'),
-  'a2-exam-fixture': () => require('@sumrak/schema/fixtures/packs/a2-exam-fixture/pack.json'),
+    require('@aflulit/schema/fixtures/packs/a1-torfl-prompts-fixture/pack.json'),
+  'a2-exam-fixture': () => require('@aflulit/schema/fixtures/packs/a2-exam-fixture/pack.json'),
   'a2-torfl-prompts-fixture': () =>
-    require('@sumrak/schema/fixtures/packs/a2-torfl-prompts-fixture/pack.json'),
+    require('@aflulit/schema/fixtures/packs/a2-torfl-prompts-fixture/pack.json'),
   'core-lemmas-fixture': () =>
-    require('@sumrak/schema/fixtures/packs/core-lemmas-fixture/pack.json'),
+    require('@aflulit/schema/fixtures/packs/core-lemmas-fixture/pack.json'),
 };
 
 const EXAM_FIXTURE_ID = 'a1-exam-fixture';
@@ -517,7 +517,7 @@ export default function DevDbScreen() {
   // T40 widget: write the home-screen snapshot directly (demo every state on the device).
   const [widgetLog, setWidgetLog] = React.useState<string | null>(null);
   const writeWidget = React.useCallback((label: string, json: string | null) => {
-    const native = requireOptionalNativeModule<{ writeSnapshot(j: string): void }>('SumrakWidget');
+    const native = requireOptionalNativeModule<{ writeSnapshot(j: string): void }>('AflulitWidget');
     if (!native) {
       setWidgetLog(`${label}: native module missing (rebuild the dev client)`);
       return;

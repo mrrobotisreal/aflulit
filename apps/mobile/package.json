@@ -1,5 +1,5 @@
 {
-  "name": "sumrak-mobile",
+  "name": "aflulit-mobile",
   "main": "expo-router/entry",
   "version": "0.1.0",
   "private": true,
@@ -26,7 +26,7 @@
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/slider": "5.2.0",
     "@rn-primitives/slot": "^1.5.2",
-    "@sumrak/schema": "workspace:*",
+    "@aflulit/schema": "workspace:*",
     "@tanstack/react-query": "^5.101.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -68,7 +68,7 @@
   },
   "devDependencies": {
     "@open-spaced-repetition/binding": "0.5.0",
-    "@sumrak/pipeline": "workspace:*",
+    "@aflulit/pipeline": "workspace:*",
     "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^24.13.3",
     "@types/react": "~19.2.2",

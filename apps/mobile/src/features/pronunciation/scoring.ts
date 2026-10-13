@@ -154,7 +154,7 @@ export function scoreAttempt(targetText: string, transcriptText: string): Pronun
 
 /**
  * Score → FSRS rating for the `production` direction (T12 decision, same
- * shape as T06's MC mapping — record kept in SUMRAK_TICKETS.md):
+ * shape as T06's MC mapping — record kept in Sumrak T06, ../Russian/docs/SUMRAK_TICKETS.md):
  *
  *   score ≥ 80 → Good · 50–79 → Hard · < 50 → Again · Easy never emitted
  *

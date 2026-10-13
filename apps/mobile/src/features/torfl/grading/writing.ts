@@ -1,4 +1,4 @@
-import type { WritingItem } from '@sumrak/schema';
+import type { WritingItem } from '@aflulit/schema';
 
 import { matchesPattern, normalizeAnswer, roundPct, type ItemScore } from '../scoring';
 import type { ExamCriterion } from '../model';

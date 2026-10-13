@@ -3,7 +3,7 @@
  * (M17 / T61, design SPEAKING_SCENARIOS §8.4) — the M15 encoder's twin with
  * a quieter target (beds sit UNDER speech):
  *
- *   pnpm --filter sumrak-mobile encode:scene [--src <dir>] [--out <dir>]
+ *   pnpm --filter aflulit-mobile encode:scene [--src <dir>] [--out <dir>]
  *        [--bitrate 64k] [--target-lufs -32] [--force]
  *
  * Per bed: measure (loudnorm pass 1) → normalise + encode (loudnorm pass 2,

@@ -37,7 +37,7 @@ export class CrashGuard extends React.Component<{ children: React.ReactNode }, C
     if (!this.state.error) return this.props.children;
     return (
       <View className="flex-1 items-center justify-center bg-bg px-6">
-        <Text className="font-display text-3xl text-accent">Сумрак</Text>
+        <Text className="font-display text-3xl text-accent">Aflulit</Text>
         <Text variant="title" className="mt-6 text-center">
           Something broke
         </Text>

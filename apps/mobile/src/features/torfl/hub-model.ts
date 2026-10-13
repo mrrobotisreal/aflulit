@@ -4,7 +4,7 @@ import {
   type Exam,
   type ExamRefField,
   type ExamSubtestKind,
-} from '@sumrak/schema';
+} from '@aflulit/schema';
 
 import { diffDayKeys, isDayKey } from '@/lib/dates';
 

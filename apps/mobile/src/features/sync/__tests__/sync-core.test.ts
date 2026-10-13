@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { Manifest, ManifestEntry } from '@sumrak/schema';
+import type { Manifest, ManifestEntry } from '@aflulit/schema';
 import { describe, expect, it } from 'vitest';
 
 import type { SyncStateRow } from '@/db/repositories/sync-state';

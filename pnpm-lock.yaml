@@ -41,7 +41,7 @@ importers:
       '@rn-primitives/slot':
         specifier: ^1.5.2
         version: 1.5.2(react-native@0.86.2(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.86.2(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)
-      '@sumrak/schema':
+      '@aflulit/schema':
         specifier: workspace:*
         version: link:../../packages/schema
       '@tanstack/react-query':
@@ -162,7 +162,7 @@ importers:
       '@open-spaced-repetition/binding':
         specifier: 0.5.0
         version: 0.5.0
-      '@sumrak/pipeline':
+      '@aflulit/pipeline':
         specifier: workspace:*
         version: link:../../packages/pipeline
       '@types/better-sqlite3':
@@ -207,7 +207,7 @@ importers:
 
   packages/pipeline:
     dependencies:
-      '@sumrak/schema':
+      '@aflulit/schema':
         specifier: workspace:*
         version: link:../schema
       yaml:

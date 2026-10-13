@@ -13,7 +13,7 @@ import { z } from 'zod';
  * fp32 + int8 encoder/decoder; the module loads the **int8** pair. The T59
  * session benchmarked all three on the S25 against 20 «Как сказать <word>»
  * clips and pinned the smallest that recovered ≥ 80 % of the words — the
- * table lives in the T59 row of `docs/SUMRAK_TICKETS.md`.
+ * table lives in the Sumrak T59 row of `../Russian/docs/SUMRAK_TICKETS.md`.
  */
 
 export type AssistCandidateSize = 'tiny' | 'base' | 'small';

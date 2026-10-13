@@ -48,7 +48,7 @@ export const ManifestEntrySchema = z.strictObject({
 export type ManifestEntry = z.infer<typeof ManifestEntrySchema>;
 
 /**
- * The top-level `manifest.json` in the `sumrak-content` repo: the index of
+ * The top-level `manifest.json` in the `aflulit-content` repo: the index of
  * all packs the app diffs against installed versions to decide downloads
  * (design §4.2/§9). Shape pinned in T02: a versioned envelope around the
  * entry list so the manifest format itself can evolve.

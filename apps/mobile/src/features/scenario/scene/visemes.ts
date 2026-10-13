@@ -1,4 +1,4 @@
-import { MOUTH_TRACK_STEP_MS } from '@sumrak/schema';
+import { MOUTH_TRACK_STEP_MS } from '@aflulit/schema';
 
 import { activeWordAt, type KaraokeIndex } from '@/features/reader/karaoke';
 

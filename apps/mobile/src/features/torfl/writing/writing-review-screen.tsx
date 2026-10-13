@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
-import type { Exam, WritingItem } from '@sumrak/schema';
+import type { Exam, WritingItem } from '@aflulit/schema';
 import { useRouter } from 'expo-router';
 import * as React from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text as RNText, View } from 'react-native';

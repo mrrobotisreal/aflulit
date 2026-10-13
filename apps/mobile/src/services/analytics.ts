@@ -110,7 +110,7 @@ export type AnalyticsEvent =
   | 'games_menu_opened'
   | 'game_launched_from_menu'
   | 'games_unseen_stories_toggled'
-  // T28 Share-to-Сумрак intake (counts + char counts ONLY — never text
+  // T28 Share-to-Aflulit intake (counts + char counts ONLY — never text
   // content, titles, or title-derived pack ids)
   | 'import_share_received'
   | 'import_intake_opened'

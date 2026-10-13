@@ -35,7 +35,7 @@ import {
   unitProgress,
   wordProfiles,
 } from '@/db/schema';
-import type { SumrakDB } from '@/db/types';
+import type { AflulitDB } from '@/db/types';
 
 import { BackupError } from './errors';
 import { BackupPayloadSchema, type BackupPayload, type UserTableKey } from './payload-schema';
@@ -117,7 +117,7 @@ export function parseBackupPayload(raw: unknown): BackupPayload {
   return result.data;
 }
 
-export async function restoreUserData(db: SumrakDB, raw: unknown): Promise<RestoreResult> {
+export async function restoreUserData(db: AflulitDB, raw: unknown): Promise<RestoreResult> {
   const payload = parseBackupPayload(raw);
   const { tables } = payload;
 
@@ -188,7 +188,7 @@ export async function restoreUserData(db: SumrakDB, raw: unknown): Promise<Resto
  * the historical 999-variable floor so it's safe on any SQLite build (the
  * importer uses the same approach).
  */
-async function insertAll(db: SumrakDB, table: SQLiteTable, rows: unknown[]): Promise<void> {
+async function insertAll(db: AflulitDB, table: SQLiteTable, rows: unknown[]): Promise<void> {
   if (rows.length === 0) return;
   const cols = Object.keys(rows[0] as Record<string, unknown>).length;
   const chunkSize = Math.max(1, Math.floor(900 / cols));

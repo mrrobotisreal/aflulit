@@ -26,7 +26,7 @@ import {
   type Pack,
   type Scenario,
   type LineAudio,
-} from '@sumrak/schema';
+} from '@aflulit/schema';
 import { ElevenLabsClient, DEFAULT_MODEL_ID, isTaggedModel } from './src/elevenlabs.ts';
 import { resolveEnvVar } from './src/env.ts';
 import { renderLine, finalizeLine, RequestPacer, type LineRenderSpec } from './src/line-audio.ts';

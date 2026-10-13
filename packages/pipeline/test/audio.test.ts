@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import type { Pack, WordStamp } from '@sumrak/schema';
+import type { Pack, WordStamp } from '@aflulit/schema';
 import { runAudition, runFinalize, steerNarration } from '../src/audio.ts';
 import { annotateDrafts } from '../src/annotate.ts';
 import { ElevenLabsClient, ElevenLabsError } from '../src/elevenlabs.ts';
@@ -20,7 +20,7 @@ import { alignCharacters, mapAlignmentToStamps, type CharAlignment } from '../sr
 
 const tempDirs: string[] = [];
 function tempDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'sumrak-t09-'));
+  const dir = mkdtempSync(join(tmpdir(), 'aflulit-t09-'));
   tempDirs.push(dir);
   return dir;
 }

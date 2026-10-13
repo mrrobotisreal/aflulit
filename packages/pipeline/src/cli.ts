@@ -26,7 +26,7 @@ import {
   type PackAudit,
 } from './stamp-audit.ts';
 import { runValidate } from './validate.ts';
-import { safeParsePack, type Pack } from '@sumrak/schema';
+import { safeParsePack, type Pack } from '@aflulit/schema';
 
 /**
  * CLI entrypoint. annotate/validate are offline (T08); audio is explicitly
@@ -34,7 +34,7 @@ import { safeParsePack, type Pack } from '@sumrak/schema';
  * Exit codes: 0 success, 1 validation failure, 2 usage.
  */
 
-const USAGE = `Sumrak authoring pipeline
+const USAGE = `Aflulit authoring pipeline
 
 Usage:
   pipeline annotate [draft.md ...] [--extras <extras.md>] [-o <pack.json>]
@@ -99,7 +99,7 @@ Usage:
       word stamps mapped + checked, pack.json written (merges with a previous
       run, so tracks/nodes/lines can be finalized in batches).
 
-  pipeline publish <pack-dir> --content <sumrak-content-dir> [--push] [-m msg]
+  pipeline publish <pack-dir> --content <aflulit-content-dir> [--push] [-m msg]
                    [--allow-stamp-risk] [--skip-stamp-audit]
       Copy the pack into the content repo, recompute hashes, update
       manifest.json, and commit. Pushes only with --push. Runs stamp-audit
@@ -119,7 +119,7 @@ Usage:
       alignment + energy snapping). Changes only audio[].timestamps
       (asserted); writes in place unless -o is given. Never re-renders.
 
-  pipeline models mirror --content <sumrak-content-dir> [--push] [-m msg]
+  pipeline models mirror --content <aflulit-content-dir> [--push] [-m msg]
       Mirror the app's pinned speech-model archives (4 Piper TTS voices + the
       ASR model, ~330 MB) from the k2-fsa release assets into the content
       repo's models/{tts,asr}/, verifying each download against the pinned
@@ -127,7 +127,7 @@ Usage:
       commit. Idempotent: verified-present files are skipped, and model files
       are never deleted or overwritten. Pushes only with --push.
 
-Run from the Sumrak repo root:  pnpm pipeline annotate <draft.md> -o <out.json>
+Run from the Aflulit repo root:  pnpm pipeline annotate <draft.md> -o <out.json>
 (paths resolve against the repo root — pnpm runs scripts at the package root)`;
 
 function fail(message: string, code: 1 | 2): never {
@@ -433,7 +433,7 @@ async function audioCommand(args: string[]): Promise<void> {
     } else {
       const summary = await runFinalize(drafts, out, client, {
         restamp: restampFlag
-          ? pythonAligner({ device: process.env.SUMRAK_ALIGN_DEVICE })
+          ? pythonAligner({ device: process.env.AFLULIT_ALIGN_DEVICE })
           : undefined,
         seeds,
         defaultSeed,
@@ -497,7 +497,7 @@ function publishCommand(args: string[]): void {
     else fail(`publish takes exactly one <pack-dir>\n\n${USAGE}`, 2);
   }
   if (packDir === undefined) fail(`publish needs a <pack-dir>\n\n${USAGE}`, 2);
-  if (content === undefined) fail(`publish needs --content <sumrak-content-dir>\n\n${USAGE}`, 2);
+  if (content === undefined) fail(`publish needs --content <aflulit-content-dir>\n\n${USAGE}`, 2);
 
   try {
     const summary = runPublish(packDir, content, {
@@ -547,7 +547,7 @@ async function modelsCommand(args: string[]): Promise<void> {
     else fail(`unknown option "${arg}"\n\n${USAGE}`, 2);
   }
   if (content === undefined)
-    fail(`models mirror needs --content <sumrak-content-dir>\n\n${USAGE}`, 2);
+    fail(`models mirror needs --content <aflulit-content-dir>\n\n${USAGE}`, 2);
 
   try {
     const summary = await runModelsMirror(content, { push, message });

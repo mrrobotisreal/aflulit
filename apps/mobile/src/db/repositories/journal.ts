@@ -3,13 +3,13 @@ import { desc, eq, inArray, sql } from 'drizzle-orm';
 import { newId } from '../ids';
 import { toFtsQuery } from '../normalize';
 import { journalEntries, notes, type FeedbackStatus } from '../schema';
-import type { SumrakDB } from '../types';
+import type { AflulitDB } from '../types';
 
 export type JournalEntryRow = typeof journalEntries.$inferSelect;
 export type NoteRow = typeof notes.$inferSelect;
 
 /** Journal entries + markdown study notes, with FTS search over both. */
-export function createJournalRepo(db: SumrakDB) {
+export function createJournalRepo(db: AflulitDB) {
   return {
     async createEntry(input: { ru: string; promptId?: string }): Promise<JournalEntryRow> {
       const now = Date.now();

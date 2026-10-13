@@ -382,7 +382,7 @@ export const dialogueEndingsSeen = sqliteTable(
 export type ImportRequestStatus = 'draft' | 'queued' | 'annotated' | 'committed' | 'failed';
 
 /**
- * Share-to-Сумрак import requests (T28, design V2 §4.1) — the durable
+ * Share-to-Aflulit import requests (T28, design V2 §4.1) — the durable
  * intake record, T15/T16's `feedbackStatus` pattern as its own table: a
  * `'queued'` row IS a pending annotation request that survives restarts
  * (annotation is online-only in T29; intake must not be). Status walk:

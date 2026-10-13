@@ -49,7 +49,7 @@ installGlobalErrorLogging();
 
 /**
  * T84: every deep link (widget, notification) lands with the tabs UNDER it.
- * Without the anchor a cold `sumrak://reader/…` mounted the reader as the only
+ * Without the anchor a cold `aflulit://reader/…` mounted the reader as the only
  * route, so back did nothing (Mitch had to force-close the app).
  */
 export const unstable_settings = { anchor: '(tabs)' };
@@ -70,7 +70,7 @@ export default function RootLayout() {
     GolosText_500Medium,
     GolosText_700Bold,
   });
-  // Display font for the splash intro + branding (Сумрак wordmark)
+  // Display font for the splash intro + branding (אַפְלוּלִית wordmark)
   const [displayLoaded, displayError] = useDisplayFonts({
     RubikWetPaint_400Regular,
   });

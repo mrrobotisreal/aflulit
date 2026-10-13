@@ -4,7 +4,7 @@ import type {
   ExamSubtest,
   SpeakingMonologueItem,
   SpeakingTurnItem,
-} from '@sumrak/schema';
+} from '@aflulit/schema';
 import * as React from 'react';
 import { Alert, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

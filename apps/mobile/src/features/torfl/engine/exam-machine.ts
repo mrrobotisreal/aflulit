@@ -1,4 +1,4 @@
-import type { Exam, ExamSubtest, ExamSubtestKind } from '@sumrak/schema';
+import type { Exam, ExamSubtest, ExamSubtestKind } from '@aflulit/schema';
 
 import {
   ExamAttemptStateSchema,

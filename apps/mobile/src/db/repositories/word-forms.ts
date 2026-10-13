@@ -6,7 +6,7 @@ import { track } from '@/services/analytics';
 import { newId } from '../ids';
 import { normalizeRu } from '../normalize';
 import { bankItems, grammarLessons, wordProfiles, type ProfileKind } from '../schema';
-import type { SumrakDB } from '../types';
+import type { AflulitDB } from '../types';
 import type { BankItemRow } from './bank';
 
 /**
@@ -56,7 +56,7 @@ export interface ListLessonsOptions {
 /** The (lemma_norm ?? normalized) key expression of a bank item, as SQL (§5.4). */
 const BANK_PROFILE_KEY = sql`CASE WHEN ${bankItems.kind} = 'word' THEN ${bankItems.lemmaNorm} ELSE ${bankItems.normalized} END`;
 
-export function createWordFormsRepo(db: SumrakDB) {
+export function createWordFormsRepo(db: AflulitDB) {
   const parseWarned = new Set<string>();
 
   function toRecord(row: WordProfileRow): WordProfileRecord {

@@ -49,16 +49,16 @@ describe('SyncdClient.listBackups', () => {
     mockFetchOnce({
       jsonBody: {
         backups: [
-          { name: 'sumrak-backup-20260822-030000Z.json', size: 100, timestampMs: 1 },
+          { name: 'aflulit-backup-20260822-030000Z.json', size: 100, timestampMs: 1 },
           { name: 'stranger.json', size: 5, timestampMs: 2 },
-          { name: 'sumrak-backup-20260823-030000Z.json', size: 200, timestampMs: 3 },
+          { name: 'aflulit-backup-20260823-030000Z.json', size: 200, timestampMs: 3 },
         ],
       },
     });
     const list = await new SyncdClient(HOST, TOKEN).listBackups();
     expect(list.map((b) => b.name)).toEqual([
-      'sumrak-backup-20260823-030000Z.json',
-      'sumrak-backup-20260822-030000Z.json',
+      'aflulit-backup-20260823-030000Z.json',
+      'aflulit-backup-20260822-030000Z.json',
     ]);
     // Timestamps come from the NAME (the T20 contract), not the server row.
     expect(list[0]!.timestamp).toBe(Date.UTC(2026, 7, 23, 3, 0, 0));
@@ -99,15 +99,15 @@ describe('SyncdClient.listBackups', () => {
 describe('SyncdClient.putBackup', () => {
   it('PUTs the envelope verbatim and returns the validated result', async () => {
     const fetchMock = mockFetchOnce({
-      jsonBody: { stored: 'sumrak-backup-20260823-030000Z.json', bytes: 12, pruned: 3 },
+      jsonBody: { stored: 'aflulit-backup-20260823-030000Z.json', bytes: 12, pruned: 3 },
     });
     const result = await new SyncdClient(HOST, TOKEN).putBackup(
-      'sumrak-backup-20260823-030000Z.json',
+      'aflulit-backup-20260823-030000Z.json',
       '{"sealed":1}',
     );
     expect(result.pruned).toBe(3);
     const [url, init] = fetchMock.mock.calls[0]! as [string, RequestInit];
-    expect(url).toBe(`${HOST}/backup?name=sumrak-backup-20260823-030000Z.json`);
+    expect(url).toBe(`${HOST}/backup?name=aflulit-backup-20260823-030000Z.json`);
     expect(init.method).toBe('PUT');
     expect(init.body).toBe('{"sealed":1}');
   });
@@ -115,7 +115,7 @@ describe('SyncdClient.putBackup', () => {
   it('surfaces non-2xx statuses as typed syncd errors', async () => {
     mockFetchOnce({ ok: false, status: 409 });
     const err = await new SyncdClient(HOST, TOKEN)
-      .putBackup('sumrak-backup-20260823-030000Z.json', '{}')
+      .putBackup('aflulit-backup-20260823-030000Z.json', '{}')
       .catch((e: unknown) => e);
     expect((err as BackupError).code).toBe('syncd');
     expect((err as BackupError).message).toContain('409');
@@ -126,7 +126,7 @@ describe('SyncdClient.fetchBackup', () => {
   it('returns the archive text verbatim', async () => {
     mockFetchOnce({ textBody: '{"v":1,"cipher":{}}' });
     const text = await new SyncdClient(HOST, TOKEN).fetchBackup(
-      'sumrak-backup-20260823-030000Z.json',
+      'aflulit-backup-20260823-030000Z.json',
     );
     expect(text).toBe('{"v":1,"cipher":{}}');
   });

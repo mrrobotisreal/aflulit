@@ -2,7 +2,7 @@
  * Encodes the themed study-soundtrack masters into the app's bundled,
  * loudness-matched Opus beds (M15 / T47, design AMBIENT_SOUNDTRACKS §4):
  *
- *   pnpm --filter sumrak-mobile encode:ambient [--src <dir>] [--out <dir>]
+ *   pnpm --filter aflulit-mobile encode:ambient [--src <dir>] [--out <dir>]
  *        [--bitrate 96k] [--target-lufs -26] [--force]
  *
  * Per bed: measure (loudnorm pass 1) → normalise + encode (loudnorm pass 2,

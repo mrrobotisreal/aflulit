@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 
 import { settings } from '../schema';
-import type { SumrakDB } from '../types';
+import type { AflulitDB } from '../types';
 
 /**
  * Well-known settings keys. Add here as tickets introduce them so key
@@ -30,7 +30,7 @@ export const SETTING_KEYS = {
   /**
    * Backup KDF parameters (T20): { saltB64, iterations, createdAt }. The
    * salt is NOT secret; the passphrase-derived key lives in secure-store
-   * only ('sumrak.backup.key'), never here.
+   * only ('aflulit.backup.key'), never here.
    */
   backupKdf: 'backup.kdf',
   /** SAF directory uri granted for local backup export/restore (T20). */
@@ -38,7 +38,7 @@ export const SETTING_KEYS = {
   /**
    * syncd target config (T21): { host } — the tailnet base URL, Zod-validated
    * on read (features/backup/syncd-config). The bearer token is NEVER here:
-   * secure-store only ('sumrak.backup.syncd.token'), same rule as the PAT.
+   * secure-store only ('aflulit.backup.syncd.token'), same rule as the PAT.
    */
   syncdConfig: 'backup.syncd',
   /**
@@ -253,7 +253,7 @@ export const SETTING_KEYS = {
 } as const;
 
 /** Key-value settings, JSON-encoded values. */
-export function createSettingsRepo(db: SumrakDB) {
+export function createSettingsRepo(db: AflulitDB) {
   return {
     async get<T>(key: string): Promise<T | null> {
       const rows = await db.select().from(settings).where(eq(settings.key, key)).limit(1);

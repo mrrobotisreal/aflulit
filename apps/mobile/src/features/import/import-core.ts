@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 /**
- * Pure Share-to-Сумрак intake logic (T28, design V2 §4.1/§4.3): text
+ * Pure Share-to-Aflulit intake logic (T28, design V2 §4.1/§4.3): text
  * normalization, sentence splitting, the length-cap split plan, and
  * imported-pack id generation. No I/O — the wired flows live in
  * import-service.ts; unit tests exercise this directly. (The T28 dev-only

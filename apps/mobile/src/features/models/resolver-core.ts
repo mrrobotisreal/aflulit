@@ -1,4 +1,4 @@
-import { safeParseModelsManifest, type ModelsManifest } from '@sumrak/schema';
+import { safeParseModelsManifest, type ModelsManifest } from '@aflulit/schema';
 
 /**
  * Pure model-source resolution (T23, V2 §2) — the one shared resolver both

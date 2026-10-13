@@ -3,7 +3,7 @@ import { index, integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlit
 
 /**
  * Content tables — the denormalized form of a validated `Pack` from
- * `@sumrak/schema` (design §4.3/§5). Rebuilt wholesale by the importer:
+ * `@aflulit/schema` (design §4.3/§5). Rebuilt wholesale by the importer:
  * every row carries `packId`, and reimporting/removing a pack deletes all
  * rows for that pack id (FK cascade from `packs`). Content is disposable;
  * user tables (see ./user.ts) never live here and never reference these
@@ -40,7 +40,7 @@ export const packs = sqliteTable('packs', {
   /**
    * Where the pack came from (T28, design V2 §4.3): 'remote' = manifest-
    * managed (github sync AND bundled fixtures — both version-diff against
-   * the manifest), 'local' = assembled on-device from a Share-to-Сумрак
+   * the manifest), 'local' = assembled on-device from a Share-to-Aflulit
    * import. Local packs are invisible to sync (immunity keyed on the
    * sync_state 'local-import' source, set alongside this by the imports
    * service) and are listed on the Library's «Импортировано» shelf.

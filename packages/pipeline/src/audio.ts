@@ -11,7 +11,7 @@ import {
   type Sentence,
   type Story,
   type WordStamp,
-} from '@sumrak/schema';
+} from '@aflulit/schema';
 import { z } from 'zod';
 import { analyseTrack, restampTrack, type Aligner } from './stamp-audit.ts';
 import { annotateDrafts } from './annotate.ts';
@@ -629,7 +629,7 @@ async function renderDirection(
   // the narrator runs' mean level, concatenate sample-accurately, and offset
   // every run's stamps by the accumulated duration of the runs before it so
   // word stamps stay exact across each seam.
-  const work = mkdtempSync(join(tmpdir(), 'sumrak-runs-'));
+  const work = mkdtempSync(join(tmpdir(), 'aflulit-runs-'));
   try {
     const parts = rendered.map(({ run, result }, i) => {
       const wav = join(work, `run${i}.wav`);
