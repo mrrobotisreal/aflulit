@@ -1,0 +1,61 @@
+{
+  "expo": {
+    "name": "\u0421\u0443\u043c\u0440\u0430\u043a",
+    "slug": "sumrak",
+    "version": "1.14.1",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "sumrak",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#0B0B0E",
+    "android": {
+      "package": "io.winapps.sumrak",
+      "adaptiveIcon": {
+        "backgroundColor": "#0B0B0E",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "intentFilters": [
+        {
+          "action": "SEND",
+          "category": ["DEFAULT"],
+          "data": [{ "mimeType": "text/plain" }]
+        }
+      ],
+      "versionCode": 19
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0B0B0E",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200
+        }
+      ],
+      "expo-sqlite",
+      "expo-asset",
+      "expo-secure-store",
+      [
+        "expo-audio",
+        {
+          "recordAudioAndroid": true
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/android-icon-monochrome.png",
+          "color": "#B3402F",
+          "defaultChannel": "reminders"
+        }
+      ],
+      "./plugins/with-release-signing.js"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

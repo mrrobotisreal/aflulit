@@ -1,0 +1,261 @@
+import { createHash } from 'node:crypto';
+import type { Manifest, ManifestEntry } from '@sumrak/schema';
+import { describe, expect, it } from 'vitest';
+
+import type { SyncStateRow } from '@/db/repositories/sync-state';
+
+import { SyncError } from '../errors';
+import {
+  diffManifest,
+  formatBytes,
+  isAudioFile,
+  isLargeAsset,
+  isSceneFile,
+  planPackFiles,
+  verifyFileSha256,
+  type Hasher,
+} from '../sync-core';
+
+const nodeHasher: Hasher = async (bytes) => createHash('sha256').update(bytes).digest('hex');
+
+function entry(id: string, version: number, files?: ManifestEntry['files']): ManifestEntry {
+  return {
+    id,
+    version,
+    type: 'stories',
+    level: 'A1',
+    title: { ru: id, en: id },
+    bytes: 1000,
+    files: files ?? [{ path: 'pack.json', sha256: 'a'.repeat(64) }],
+  };
+}
+
+function manifest(...packs: ManifestEntry[]): Manifest {
+  return { schemaVersion: 1, packs };
+}
+
+function installedRow(packId: string, version: number, source = 'github'): SyncStateRow {
+  return { packId, version, source, installedAt: 1, updatedAt: 1, bytes: null };
+}
+
+describe('diffManifest', () => {
+  it('classifies new, updated, and up-to-date packs', () => {
+    const diff = diffManifest(
+      manifest(entry('new-pack', 1), entry('updated-pack', 3), entry('same-pack', 2)),
+      [installedRow('updated-pack', 2), installedRow('same-pack', 2)],
+    );
+    expect(diff.toInstall.map((p) => p.id)).toEqual(['new-pack']);
+    expect(diff.toUpdate.map((p) => p.id)).toEqual(['updated-pack']);
+    expect(diff.upToDate.map((p) => p.id)).toEqual(['same-pack']);
+    expect(diff.removedRemotely).toEqual([]);
+  });
+
+  it('treats a manifest entry older than installed as up-to-date (importer refuses downgrades)', () => {
+    const diff = diffManifest(manifest(entry('pack-a', 1)), [installedRow('pack-a', 5)]);
+    expect(diff.toUpdate).toEqual([]);
+    expect(diff.upToDate.map((p) => p.id)).toEqual(['pack-a']);
+  });
+
+  it('reports github-sourced installed packs missing from the manifest, never bundled ones', () => {
+    const diff = diffManifest(manifest(entry('kept', 1)), [
+      installedRow('kept', 1),
+      installedRow('gone-github', 1, 'github'),
+      installedRow('gone-bundled', 1, 'bundled'),
+    ]);
+    expect(diff.removedRemotely.map((r) => r.packId)).toEqual(['gone-github']);
+  });
+});
+
+describe('diffManifest — T28 local-pack immunity (design V2 §4.3)', () => {
+  const local = (id: string, version = 1) => installedRow(id, version, 'local-import');
+
+  it('runs the normal remote flow with local packs present, touching none of them', () => {
+    const diff = diffManifest(manifest(entry('remote-a', 2), entry('remote-b', 1)), [
+      installedRow('remote-a', 1),
+      local('imported-20260825-privet'),
+      local('imported-20260825-pismo', 3),
+    ]);
+    // Remote packs diff exactly as without local packs present…
+    expect(diff.toUpdate.map((p) => p.id)).toEqual(['remote-a']);
+    expect(diff.toInstall.map((p) => p.id)).toEqual(['remote-b']);
+    // …and NO bucket references a local pack: zero diff actions touch them.
+    const referenced = [
+      ...diff.toInstall.map((e) => e.id),
+      ...diff.toUpdate.map((e) => e.id),
+      ...diff.upToDate.map((e) => e.id),
+      ...diff.removedRemotely.map((r) => r.packId),
+      ...diff.localCollisions.map((e) => e.id),
+    ];
+    expect(referenced.filter((id) => id.startsWith('imported-'))).toEqual([]);
+  });
+
+  it('never marks a local pack removed-remotely despite its absence from the manifest', () => {
+    const diff = diffManifest(manifest(entry('kept', 1)), [
+      installedRow('kept', 1),
+      local('imported-20260825-privet'),
+    ]);
+    expect(diff.removedRemotely).toEqual([]);
+  });
+
+  it('skips a manifest entry colliding with a local pack id — surfaced, never installed or version-compared', () => {
+    const diff = diffManifest(manifest(entry('imported-20260825-privet', 99)), [
+      local('imported-20260825-privet', 1),
+    ]);
+    expect(diff.toInstall).toEqual([]);
+    expect(diff.toUpdate).toEqual([]);
+    expect(diff.upToDate).toEqual([]);
+    expect(diff.localCollisions.map((e) => e.id)).toEqual(['imported-20260825-privet']);
+  });
+});
+
+describe('planPackFiles', () => {
+  const packWithAudio = entry('pack-a', 1, [
+    { path: 'pack.json', sha256: 'a'.repeat(64) },
+    { path: 'audio/story1.opus', sha256: 'b'.repeat(64) },
+    { path: 'audio/story2.opus', sha256: 'c'.repeat(64) },
+  ]);
+
+  it('downloads everything when on Wi-Fi', () => {
+    const plan = planPackFiles(packWithAudio, { wifiOnlyAudio: true, onWifi: true });
+    expect(plan.packJson.path).toBe('pack.json');
+    expect(plan.audio.map((f) => f.path)).toEqual(['audio/story1.opus', 'audio/story2.opus']);
+    expect(plan.deferredAudio).toEqual([]);
+  });
+
+  it('defers audio — never pack.json — on cellular with Wi-Fi-only on', () => {
+    const plan = planPackFiles(packWithAudio, { wifiOnlyAudio: true, onWifi: false });
+    expect(plan.packJson.path).toBe('pack.json');
+    expect(plan.audio).toEqual([]);
+    expect(plan.deferredAudio.map((f) => f.path)).toEqual([
+      'audio/story1.opus',
+      'audio/story2.opus',
+    ]);
+  });
+
+  it('downloads audio on cellular when the toggle is off', () => {
+    const plan = planPackFiles(packWithAudio, { wifiOnlyAudio: false, onWifi: false });
+    expect(plan.audio.length).toBe(2);
+    expect(plan.deferredAudio).toEqual([]);
+  });
+
+  it('ignores unknown non-audio files (forward compatibility)', () => {
+    const withExtra = entry('pack-a', 1, [
+      { path: 'pack.json', sha256: 'a'.repeat(64) },
+      { path: 'cover.webp', sha256: 'd'.repeat(64) },
+    ]);
+    const plan = planPackFiles(withExtra, { wifiOnlyAudio: false, onWifi: true });
+    expect(plan.audio).toEqual([]);
+    expect(plan.deferredAudio).toEqual([]);
+  });
+
+  const scenarioPack = entry('a1-scenario-fixture', 1, [
+    { path: 'pack.json', sha256: 'a'.repeat(64) },
+    { path: 'audio/radio-a1/radio-a1-t01.opus', sha256: 'b'.repeat(64) },
+    { path: 'scene/backdrop.png', sha256: 'c'.repeat(64) },
+    { path: 'scene/host/body.png', sha256: 'd'.repeat(64) },
+    { path: 'scene/host/eyelids.png', sha256: 'e'.repeat(64) },
+  ]);
+
+  it('T58: scene PNG layers ride the same Wi-Fi gate as audio, in their own bucket', () => {
+    const onWifi = planPackFiles(scenarioPack, { wifiOnlyAudio: true, onWifi: true });
+    expect(onWifi.audio.map((f) => f.path)).toEqual(['audio/radio-a1/radio-a1-t01.opus']);
+    expect(onWifi.scene.map((f) => f.path)).toEqual([
+      'scene/backdrop.png',
+      'scene/host/body.png',
+      'scene/host/eyelids.png',
+    ]);
+    expect(onWifi.deferredScene).toEqual([]);
+
+    const cellular = planPackFiles(scenarioPack, { wifiOnlyAudio: true, onWifi: false });
+    expect(cellular.packJson.path).toBe('pack.json');
+    expect(cellular.audio).toEqual([]);
+    expect(cellular.scene).toEqual([]);
+    expect(cellular.deferredAudio).toHaveLength(1);
+    expect(cellular.deferredScene.map((f) => f.path)).toEqual([
+      'scene/backdrop.png',
+      'scene/host/body.png',
+      'scene/host/eyelids.png',
+    ]);
+
+    const toggleOff = planPackFiles(scenarioPack, { wifiOnlyAudio: false, onWifi: false });
+    expect(toggleOff.scene).toHaveLength(3);
+    expect(toggleOff.deferredScene).toEqual([]);
+  });
+
+  it('throws invalid-manifest when pack.json is missing from the entry', () => {
+    const broken = {
+      ...entry('pack-a', 1),
+      files: [{ path: 'audio/x.opus', sha256: 'a'.repeat(64) }],
+    };
+    expect(() => planPackFiles(broken, { wifiOnlyAudio: false, onWifi: true })).toThrowError(
+      SyncError,
+    );
+  });
+});
+
+describe('verifyFileSha256', () => {
+  const bytes = new TextEncoder().encode('привет, Сумрак');
+
+  it('passes when the hash matches', async () => {
+    const expected = createHash('sha256').update(bytes).digest('hex');
+    await expect(
+      verifyFileSha256(bytes, expected, 'pack.json', nodeHasher),
+    ).resolves.toBeUndefined();
+  });
+
+  it('accepts uppercase manifest hashes', async () => {
+    const expected = createHash('sha256').update(bytes).digest('hex').toUpperCase();
+    await expect(
+      verifyFileSha256(bytes, expected, 'pack.json', nodeHasher),
+    ).resolves.toBeUndefined();
+  });
+
+  it('throws sha256-mismatch on corrupted bytes, naming the file', async () => {
+    const expected = createHash('sha256').update(bytes).digest('hex');
+    const corrupted = new Uint8Array([...bytes, 0x00]);
+    const err = await verifyFileSha256(corrupted, expected, 'audio/story1.opus', nodeHasher).catch(
+      (e: unknown) => e,
+    );
+    expect(err).toBeInstanceOf(SyncError);
+    expect((err as SyncError).code).toBe('sha256-mismatch');
+    expect((err as SyncError).path).toBe('audio/story1.opus');
+  });
+});
+
+describe('isSceneFile / isLargeAsset (T58)', () => {
+  it.each([
+    ['scene/backdrop.png', true, true],
+    ['scene/host/body.png', true, true],
+    ['cover.PNG', true, true],
+    ['audio/story1.opus', false, true],
+    ['pack.json', false, false],
+    ['cover.webp', false, false],
+  ])('%s → scene %s / large %s', (path, scene, large) => {
+    expect(isSceneFile(path)).toBe(scene);
+    expect(isLargeAsset(path)).toBe(large);
+  });
+});
+
+describe('isAudioFile', () => {
+  it.each([
+    ['audio/story1.opus', true],
+    ['audio/nested/track.mp3', true],
+    ['story.OPUS', true],
+    ['pack.json', false],
+    ['cover.webp', false],
+  ])('%s → %s', (path, expected) => {
+    expect(isAudioFile(path)).toBe(expected);
+  });
+});
+
+describe('formatBytes', () => {
+  it.each([
+    [null, '—'],
+    [0, '—'],
+    [512, '512 B'],
+    [37776, '36.9 KB'],
+    [4_400_000, '4.2 MB'],
+  ])('%s → %s', (bytes, expected) => {
+    expect(formatBytes(bytes)).toBe(expected);
+  });
+});

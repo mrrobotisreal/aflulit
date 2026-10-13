@@ -1,0 +1,1 @@
+ALTER TABLE `encounters` ADD `token_index` integer;

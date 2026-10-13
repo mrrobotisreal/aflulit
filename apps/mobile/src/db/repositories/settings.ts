@@ -1,0 +1,283 @@
+import { eq } from 'drizzle-orm';
+
+import { settings } from '../schema';
+import type { SumrakDB } from '../types';
+
+/**
+ * Well-known settings keys. Add here as tickets introduce them so key
+ * strings stay discoverable in one place.
+ */
+export const SETTING_KEYS = {
+  /** 'dark' | 'light' | 'system' — migrated from the T01 AsyncStorage store. */
+  themeMode: 'themeMode',
+  /** Guided-path position (T17). */
+  pathPosition: 'pathPosition',
+  /** Marks first-run bootstrap (fixture auto-import) as completed. */
+  bootstrapDone: 'bootstrapDone',
+  /** Reader typography prefs (T04): { sizeStep, lineHeightStep, serif }. */
+  readerTypography: 'readerTypography',
+  /** boolean (T05): tap-lookup on a banked lemma records an encounter by itself. */
+  encounterOnLookup: 'encounterOnLookup',
+  /** Last successful backup per target (T20/T21): { at, name } — Zod-validated on read. */
+  lastBackupGithub: 'lastBackup.github',
+  lastBackupSyncd: 'lastBackup.syncd',
+  lastBackupLocal: 'lastBackup.local',
+  /**
+   * Backup targets/schedule prefs (T20): { githubEnabled, autoEnabled } —
+   * Zod-validated on read (features/backup/config).
+   */
+  backupPrefs: 'backup.prefs',
+  /**
+   * Backup KDF parameters (T20): { saltB64, iterations, createdAt }. The
+   * salt is NOT secret; the passphrase-derived key lives in secure-store
+   * only ('sumrak.backup.key'), never here.
+   */
+  backupKdf: 'backup.kdf',
+  /** SAF directory uri granted for local backup export/restore (T20). */
+  backupSafDir: 'backup.safDirUri',
+  /**
+   * syncd target config (T21): { host } — the tailnet base URL, Zod-validated
+   * on read (features/backup/syncd-config). The bearer token is NEVER here:
+   * secure-store only ('sumrak.backup.syncd.token'), same rule as the PAT.
+   */
+  syncdConfig: 'backup.syncd',
+  /**
+   * «Неверный звук?» flags (T81): `{ [bankItemId]: { packId, packVersion, sentenceId,
+   * tokenIndex, trackId, flaggedAt } }` — that card speaks TTS of the banked surface
+   * until the pack version changes. Read by `features/review/games/listening/audio-flags`.
+   */
+  listeningAudioFlags: 'listening.audioFlags',
+  /** Content sync source (T07): { owner, repo, branch } — the PAT lives in secure-store, never here. */
+  contentRepo: 'sync.contentRepo',
+  /** boolean (T07, default true): only download narration audio on Wi-Fi. */
+  wifiOnlyAudio: 'sync.wifiOnlyAudio',
+  /** Epoch ms of the last manifest auto-check (T07 throttle). */
+  lastSyncCheckAt: 'sync.lastCheckAt',
+  /** Narration playback prefs (T10): { rate } — validated on read in use-narration. */
+  narrationPrefs: 'narration.prefs',
+  /** Study soundtrack: { enabled, volume (0–1), playDuringNarration }. */
+  ambientAudio: 'audio.ambient',
+  /**
+   * Study soundtrack rotation cursors (M15/T48): `{ [theme]: { bed, positionMs } }`
+   * — where each theme's playlist resumes. Parsed defensively on read
+   * (`features/ambient-audio/cursors.ts`); written by the ambient controller
+   * on pause/switch/advance/dispose and at most every 15 s while playing.
+   */
+  ambientCursors: 'audio.ambientCursors',
+  /** TTS voice selection (T11): { selectedVoiceId } — Zod-validated on read (features/tts/catalog). */
+  ttsVoice: 'tts.voice',
+  /**
+   * boolean (T13, default false): cloze/sentence-builder may quote sentences
+   * from stories not yet read. Off = never spoil an unseen story.
+   */
+  clozeUnseenStoriesAllowed: 'games.clozeUnseenStoriesAllowed',
+  /**
+   * boolean (T27, default false): dialogue choices default to tap-to-choose
+   * instead of voice-first (silent environments; mic stays available).
+   */
+  dialogueTapMode: 'games.dialogueTapMode',
+  /**
+   * Typing trainer stats (T40): { v: 1, bestWpm, bestAccuracy, rounds,
+   * totalWords, totalCorrectChars, lastPlayedAt } — Zod-validated on read
+   * (features/review/games/typing/stats.ts); a corrupt value heals to the
+   * defaults. No table: the per-round rows live in game_sessions.
+   */
+  typingStats: 'games.typingStats',
+  /**
+   * Match-blitz «Молния» stats (T34): { v: 1, best, rounds, totalPairs,
+   * lastPlayedAt } — Zod-validated on read (features/review/games/blitz/
+   * stats.ts), heals to defaults. Per-sprint rows live in game_sessions.
+   */
+  blitzStats: 'games.blitzStats',
+  /**
+   * boolean (T31, default false): still every ambient animation — room
+   * scenes freeze on their poster frame, the threshold transition and the
+   * house-map flicker are skipped. OR-combined with the OS reduced-motion
+   * flag (store/motion-prefs.ts); Zod-validated on hydrate.
+   */
+  reduceMotion: 'motion.reduce',
+  /**
+   * Library shelf filter (T44, LIBRARY_CATEGORIES §4.4): { category, genre }
+   * slugs, defaults { 'stories', 'all' } — Zod-validated on read
+   * (store/library-prefs.ts); a malformed value heals to the defaults, an
+   * unknown-but-well-formed slug is kept (forward-compatible).
+   */
+  libraryFilter: 'library.filter',
+  /**
+   * Словарь sort (T50, WORD_FORMS §2.4): { v: 1, key: BankSortKey,
+   * familiarity: 'least' | 'most' }, defaults { 'added-asc', 'least' } —
+   * Zod-validated on read (store/bank-prefs.ts); a malformed value heals
+   * field-by-field to the defaults.
+   */
+  bankSort: 'bank.sort',
+  /**
+   * Daily-session composition (T14): { length, weights: { flashcard, mc,
+   * cloze, sentenceBuilder, listening } } — Zod-validated on read
+   * (store/daily-prefs.ts), corrupt values fall back to defaults.
+   */
+  dailySessionPrefs: 'dailySession.prefs',
+  /**
+   * Checkpoint/unit-quiz pass threshold (T17), fraction 0–1, default 0.8 —
+   * Zod-validated on read (features/path/threshold.ts).
+   */
+  checkpointPassThreshold: 'path.checkpointPassThreshold',
+  /**
+   * OpenRouter model id (T16), e.g. 'anthropic/claude-opus-5.5' — validated
+   * on read (features/ai/config). The API key is NEVER here: secure-store
+   * only (same rule as the GitHub PAT).
+   */
+  aiModel: 'ai.model',
+  /**
+   * «Grammar & word forms» run profile (T51, WORD_FORMS §2.4): { v: 1,
+   * provider: AiProvider, quality: AiQuality, effort: AiEffort }, defaults
+   * { 'anthropic', 'normal', 'high' } — Zod-validated on read
+   * (features/ai/run-profile.ts); a malformed value heals field-by-field.
+   * The five legacy AI features keep `ai.model` (ADR-0018 decision 4).
+   */
+  aiGrammarPreset: 'ai.grammarPreset',
+  /**
+   * Editable model-id table (T51, WORD_FORMS §2.4): { v: 1, anthropic:
+   * Record<AiQuality, string>, openai: Record<AiQuality, string> }, defaults
+   * = ADR-0018 decision 3; every id must match `ModelSchema` (features/ai/
+   * config.ts); a malformed slug heals to its own default only. This table
+   * is the ONLY place model slugs live.
+   */
+  aiModelTable: 'ai.modelTable',
+  /**
+   * Running generation receipts (T51 declares, T52/T54 write, the Generate
+   * sheet reads — WORD_FORMS §2.4): { v: 1, runs: Record<
+   * '${provider}:${quality}:${effort}:${'profile'|'lesson'}',
+   * { n, totalMs, totalCostUsd, totalCompletionTokens }> } — the batch
+   * estimate derives from these, never from hardcoded prices.
+   */
+  grammarStats: 'grammar.stats',
+  /**
+   * The durable word-forms batch (T55, WORD_FORMS §2.4): { v: 1, startedAt,
+   * preset: {provider, quality, effort}, pending: { bankItemId, lemmaNorm,
+   * kind, headword, attempts }[], done, failed: { …, code }[], count,
+   * costUsd, finishedAt? } or absent. Written BEFORE each request, an item
+   * removed AFTER its profile is stored; deleted when nothing is pending
+   * and nothing failed (features/word-forms/batch-service.ts).
+   */
+  grammarBatch: 'grammar.batch',
+  /**
+   * Daily goal (T19, §7.7): { reviews, readingMin } — Zod-validated on read
+   * (features/motivation/goal-prefs), defaults 20 reviews + 10 min reading.
+   */
+  dailyGoal: 'goal.daily',
+  /**
+   * Streak-freeze wallet (T19): { available 0–2, lastEarnedOnDate } —
+   * Zod-validated on read (features/motivation/freeze). Per-day coverage
+   * audit lives in the `frozen_days` table, not here.
+   */
+  streakFreeze: 'streak.freeze',
+  /**
+   * Notification prefs (T19): master toggle, reminder times, quiet hours —
+   * Zod-validated on read (features/motivation/notification-prefs).
+   */
+  notificationPrefs: 'notifications.prefs',
+  /** boolean (T19): the one-time "enable reminders" Today card was dismissed. */
+  notificationPromptDismissed: 'notifications.promptDismissed',
+  /**
+   * «Сценарии» run prefs (M17, SPEAKING_SCENARIOS §4.4; key declared in T58,
+   * Zod accessor owned by T62 `store/scenario-prefs.ts`): { v: 1, subtitles:
+   * false, holdToTalk: false, rescueOnline: true, endpointSensitivity:
+   * 'normal' | 'patient' | 'quick', bedVolume: 0.6 } — a malformed value
+   * heals field-by-field to the defaults.
+   */
+  scenarioPrefs: 'scenario.prefs',
+  /** boolean (T62, §9.1): the one-time hub banner offering the Whisper assist model was dismissed. */
+  scenarioAssistBannerDismissed: 'scenario.assistBannerDismissed',
+  /**
+   * Recording retention (M17 §4.4; declared in T58, owned by T63): { v: 1,
+   * pruneDays: 30, capBytes: 300_000_000, lastPruneAt } — the local prune
+   * policy for attempt recordings (unpinned runs first, §10.1).
+   */
+  scenarioRecordings: 'scenario.recordings',
+  /** boolean (T63, §12): the one-time debrief line «Set up backup to keep recordings» was shown. */
+  scenarioBackupHintShown: 'scenario.backupHintShown',
+  /**
+   * Whisper assist-model state mirror (M17 §4.4; declared in T58, owned by
+   * T59): { v: 1, installed: boolean, id } — a quick gate for «как сказать»
+   * fallbacks that mirrors the on-disk model state, never the truth itself.
+   */
+  scenarioAssistModel: 'scenario.assistModel',
+  /**
+   * «ТРКИ» prefs (M18, TORFL_EXAM_PREP §4.4; declared in T68, healed by
+   * `features/torfl/settings-core.ts`): { v: 1, instructionLang:
+   * 'ru' | 'en' ('ru'; T77 replaced showEnglishInstructions), drillTimer: 'off' | 'exam-pace' ('off'), breakBetweenSubtests:
+   * true, allowLookupInMockReading: true } — field-by-field healing.
+   */
+  torflPrefs: 'torfl.prefs',
+  /** The real exam date (M18 §4.4): ISO 'YYYY-MM-DD' or null — the hub countdown. Invalid → null. */
+  torflExamDate: 'torfl.examDate',
+  /** The A2 (ТБУ) exam date (M19, T75; TORFL_A2 A2-5): ISO 'YYYY-MM-DD' or null — healed like torfl.examDate. `torfl.examDate` stays A1's. */
+  torflExamDateA2: 'torfl.examDateA2',
+  /**
+   * «Exam grading» run profile (M18 §4.4, ADR-0020 decision 10): { v: 1,
+   * provider, quality, effort } — the M16 run-profile triple only; default
+   * { <the grammar preset's provider>, 'normal', 'high' }; healed
+   * field-by-field like `ai.grammarPreset`.
+   */
+  torflGradingPreset: 'torfl.gradingPreset',
+  /**
+   * Exam media-bundle ledger (M18 §8.5, T74; healed by `features/torfl/
+   * media-state-core.ts`): { v: 1, attempts: { [attemptId]: { state:
+   * 'pending' | 'uploaded' | 'failed', name } } } — `exam_attempts` has no
+   * bundle columns and T74 ships no migration, so the per-attempt bundle
+   * state rides this one settings row (and the snapshot with it).
+   */
+  torflMedia: 'torfl.media',
+  /**
+   * FSRS desired retention (T39): a number in 0.8–0.95, default 0.9 — the
+   * target recall the scheduler aims for. Healed to 0.9 on read
+   * (features/review/fsrs-settings.ts); store/fsrs-prefs.ts owns the writes.
+   */
+  fsrsDesiredRetention: 'fsrs.desiredRetention',
+  /**
+   * FSRS optimizer parameters imported from the desktop optimizer (T39):
+   * { v: 1, w: number[21], fittedAt, importedAt, reviewCount, cardCount,
+   * logLoss?, rmse? } or absent (= ts-fsrs defaults). Validated on read by
+   * parseStoredParams; a malformed row heals to defaults.
+   */
+  fsrsParams: 'fsrs.params',
+  /**
+   * Queue prefs (T82): { v: 1, newPerDay: 0–50 (default 10), buryRelated:
+   * boolean (default true) } — the daily new-WORD budget and sibling bury.
+   * Healed field-by-field on read (features/review/due-core.ts parseQueuePrefs);
+   * store/queue-prefs.ts owns the writes. No migration.
+   */
+  queuePrefs: 'review.queuePrefs',
+  /** Local day key ('YYYY-MM-DD') of the last `due_snapshot` event (T82). */
+  dueSnapshotDay: 'review.dueSnapshotDay',
+} as const;
+
+/** Key-value settings, JSON-encoded values. */
+export function createSettingsRepo(db: SumrakDB) {
+  return {
+    async get<T>(key: string): Promise<T | null> {
+      const rows = await db.select().from(settings).where(eq(settings.key, key)).limit(1);
+      const row = rows[0];
+      return row ? (row.value as T) : null;
+    },
+
+    async set(key: string, value: unknown): Promise<void> {
+      const now = Date.now();
+      await db
+        .insert(settings)
+        .values({ key, value, updatedAt: now })
+        .onConflictDoUpdate({ target: settings.key, set: { value, updatedAt: now } });
+    },
+
+    async remove(key: string): Promise<void> {
+      await db.delete(settings).where(eq(settings.key, key));
+    },
+
+    async getAll(): Promise<Record<string, unknown>> {
+      const rows = await db.select().from(settings);
+      return Object.fromEntries(rows.map((r) => [r.key, r.value]));
+    },
+  };
+}
+
+export type SettingsRepo = ReturnType<typeof createSettingsRepo>;

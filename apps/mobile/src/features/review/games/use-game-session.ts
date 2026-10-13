@@ -1,0 +1,207 @@
+import { useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'expo-router';
+import * as React from 'react';
+import { Alert, BackHandler } from 'react-native';
+
+import { repos } from '@/db';
+import type { CardRow, Grade } from '@/db/repositories/reviews';
+import { onSessionEnded, recordReviewOutcome } from '@/features/motivation/service';
+import { track } from '@/services/analytics';
+import { logError } from '@/services/error-log';
+
+import { ratingCountsAsCorrect } from '../mapping';
+import type { SessionResult } from '../session-screen';
+
+export type GamePhase = 'loading' | 'empty' | 'playing' | 'summary' | 'error';
+
+/**
+ * The shared standalone-game session flow (T13) — the same skeleton T06's
+ * SessionScreen and T12's pronunciation screen carry inline: build → play →
+ * grade-and-persist immediately (quitting loses nothing already graded) →
+ * game_sessions row → summary, with quit-confirm and hardware-back wiring.
+ * Extracted rather than duplicated a third and fourth time; the older
+ * screens are left as-is (T06/T12 verified code).
+ */
+export function useGameSession<T>(opts: {
+  /** game_sessions.mode. */
+  mode: string;
+  /** Narrow analytics prefix — keeps the template-literal event names inside AnalyticsEvent. */
+  trackPrefix: 'cloze' | 'sb' | 'listening' | 'daily';
+  /** Default mode recorded per result; grade() can override per item (T14 daily mix). */
+  resultMode: SessionResult['mode'];
+  build: () => Promise<T[]>;
+}) {
+  const { mode, trackPrefix, resultMode, build } = opts;
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
+  const [phase, setPhase] = React.useState<GamePhase>('loading');
+  const [items, setItems] = React.useState<T[]>([]);
+  const [index, setIndex] = React.useState(0);
+  const [finalResults, setFinalResults] = React.useState<SessionResult[]>([]);
+  /** Wall-clock length of the finished session — the summary's time figure (T14). */
+  const [finalDurationMs, setFinalDurationMs] = React.useState(0);
+  const [error, setError] = React.useState<string | null>(null);
+  const resultsRef = React.useRef<SessionResult[]>([]);
+  const gameSessionIdRef = React.useRef<string | null>(null);
+  const startedAtRef = React.useRef(0);
+  const finishedRef = React.useRef(false);
+  /** Bumped by retry() to re-run the build effect below. */
+  const [attempt, setAttempt] = React.useState(0);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      setPhase('loading');
+      setError(null);
+      try {
+        const session = await build();
+        if (cancelled) return;
+        if (session.length === 0) {
+          track(`${trackPrefix}_session_empty`);
+          setPhase('empty');
+          return;
+        }
+        const row = await repos.stats.startGameSession(mode);
+        if (cancelled) return;
+        gameSessionIdRef.current = row.id;
+        startedAtRef.current = Date.now();
+        setItems(session);
+        setPhase('playing');
+        track(`${trackPrefix}_session_started`, { size: session.length });
+      } catch (err) {
+        if (cancelled) return;
+        // Records to the on-device error log + 'app_error' analytics (scope/fatal
+        // only — never the message, which the log file already carries).
+        logError('manual', err);
+        setError(err instanceof Error ? err.message : String(err));
+        setPhase('error');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // build is stable per mount (screens pass a module fn or memoized closure).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attempt]);
+
+  const retry = React.useCallback(() => {
+    setAttempt((a) => a + 1);
+  }, []);
+
+  const persistSessionEnd = React.useCallback(() => {
+    const results = resultsRef.current;
+    const sessionId = gameSessionIdRef.current;
+    if (sessionId) {
+      void repos.stats.finishGameSession(sessionId, {
+        itemCount: results.length,
+        correctCount: results.filter((r) => r.correct).length,
+      });
+    }
+    // Count-based achievement sweep (mastered/bank/level) once per session (T19).
+    void onSessionEnded().catch((err) => console.warn(`[game] sweep failed`, err));
+    void queryClient.invalidateQueries({ queryKey: ['due-count'] });
+    void queryClient.invalidateQueries({ queryKey: ['daily-activity'] });
+    void queryClient.invalidateQueries({ queryKey: ['review-state'] });
+  }, [queryClient]);
+
+  /**
+   * Advance to the next item, or finish the session after the last one.
+   * `grade()` ends with this; hosts that serve a NON-card item (M18 T70: the
+   * daily session's TORFL segment) call it directly after recording their own
+   * answer — no card is graded, no card result is pushed.
+   */
+  const advance = React.useCallback(() => {
+    const next = index + 1;
+    if (next < items.length) {
+      setIndex(next);
+      return;
+    }
+    if (finishedRef.current) return;
+    finishedRef.current = true;
+    const durationMs = Date.now() - startedAtRef.current;
+    track(`${trackPrefix}_session_finished`, {
+      itemCount: resultsRef.current.length,
+      correctCount: resultsRef.current.filter((r) => r.correct).length,
+      durationMs,
+    });
+    persistSessionEnd();
+    setFinalResults([...resultsRef.current]);
+    setFinalDurationMs(durationMs);
+    setPhase('summary');
+  }, [index, items.length, trackPrefix, persistSessionEnd]);
+
+  /** Grade the current item's card and advance (or finish). */
+  const grade = React.useCallback(
+    (
+      card: CardRow,
+      rating: Grade,
+      extraProps: Record<string, string | number | boolean>,
+      itemMode: SessionResult['mode'] = resultMode,
+    ) => {
+      const correct = ratingCountsAsCorrect(rating);
+      resultsRef.current.push({ cardId: card.id, rating, correct, mode: itemMode });
+      // recordReviewOutcome bumps reviewsDone + XP and evaluates goal/streak (T19).
+      void repos.reviews
+        .gradeCard(card.id, rating, { source: itemMode })
+        .then(() => recordReviewOutcome(rating))
+        .catch((err) => console.error(`[${mode}] grade failed`, err));
+      // T50: `gradeSource` (never `source` — the listening/pron items use that
+      // key for other meanings and extraProps are spread last).
+      track(`${trackPrefix}_item_graded`, { rating, gradeSource: itemMode, ...extraProps });
+
+      advance();
+    },
+    [mode, trackPrefix, resultMode, advance],
+  );
+
+  const quit = React.useCallback(() => {
+    if (phase !== 'playing') {
+      router.back();
+      return;
+    }
+    Alert.alert(
+      'End session?',
+      `${resultsRef.current.length} graded so far — those are already saved.`,
+      [
+        { text: 'Keep going', style: 'cancel' },
+        {
+          text: 'End session',
+          style: 'destructive',
+          onPress: () => {
+            track(`${trackPrefix}_session_abandoned`, {
+              completed: resultsRef.current.length,
+              total: items.length,
+            });
+            persistSessionEnd();
+            router.back();
+          },
+        },
+      ],
+    );
+  }, [phase, items.length, trackPrefix, persistSessionEnd, router]);
+
+  React.useEffect(() => {
+    if (phase !== 'playing') return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      quit();
+      return true;
+    });
+    return () => sub.remove();
+  }, [phase, quit]);
+
+  return {
+    phase,
+    items,
+    index,
+    entry: items[index],
+    finalResults,
+    finalDurationMs,
+    error,
+    retry,
+    grade,
+    advance,
+    quit,
+    router,
+  };
+}

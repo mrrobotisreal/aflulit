@@ -1,0 +1,397 @@
+import { repos } from '@/db';
+import type { Grade } from '@/db/repositories/reviews';
+import { SETTING_KEYS } from '@/db/repositories/settings';
+import { localDateKey } from '@/db/repositories/stats';
+import { TORFL_PROFILES, type TorflLevel } from '@/features/torfl/level-profile';
+import {
+  examAchievements,
+  examXp,
+  type ExamAchievementId,
+  type ExamRewardInput,
+} from '@/features/torfl/rewards';
+import { queryClient } from '@/lib/query-client';
+import { computeStreak, gapNeedingFreezes } from '@/lib/streak';
+import { track } from '@/services/analytics';
+import { setMotivationHandler } from '@/services/motivation-bus';
+import { useGoalPrefs } from '@/store/goal-prefs';
+
+import {
+  ACHIEVEMENTS_BY_ID,
+  BANK_TARGET,
+  EXAM_DECK_TARGET,
+  LEVEL_ACHIEVEMENTS,
+  MASTERED_STABILITY_DAYS,
+  MASTERED_TARGET,
+  STREAK_ACHIEVEMENTS,
+} from './achievements';
+import { earnsFreeze, parseFreezeState, type FreezeState } from './freeze';
+import { goalIsMet } from './goal-prefs';
+import { replanReminders } from './notifications';
+import { refreshQuest } from './quest-runtime';
+import { requestWidgetRefresh } from './widget-bus';
+import { useAchievementToasts } from './toast-store';
+import { levelForXp, XP_TABLE, xpForRating, xpForReading, xpForScenarioRun } from './xp';
+
+/**
+ * The motivation orchestrator (T19): every existing write path calls one
+ * small record* function here, which awards XP, bumps counters, and runs
+ * the goal/streak/freeze/achievement evaluation. Everything is offline,
+ * fire-and-forget-safe, and idempotent at the unlock/stamp level, so a
+ * re-fired event can never double-award an achievement or a goal-met day.
+ */
+
+function invalidate(...keys: string[][]) {
+  for (const key of keys) void queryClient.invalidateQueries({ queryKey: key });
+}
+
+async function getFreezeState(): Promise<FreezeState> {
+  return parseFreezeState(await repos.settings.get<unknown>(SETTING_KEYS.streakFreeze));
+}
+
+async function setFreezeState(state: FreezeState): Promise<void> {
+  await repos.settings.set(SETTING_KEYS.streakFreeze, state);
+}
+
+async function unlock(id: string): Promise<void> {
+  const newly = await repos.stats.unlockAchievement(id);
+  if (!newly) return;
+  track('achievement_unlocked', { id });
+  await repos.stats.bumpDailyActivity({ xp: XP_TABLE.achievementUnlocked });
+  const def = ACHIEVEMENTS_BY_ID.get(id);
+  if (def) useAchievementToasts.getState().push(def);
+  invalidate(['achievements'], ['motivation'], ['daily-activity']);
+}
+
+/**
+ * Goal + streak evaluation — runs after every activity change and on app
+ * open. Stamps goal_met_at the first moment today's counters satisfy the
+ * configured goal, auto-consumes freezes to cover a coverable gap, earns
+ * freezes on 7-day multiples, and unlocks streak achievements.
+ */
+export async function evaluateMotivation(now: Date = new Date()): Promise<void> {
+  const todayKey = localDateKey(now);
+  const goal = useGoalPrefs.getState().goal;
+
+  let stateChanged = false;
+  const activity = await repos.stats.getDailyActivity(todayKey);
+  if (activity && activity.goalMetAt == null && goalIsMet(goal, activity)) {
+    const newly = await repos.stats.markGoalMet(todayKey);
+    if (newly) {
+      stateChanged = true;
+      track('goal_met', { reviews: activity.reviewsDone, readingMs: activity.readingMs });
+    }
+  }
+
+  const [days, freezeLoaded] = await Promise.all([repos.stats.getStreakDays(), getFreezeState()]);
+  let freeze = freezeLoaded;
+
+  // Freeze auto-consumption: cover the missed day(s) immediately before
+  // today, when the wallet can afford the whole gap (lib/streak rules).
+  const gap = gapNeedingFreezes(todayKey, days, freeze.available);
+  if (gap && gap.length > 0) {
+    await repos.stats.insertFrozenDays(gap);
+    for (const d of gap) days.frozen.add(d);
+    freeze = { ...freeze, available: freeze.available - gap.length };
+    await setFreezeState(freeze);
+    stateChanged = true;
+    track('streak_freeze_consumed', { days: gap.length, oldest: gap[gap.length - 1]! });
+  }
+
+  const streak = computeStreak(todayKey, days);
+
+  if (earnsFreeze(freeze, streak, todayKey)) {
+    freeze = { available: freeze.available + 1, lastEarnedOnDate: todayKey };
+    await setFreezeState(freeze);
+    track('streak_freeze_earned', { streak: streak.current, available: freeze.available });
+  }
+
+  for (const { id, days: threshold } of STREAK_ACHIEVEMENTS) {
+    if (streak.current >= threshold) await unlock(id);
+  }
+
+  invalidate(['motivation'], ['daily-activity']);
+  // Replan only when the goal/streak state actually moved — per-grade replans
+  // would hammer the notification scheduler 20× per session for nothing.
+  // Session ends and app foregrounds replan unconditionally (due counts).
+  if (stateChanged) void replanReminders();
+  // T40: the widget snapshot follows every activity change (write-path trigger).
+  requestWidgetRefresh();
+  // T34: the daily quest follows every activity change too (coalesced, never throws).
+  // Independent of the goal above: it reads counters, never goal_met_at.
+  void refreshQuest();
+}
+
+/** The three scenario unlocks (T62 §9.4) from `getScenarioStats` — sweep + finish share it. */
+async function unlockScenarioAchievements(): Promise<void> {
+  const s = await repos.stats.getScenarioStats();
+  if (s.finishedRunCount >= 1) await unlock('first-scenario-finished');
+  if (s.cleanRunCount >= 1) await unlock('scenario-clean-run');
+  if (s.familiesCompleted >= 1) await unlock('scenario-family-all-rungs');
+}
+
+/** Count-based achievement sweep (bank size, mastery, XP level, dialogues, scenarios). */
+export async function sweepAchievements(): Promise<void> {
+  const [bankCount, mastered, totalXp, dialogueStats] = await Promise.all([
+    repos.bank.countItems(),
+    repos.reviews.countMasteredLemmas(MASTERED_STABILITY_DAYS),
+    repos.stats.getTotalXp(),
+    repos.dialogues.getAchievementStats(),
+  ]);
+  if (bankCount >= 1) await unlock('first-word');
+  if (bankCount >= BANK_TARGET) await unlock('bank-100');
+  if (mastered >= MASTERED_TARGET) await unlock('mastered-100');
+  // T27 dialogue unlocks live in the sweep, so they backfill for free — a
+  // run finished before this code shipped still counts (T19 backfill spirit
+  // without touching the one-time flag).
+  if (dialogueStats.finishedRunCount >= 1) await unlock('first-dialogue-finished');
+  if (dialogueStats.anyDialogueAllEndingsSeen) await unlock('all-endings-one-dialogue');
+  // M17 scenario unlocks ride the same sweep (backfill for free, like T27's).
+  await unlockScenarioAchievements();
+  // M18 (T70): `torfl-deck-100` rides the sweep too (counts the exam deck's Review-state cards).
+  // cross-level by design (A2-11): counts both decks — countCardsInReview takes no level.
+  if ((await repos.exams.countCardsInReview()) >= EXAM_DECK_TARGET) await unlock('torfl-deck-100');
+  const { level } = levelForXp(totalXp);
+  for (const { id, level: threshold } of LEVEL_ACHIEVEMENTS) {
+    if (level >= threshold) await unlock(id);
+  }
+}
+
+/**
+ * One-time historic unlock pass (guarded by a settings flag): event-driven
+ * achievements can't fire for things done BEFORE T19 shipped — but «Первая
+ * история» sitting locked after five finished stories would be a lie. Runs
+ * through repositories only; pron-perfect is recovered from the analytics
+ * log (every graded pronunciation item since T12 carries bestScore).
+ */
+async function backfillHistoricAchievements(): Promise<void> {
+  const FLAG = 'achievements.historyBackfilled';
+  if ((await repos.settings.get<boolean>(FLAG)) === true) return;
+
+  const [stories, entries, checkpoints, units] = await Promise.all([
+    repos.reading.listProgress(),
+    repos.journal.listEntries(1),
+    repos.stats.listCheckpointResults(),
+    repos.path.listUnitProgress(),
+  ]);
+  if (stories.some((s) => s.finishedAt != null)) await unlock('first-story');
+  if (entries.length > 0) await unlock('first-journal');
+  if (checkpoints.some((c) => c.passed)) await unlock('first-checkpoint');
+  if (units.some((u) => u.completedAt != null)) await unlock('first-unit');
+
+  const events = await repos.stats.listRecentEvents(5000);
+  const perfect = events.some(
+    (e) => e.event === 'pron_item_graded' && Number(e.props?.bestScore) >= 100,
+  );
+  if (perfect) await unlock('pron-perfect');
+
+  await repos.settings.set(FLAG, true);
+}
+
+// --- record* entry points (called from the existing write paths) ----------
+
+/** Every graded review, all modes — replaces the raw reviewsDone bump. */
+export async function recordReviewOutcome(rating: Grade): Promise<void> {
+  await repos.stats.bumpDailyActivity({ reviewsDone: 1, xp: xpForRating(rating) });
+  await evaluateMotivation();
+}
+
+/** A reading session ended (reader focus loss) — replaces the readingMs bump. */
+export async function recordReading(ms: number): Promise<void> {
+  await repos.stats.bumpDailyActivity({ readingMs: ms, xp: xpForReading(ms) });
+  await evaluateMotivation();
+}
+
+/** A story was finished for the first time — replaces the storiesFinished bump. */
+export async function recordStoryFinished(): Promise<void> {
+  await repos.stats.bumpDailyActivity({ storiesFinished: 1, xp: XP_TABLE.storyFinished });
+  await unlock('first-story');
+  await evaluateMotivation();
+}
+
+export async function recordJournalEntryCreated(): Promise<void> {
+  await repos.stats.bumpDailyActivity({ xp: XP_TABLE.journalEntry });
+  await unlock('first-journal');
+  invalidate(['motivation'], ['daily-activity']);
+  // T34: journal-1 quest (journal creation doesn't run evaluateMotivation).
+  void refreshQuest();
+}
+
+export async function recordNoteCreated(): Promise<void> {
+  await repos.stats.bumpDailyActivity({ xp: XP_TABLE.noteCreated });
+  invalidate(['motivation'], ['daily-activity']);
+}
+
+export async function recordLessonCompleted(): Promise<void> {
+  await repos.stats.bumpDailyActivity({ xp: XP_TABLE.lessonCompleted });
+  invalidate(['motivation'], ['daily-activity']);
+}
+
+/** First pass of a unit quiz (caller already knows it's the first). */
+export async function recordUnitQuizFirstPass(): Promise<void> {
+  await repos.stats.bumpDailyActivity({ xp: XP_TABLE.unitQuizPassed });
+  invalidate(['motivation'], ['daily-activity']);
+}
+
+export async function recordCheckpointPassed(firstPass: boolean): Promise<void> {
+  if (firstPass) {
+    await repos.stats.bumpDailyActivity({ xp: XP_TABLE.checkpointPassed });
+  }
+  await unlock('first-checkpoint');
+  invalidate(['motivation'], ['daily-activity']);
+}
+
+export async function recordUnitCompleted(): Promise<void> {
+  await unlock('first-unit');
+}
+
+/** Pronunciation attempt's best score for an item (0–100). */
+export async function recordPronunciationScore(score: number): Promise<void> {
+  if (score >= 100) await unlock('pron-perfect');
+}
+
+/**
+ * A dialogue run reached an ending (T27): 20 XP per finished run, +10 the
+ * first time that ending is collected, plus the two dialogue achievements
+ * (all-endings re-checked from content vs endings-seen counts).
+ */
+export async function recordDialogueFinished(newEnding: boolean): Promise<void> {
+  const xp = XP_TABLE.dialogueFinished + (newEnding ? XP_TABLE.dialogueNewEnding : 0);
+  await repos.stats.bumpDailyActivity({ xp });
+  await unlock('first-dialogue-finished');
+  const stats = await repos.dialogues.getAchievementStats();
+  if (stats.anyDialogueAllEndingsSeen) await unlock('all-endings-one-dialogue');
+  await evaluateMotivation();
+}
+
+/**
+ * A scenario run reached its ending (T62, SPEAKING_SCENARIOS §9.4): 25 XP,
+ * +15 when clean, +2 per clean turn; the three scenario achievements are
+ * re-evaluated from the stats repo. Returns the XP awarded (the toast).
+ */
+export async function recordScenarioFinished(stats: {
+  turns: number;
+  cleanTurns: number;
+}): Promise<number> {
+  const xp = xpForScenarioRun(stats);
+  await repos.stats.bumpDailyActivity({ xp });
+  await unlockScenarioAchievements();
+  await evaluateMotivation();
+  return xp;
+}
+
+/**
+ * A TORFL drill set / «Молния» round finished (T70, §7.5): 10 XP, once per
+ * session (the caller invokes it once on the summary). The deck-100
+ * achievement is re-checked by the session-end sweep. Returns the XP.
+ */
+export async function recordExamDrillFinished(): Promise<number> {
+  await repos.stats.bumpDailyActivity({ xp: XP_TABLE.examDrillFinished });
+  await evaluateMotivation();
+  return XP_TABLE.examDrillFinished;
+}
+
+/** A «Работа над ошибками» deck session (or the daily torfl segment) finished: 5 XP, once per session (T70). */
+export async function recordExamDeckSession(): Promise<number> {
+  await repos.stats.bumpDailyActivity({ xp: XP_TABLE.examDeckSession });
+  await evaluateMotivation();
+  return XP_TABLE.examDeckSession;
+}
+
+/**
+ * A TORFL mock finished (T71, §7.5): 15 XP per scored subtest, +60 for a
+ * full mock, +100 the first time a verdict is pass / pass-borderline; the
+ * achievements `torfl-first-mock` / `torfl-lexgram-90` and — when all five
+ * subtests are scored — `torfl-would-pass` / `torfl-margin`. XP lands in ONE
+ * `bumpDailyActivity` (the caller invokes this once per attempt and stores
+ * the returned XP on the attempt). T72/T73 call {@link recordExamVerdictUnlocks}
+ * (and this) once the first five-subtest verdict exists.
+ *
+ * T75: `input.level` (absent = A1) picks the achievement set, and the first
+ * pass is computed PER LEVEL — the +100 is paid once per level.
+ */
+export async function recordExamFinished(
+  input: Omit<ExamRewardInput, 'firstPass'>,
+  opts: { excludeAttemptId?: string } = {},
+): Promise<{ xp: number; achievements: ExamAchievementId[] }> {
+  let firstPass = false;
+  if (input.verdict === 'pass' || input.verdict === 'pass-borderline') {
+    const earlier = await repos.exams.listAttempts({
+      status: 'finished',
+      limit: 500,
+      level: input.level ?? 'A1',
+    });
+    firstPass = !earlier.some(
+      (a) =>
+        a.id !== opts.excludeAttemptId &&
+        a.mode === 'mock' &&
+        (a.verdict === 'pass' || a.verdict === 'pass-borderline'),
+    );
+  }
+  const full: ExamRewardInput = { ...input, firstPass };
+  const xp = examXp(full);
+  if (xp > 0) await repos.stats.bumpDailyActivity({ xp });
+  const achievements = examAchievements(full);
+  for (const id of achievements) await unlock(id);
+  await evaluateMotivation();
+  return { xp, achievements };
+}
+
+/**
+ * The verdict-gated unlocks only (`torfl-would-pass`, `torfl-margin`) — for
+ * the T72/T73 completion path, where the first five-subtest verdict can
+ * appear on an attempt that already paid its XP. Idempotent. T75: the
+ * verdict-gated ids of `level` (absent = A1) only.
+ */
+export async function recordExamVerdictUnlocks(
+  pcts: ExamRewardInput['pcts'],
+  verdict: ExamRewardInput['verdict'],
+  level: TorflLevel = 'A1',
+): Promise<void> {
+  const ids = examAchievements({
+    scope: 'full',
+    scoredSubtests: 5,
+    pcts,
+    verdict,
+    firstPass: false,
+    level,
+  });
+  const { wouldPass, margin } = TORFL_PROFILES[level].achievements;
+  for (const id of ids) {
+    if (id === wouldPass || id === margin) await unlock(id);
+  }
+}
+
+/** Session summary reached — count sweeps + a due-count-fresh replan. */
+export async function onSessionEnded(): Promise<void> {
+  await sweepAchievements();
+  void replanReminders();
+  requestWidgetRefresh();
+}
+
+/**
+ * Bootstrap hook (DbProvider, after store hydration): registers the db-layer
+ * bus, evaluates the day (freeze consumption for days missed while the app
+ * was closed happens HERE), and runs one sweep so nothing unlockable is left
+ * pending from before T19 shipped.
+ */
+export async function initMotivation(): Promise<void> {
+  setMotivationHandler((event) => {
+    if (event === 'bank-item-added') {
+      void sweepAchievements().catch((err) => console.warn('[motivation] sweep failed', err));
+    }
+    if (event === 'unit-completed') {
+      void recordUnitCompleted().catch((err) =>
+        console.warn('[motivation] unit unlock failed', err),
+      );
+    }
+  });
+  await evaluateMotivation();
+  await backfillHistoricAchievements();
+  await sweepAchievements();
+  // Unconditional boot replan: evaluate only replans on state changes, but a
+  // cold start may follow a timezone/day change (or a TZ-stale alarm set) —
+  // the schedule must be rebuilt against the CURRENT local clock every boot.
+  void replanReminders();
+  // T40: boot refresh (the widget may be a day stale after a closed-app gap).
+  requestWidgetRefresh();
+}

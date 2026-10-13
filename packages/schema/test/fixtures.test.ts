@@ -1,0 +1,259 @@
+import { createHash } from 'node:crypto';
+import { existsSync, readFileSync, statSync } from 'node:fs';
+import { join } from 'node:path';
+import { describe, expect, it } from 'vitest';
+import { parseManifest, parsePack, type Pack } from '../src';
+
+const fixturesDir = join(__dirname, '..', 'fixtures');
+const packDir = (id: string) => join(fixturesDir, 'packs', id);
+const loadPack = (id: string): Pack =>
+  parsePack(JSON.parse(readFileSync(join(packDir(id), 'pack.json'), 'utf8')));
+
+describe('sample pack fixtures', () => {
+  it('a1-creepypasta-001 («Стук в стене») validates', () => {
+    const pack = loadPack('a1-creepypasta-001');
+    expect(pack.stories).toHaveLength(1);
+    expect(pack.stories[0]!.sentences.length).toBeGreaterThanOrEqual(8);
+  });
+
+  it('a1-creepypasta-002 («Фотография») validates', () => {
+    const pack = loadPack('a1-creepypasta-002');
+    expect(pack.stories[0]!.sentences.length).toBeGreaterThanOrEqual(8);
+  });
+
+  it('every word token is fully annotated (lemma/translation/pos/level)', () => {
+    for (const id of ['a1-creepypasta-001', 'a1-creepypasta-002']) {
+      for (const story of loadPack(id).stories) {
+        for (const sentence of story.sentences) {
+          for (const token of sentence.tokens) {
+            if (token.isPunct) continue;
+            const where = `${id}/${sentence.id}/"${token.text}"`;
+            expect(token.lemma, `${where} lemma`).toBeDefined();
+            expect(token.translation, `${where} translation`).toBeDefined();
+            expect(token.pos, `${where} pos`).toBeDefined();
+            expect(token.level, `${where} level`).toBeDefined();
+          }
+        }
+      }
+    }
+  });
+
+  it('T30 path fixtures validate, carrying theme/track exactly as authored', () => {
+    const hallway = loadPack('a1-course-unit-090');
+    expect(hallway.type).toBe('course-unit');
+    expect(hallway.theme).toEqual({ scene: 'hallway' });
+    expect(hallway.track).toBeUndefined(); // absent = main at the APP layer
+
+    const kitchen = loadPack('a1-course-unit-091');
+    expect(kitchen.theme).toEqual({ scene: 'kitchen', accent: '#8A4B2F' });
+
+    expect(loadPack('a1-course-unit-092').theme?.scene).toBe('cellar');
+    // unknown scene passes the schema untouched (forward compatibility)
+    expect(loadPack('a1-course-unit-093').theme?.scene).toBe('greenhouse');
+
+    const family = loadPack('a2-family-090');
+    expect(family.track).toBe('family');
+    expect(family.theme).toBeUndefined();
+    expect(family.prompts).toHaveLength(1);
+  });
+
+  it('T69 torfl lexicon fixture validates (category torfl + the torfl:lexicon tag, no audio)', () => {
+    const lexicon = loadPack('a1-torfl-lexicon-fixture');
+    expect(lexicon.type).toBe('stories');
+    expect(lexicon.category).toBe('torfl');
+    expect(lexicon.tags).toContain('torfl:lexicon');
+    expect(lexicon.stories).toHaveLength(1);
+    expect(lexicon.stories[0]!.sentences).toHaveLength(6);
+  });
+
+  it('T74 torfl prompts fixture validates (a prompts pack in category torfl; every prompt tagged torfl)', () => {
+    const prompts = loadPack('a1-torfl-prompts-fixture');
+    expect(prompts.type).toBe('prompts');
+    expect(prompts.category).toBe('torfl');
+    expect(prompts.prompts).toHaveLength(4);
+    for (const p of prompts.prompts ?? []) expect(p.tags).toContain('torfl');
+    expect(
+      prompts.prompts!.filter((p) => p.tags?.some((t) => t.startsWith('torfl:'))),
+    ).toHaveLength(3);
+  });
+
+  it('T75 A2 exam fixture validates (category torfl-a2, level A2)', () => {
+    const exam = loadPack('a2-exam-fixture');
+    expect(exam.type).toBe('exam');
+    expect(exam.category).toBe('torfl-a2');
+    expect(exam.level).toBe('A2');
+    expect(exam.exams!.every((e) => e.level === 'A2')).toBe(true);
+  });
+
+  it('T75 A2 prompts fixture validates (2 prompts, all tagged torfl, level A2, category torfl-a2)', () => {
+    const prompts = loadPack('a2-torfl-prompts-fixture');
+    expect(prompts.type).toBe('prompts');
+    expect(prompts.category).toBe('torfl-a2');
+    expect(prompts.level).toBe('A2');
+    expect(prompts.prompts).toHaveLength(2);
+    for (const p of prompts.prompts ?? []) {
+      expect(p.level).toBe('A2');
+      expect(p.tags).toContain('torfl');
+    }
+  });
+
+  it('M14 fixtures validate, carrying category/genre/subtitle/source exactly as authored', () => {
+    const news = loadPack('a2-news-090');
+    expect(news.category).toBe('news');
+    expect(news.genre).toBeUndefined();
+    expect(news.stories).toHaveLength(2);
+    expect(news.stories[0]!.subtitle?.ru).toBe('Мост через реку Зальцах строили два года');
+    expect(news.stories[0]!.source).toEqual({
+      name: 'Сумрак-тест',
+      publishedAt: '2026-09-10',
+      author: 'Редакция',
+    });
+    expect(news.stories[1]!.source?.author).toBeUndefined();
+    expect(news.stories[1]!.source?.url).toBe('https://example.invalid/first-snow');
+    expect(news.stories[1]!.source!.publishedAt! > news.stories[0]!.source!.publishedAt!).toBe(
+      true,
+    );
+
+    const podcast = loadPack('a2-podcast-090');
+    expect(podcast.category).toBe('podcast');
+    expect(podcast.stories[0]!.subtitle).toEqual({ ru: 'Эпизод 1', en: 'Episode 1' });
+    expect(podcast.stories[0]!.source?.author).toBe('Мистер Уинтроу');
+
+    const comedy = loadPack('a1-comedy-090');
+    expect(comedy.category).toBe('stories');
+    expect(comedy.genre).toBe('comedy');
+    expect(comedy.stories[0]!.subtitle).toBeUndefined();
+    expect(comedy.stories[0]!.source).toBeUndefined();
+
+    // Every word token fully annotated, like the creepypasta fixtures.
+    for (const pack of [news, podcast, comedy]) {
+      for (const story of pack.stories) {
+        for (const sentence of story.sentences) {
+          for (const token of sentence.tokens) {
+            if (token.isPunct) continue;
+            const where = `${pack.id}/${sentence.id}/"${token.text}"`;
+            expect(token.lemma, `${where} lemma`).toBeDefined();
+            expect(token.translation, `${where} translation`).toBeDefined();
+            expect(token.pos, `${where} pos`).toBeDefined();
+            expect(token.level, `${where} level`).toBeDefined();
+          }
+        }
+      }
+    }
+  });
+
+  it('a1-prompts-001 («Первые страницы») validates as a prompts pack', () => {
+    const pack = loadPack('a1-prompts-001');
+    expect(pack.type).toBe('prompts');
+    expect(pack.stories).toHaveLength(0);
+    expect(pack.prompts!.length).toBeGreaterThanOrEqual(12);
+    // level-appropriate surfacing (T15) needs both A1 and A2 prompts to filter
+    const levels = new Set(pack.prompts!.map((p) => p.level));
+    expect(levels.has('A1')).toBe(true);
+    expect(levels.has('A2')).toBe(true);
+    // prompt ids unique within the pack
+    const ids = pack.prompts!.map((p) => p.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('a2-dialogue-001 («Ужин у мамы») validates as a dialogue pack', () => {
+    const pack = loadPack('a2-dialogue-001');
+    expect(pack.type).toBe('dialogue');
+    expect(pack.stories).toHaveLength(0);
+    const dialogue = pack.dialogues![0]!;
+    // The T25 acceptance shape: 8–12 nodes, ≥2 choice points, 2–3 endings
+    // incl. a strange one, a trap-adjacent cycle, asrAlternates + hint used.
+    expect(dialogue.nodes.length).toBeGreaterThanOrEqual(8);
+    expect(dialogue.nodes.length).toBeLessThanOrEqual(12);
+    const choiceNodes = dialogue.nodes.filter((n) => n.choices !== undefined);
+    expect(choiceNodes.length).toBeGreaterThanOrEqual(2);
+    expect(dialogue.endings.map((e) => e.tone).sort()).toEqual(['bad', 'good', 'strange']);
+    expect(dialogue.nodes.some((n) => n.choices?.some((c) => c.asrAlternates))).toBe(true);
+    expect(dialogue.nodes.some((n) => n.choices?.some((c) => c.hint))).toBe(true);
+    // the «Ещё борща?» loop: din-n07 cycles back to the choice point din-n06
+    expect(dialogue.nodes.find((n) => n.id === 'din-n07')!.next).toBe('din-n06');
+    // every dialogue word token is fully annotated, story-style
+    for (const node of dialogue.nodes) {
+      const sentences = [node.sentence, ...(node.choices?.map((c) => c.sentence) ?? [])];
+      for (const sentence of sentences) {
+        for (const token of sentence.tokens) {
+          if (token.isPunct) continue;
+          const where = `${sentence.id}/"${token.text}"`;
+          expect(token.lemma, `${where} lemma`).toBeDefined();
+          expect(token.translation, `${where} translation`).toBeDefined();
+          expect(token.pos, `${where} pos`).toBeDefined();
+          expect(token.level, `${where} level`).toBeDefined();
+        }
+      }
+    }
+  });
+
+  it('ё is preserved in content (never normalized to е)', () => {
+    const raw = readFileSync(join(packDir('a1-creepypasta-002'), 'pack.json'), 'utf8');
+    expect(raw).toContain('чёрные');
+    expect(raw).toContain('моём');
+  });
+
+  it('the karaoke fixture track has monotonic, in-range word stamps and a real audio file', () => {
+    const pack = loadPack('a1-creepypasta-001');
+    const story = pack.stories[0]!;
+    const track = story.audio[0]!;
+    expect(track).toBeDefined();
+    expect(track.timestamps.length).toBeGreaterThan(0);
+
+    // monotonic and non-overlapping
+    for (let i = 1; i < track.timestamps.length; i++) {
+      expect(track.timestamps[i]!.startMs).toBeGreaterThanOrEqual(track.timestamps[i - 1]!.endMs);
+    }
+    // covers every word (non-punct) token of every sentence
+    const wordTokenCount = story.sentences.reduce(
+      (sum, s) => sum + s.tokens.filter((t) => !t.isPunct).length,
+      0,
+    );
+    expect(track.timestamps).toHaveLength(wordTokenCount);
+    // the silent opus exists and is non-empty
+    const opus = join(packDir(pack.id), track.file);
+    expect(existsSync(opus)).toBe(true);
+    expect(statSync(opus).size).toBeGreaterThan(0);
+  });
+});
+
+describe('manifest fixture', () => {
+  it('validates and covers all sample packs', () => {
+    const manifest = parseManifest(
+      JSON.parse(readFileSync(join(fixturesDir, 'manifest.json'), 'utf8')),
+    );
+    const ids = manifest.packs.map((p) => p.id).sort();
+    expect(ids).toEqual(['a1-creepypasta-001', 'a1-creepypasta-002', 'a1-prompts-001']);
+  });
+
+  it('bytes and sha256 hashes match the files on disk', () => {
+    const manifest = parseManifest(
+      JSON.parse(readFileSync(join(fixturesDir, 'manifest.json'), 'utf8')),
+    );
+    for (const entry of manifest.packs) {
+      let bytes = 0;
+      for (const file of entry.files) {
+        const buf = readFileSync(join(packDir(entry.id), file.path));
+        bytes += buf.length;
+        expect(createHash('sha256').update(buf).digest('hex'), `${entry.id}/${file.path}`).toBe(
+          file.sha256,
+        );
+      }
+      expect(bytes, `${entry.id} bytes`).toBe(entry.bytes);
+    }
+  });
+
+  it('manifest entries mirror the pack metadata', () => {
+    const manifest = parseManifest(
+      JSON.parse(readFileSync(join(fixturesDir, 'manifest.json'), 'utf8')),
+    );
+    for (const entry of manifest.packs) {
+      const pack = loadPack(entry.id);
+      expect(entry.version).toBe(pack.version);
+      expect(entry.type).toBe(pack.type);
+      expect(entry.level).toBe(pack.level);
+      expect(entry.title).toEqual(pack.title);
+    }
+  });
+});

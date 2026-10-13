@@ -1,0 +1,177 @@
+import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect, useRouter, type Href } from 'expo-router';
+import * as React from 'react';
+import { Pressable, ScrollView, View } from 'react-native';
+
+import { Text } from '@/components/ui/text';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+
+import { useDueCardCount, useMixedDueCount, useProductionDueCount } from '@/db/hooks';
+import { repos } from '@/db';
+import { loadBlitzStats } from '@/features/review/games/blitz/service';
+import { loadTypingStats } from '@/features/review/games/typing/service';
+import { track } from '@/services/analytics';
+import { useAppTheme } from '@/theme/use-app-theme';
+
+type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
+
+/**
+ * The standalone games menu (T13; UI_DESIGN §3 places it off Словарь).
+ * Every implemented mode is launchable here on demand — sessions serve due
+ * cards first and top up with the weakest, so there's always practice; each
+ * screen owns its own empty state when the bank/stories can't feed it yet.
+ */
+export function GamesMenuScreen() {
+  const due = useDueCardCount();
+  const mixedDue = useMixedDueCount();
+  const productionDue = useProductionDueCount();
+  const typingStats = useQuery({
+    queryKey: ['typing-stats'],
+    queryFn: () => loadTypingStats(repos),
+  });
+  const blitzStats = useQuery({
+    queryKey: ['blitz-stats'],
+    queryFn: () => loadBlitzStats(repos),
+  });
+  const queryClient = useQueryClient();
+
+  useFocusEffect(
+    React.useCallback(() => {
+      track('games_menu_opened');
+      // A typing round finished elsewhere updates the best shown on this row.
+      void queryClient.invalidateQueries({ queryKey: ['typing-stats'] });
+      void queryClient.invalidateQueries({ queryKey: ['blitz-stats'] });
+    }, [queryClient]),
+  );
+
+  const dueCount = due.data ?? 0;
+  const mixedCount = mixedDue.data ?? 0;
+  const pronCount = productionDue.data ?? 0;
+
+  return (
+    <ScrollView className="flex-1 bg-bg" contentContainerClassName="gap-3 px-4 pb-12 pt-4">
+      <GameRow
+        icon="today-outline"
+        title="Daily session"
+        subtitle={
+          dueCount > 0 ? `All modes, weighted mix · ${dueCount} due` : 'All modes, weighted mix'
+        }
+        route="/review/daily"
+      />
+      <GameRow
+        icon="albums-outline"
+        title="Review session"
+        subtitle={
+          mixedCount > 0
+            ? `Flashcards + multiple choice · ${mixedCount} due`
+            : 'Flashcards + multiple choice'
+        }
+        route="/review/session"
+      />
+      <GameRow
+        icon="text-outline"
+        title="Cloze"
+        subtitle="Fill the missing word in real story sentences"
+        route="/review/cloze"
+      />
+      <GameRow
+        icon="reorder-four-outline"
+        title="Sentence builder"
+        subtitle="Rebuild story sentences from shuffled tiles"
+        route="/review/sentence-builder"
+      />
+      <GameRow
+        icon="ear-outline"
+        title="Listening quiz"
+        subtitle="Pick or type what you hear — narration or Piper"
+        route="/review/listening"
+      />
+      <GameRow
+        icon="keypad-outline"
+        title="Typing trainer"
+        subtitle={
+          typingStats.data && typingStats.data.bestWpm > 0
+            ? `2-minute Cyrillic burst · best ${typingStats.data.bestWpm.toFixed(1)} WPM`
+            : '2-minute Cyrillic burst'
+        }
+        route="/games/typing"
+      />
+      <GameRow
+        icon="calculator-outline"
+        title="Числа"
+        subtitle="Numbers, prices, times, dates, ages — hear it, type it"
+        route="/games/numbers"
+      />
+      <GameRow
+        icon="flash-outline"
+        title="Молния"
+        subtitle={
+          blitzStats.data && blitzStats.data.best > 0
+            ? `60-second match sprint · best ${blitzStats.data.best} pairs`
+            : '60-second match sprint — words you already know'
+        }
+        route="/games/blitz"
+      />
+      <GameRow
+        icon="chatbubbles-outline"
+        title="Dialogue"
+        subtitle="Speak your side of a branching scene — Диалог"
+        route="/dialogues"
+      />
+      <GameRow
+        icon="radio-outline"
+        title="Сценарии"
+        subtitle="Speak your way through a situation — no text, just you and the host"
+        route="/scenarios"
+      />
+      <GameRow
+        icon="mic-outline"
+        title="Pronunciation"
+        subtitle={
+          pronCount > 0 ? `Say it out loud · ${pronCount} due` : 'Say it out loud, scored offline'
+        }
+        route="/review/pronunciation"
+      />
+
+      <Text variant="caption" className="mt-3 px-1 text-center">
+        Cloze and sentence builder quote only stories you&apos;ve read — change that in Settings →
+        Games, where the daily session&apos;s mix and length also live.
+      </Text>
+    </ScrollView>
+  );
+}
+
+function GameRow({
+  icon,
+  title,
+  subtitle,
+  route,
+}: {
+  icon: IoniconName;
+  title: string;
+  subtitle: string;
+  route: Href;
+}) {
+  const router = useRouter();
+  const { tokens } = useAppTheme();
+  return (
+    <Pressable
+      onPress={() => {
+        track('game_launched_from_menu', { route: String(route) });
+        router.push(route);
+      }}
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      className="flex-row items-center gap-3.5 rounded-xl border border-border bg-surface p-4 active:bg-surface-2"
+    >
+      <View className="h-11 w-11 items-center justify-center rounded-full bg-surface-2">
+        <Ionicons name={icon} size={20} color={tokens.accent} />
+      </View>
+      <View className="flex-1 gap-0.5">
+        <Text className="font-ui-medium text-base">{title}</Text>
+        <Text variant="caption">{subtitle}</Text>
+      </View>
+      <Ionicons name="chevron-forward" size={18} color={tokens.textMuted} />
+    </Pressable>
+  );
+}

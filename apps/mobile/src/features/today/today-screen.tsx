@@ -1,0 +1,439 @@
+import { Ionicons } from '@expo/vector-icons';
+import { useQueryClient } from '@tanstack/react-query';
+import { useFocusEffect, useRouter } from 'expo-router';
+import * as React from 'react';
+import { Pressable, Text as RNText, ScrollView, View } from 'react-native';
+
+import { repos } from '@/db';
+import { trackDueSnapshotOnce } from '@/features/review/due-snapshot';
+import { QueryError } from '@/components/query-error';
+import { Text } from '@/components/ui/text';
+import {
+  useDialogues,
+  useDueBreakdown,
+  useScenarios,
+  usePackClassification,
+  useProductionDueCount,
+  useStories,
+  useStoryProgressList,
+} from '@/db/hooks';
+import { backlogLine, splitLine } from '@/features/review/due-core';
+import { DueBreakdownSheet } from '@/features/review/due-breakdown-sheet';
+import { classificationEventProps } from '@/features/library/categories';
+import { GoalRingCard } from '@/features/motivation/goal-ring-card';
+import { NotificationPromptCard } from '@/features/motivation/notification-prompt-card';
+import { QuestCard } from '@/features/motivation/quest-card';
+import type { PathNode } from '@/features/path/path-model';
+import { isUnit, nextStepInfo, usePathState } from '@/features/path/use-path';
+import { isResumable, pickTodayScenario } from '@/features/scenario/hub-selection';
+import { drillHref } from '@/features/torfl/drill/drill-model';
+import { useExamDates, useTorflLevelsToday } from '@/features/torfl/hooks';
+import { countdownLabel } from '@/features/torfl/hub-model';
+import { profileFor } from '@/features/torfl/level-profile';
+import { isLevelActive, levelOrder, type ExamDates } from '@/features/torfl/levels-today';
+import { describeStep } from '@/features/torfl/today';
+import { track } from '@/services/analytics';
+import { resolveContinueTarget } from '@/features/reader/continue-target';
+import { useAppTheme } from '@/theme/use-app-theme';
+
+/**
+ * Сегодня (design §10, UI_DESIGN §4): one viewport answering, top to
+ * bottom — goal/streak state (the real T19 ring over daily_activity +
+ * the motivation snapshot), what's due (session CTA), where I left off
+ * (continue-reading card).
+ */
+export function TodayScreen() {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const { tokens } = useAppTheme();
+
+  const due = useDueBreakdown();
+  const [breakdownOpen, setBreakdownOpen] = React.useState(false);
+  const productionDue = useProductionDueCount();
+  const progressList = useStoryProgressList();
+  const stories = useStories();
+  const path = usePathState();
+  const dialogues = useDialogues();
+  const scenarios = useScenarios();
+  const torflLevels = useTorflLevelsToday();
+  const examDates = useExamDates();
+  const dates: ExamDates = { A1: examDates.A1.date, A2: examDates.A2.date };
+  // T75: one row per ACTIVE level, nearest exam date first (no date → A1 then A2).
+  const activeLevels = levelOrder(dates).filter((l) =>
+    isLevelActive(dates[l], torflLevels[l].deckDue),
+  );
+
+  // Counts change while this tab is unfocused (sessions, reading) — refresh on return.
+  useFocusEffect(
+    React.useCallback(() => {
+      track('tab_viewed', { tab: 'Сегодня' });
+      void queryClient.invalidateQueries({ queryKey: ['due-count'] });
+      void trackDueSnapshotOnce(repos);
+      void queryClient.invalidateQueries({ queryKey: ['daily-activity'] });
+      void queryClient.invalidateQueries({ queryKey: ['motivation'] });
+      void queryClient.invalidateQueries({ queryKey: ['story-progress'] });
+      void queryClient.invalidateQueries({ queryKey: ['path'] });
+      void queryClient.invalidateQueries({ queryKey: ['dialogues'] });
+      void queryClient.invalidateQueries({ queryKey: ['scenarios'] });
+      void queryClient.invalidateQueries({ queryKey: ['exams'] });
+      // T34: re-evaluate the quest on return (a new local day, a dismissed leech).
+      void queryClient.invalidateQueries({ queryKey: ['quest'] });
+    }, [queryClient]),
+  );
+
+  const dueCount = due.data?.total ?? 0;
+  const reviewDue = due.data?.reviewDue ?? 0;
+  const newToday = due.data?.newToday ?? 0;
+  const backlog = backlogLine(due.data?.newBacklog ?? 0);
+  const pronDueCount = productionDue.data ?? 0;
+
+  // T84: the same «last read → resume, or the next part once finished» rule
+  // the home-screen widget uses (`resolveContinueTarget`).
+  const continueTarget = React.useMemo(
+    () => resolveContinueTarget(progressList.data ?? [], stories.data ?? []),
+    [progressList.data, stories.data],
+  );
+
+  // T27: «Диалог» card — first installed dialogue not yet finished once;
+  // disappears after any finished run (V2 §3.3).
+  const dialogueTarget = React.useMemo(
+    () => (dialogues.data ?? []).find((d) => d.finishedRunCount === 0) ?? null,
+    [dialogues.data],
+  );
+  // M14 (T46): dialogue_opened carries category/genre (stories/none unless authored).
+  const classification = usePackClassification();
+
+  // M17 (T62, §9.1): «Сценарий» card — the next unplayed rung, else the rung
+  // with the lowest clean ratio; hidden when no scenario pack is installed.
+  const scenarioTarget = React.useMemo(
+    () => pickTodayScenario(scenarios.data ?? []),
+    [scenarios.data],
+  );
+
+  const coreQueries = [due, productionDue, progressList, stories, path, dialogues, scenarios];
+  const loading = coreQueries.some((q) => q.isPending);
+  const anyError = coreQueries.some((q) => q.isError);
+
+  if (loading) {
+    // NativeWind has no `animate-pulse` (no CSS animation engine on native) —
+    // static bg-surface blocks stand in for the real cards' shapes so the
+    // first frame never flashes a false "0 due".
+    return (
+      <ScrollView className="flex-1 bg-bg" contentContainerClassName="gap-4 px-4 pb-16 pt-4">
+        <View className="h-28 rounded-xl bg-surface opacity-60" />
+        <View className="h-32 rounded-xl bg-surface opacity-60" />
+        <View className="h-20 rounded-xl bg-surface opacity-60" />
+      </ScrollView>
+    );
+  }
+
+  if (anyError) {
+    return (
+      <View className="flex-1 items-center justify-center bg-bg px-8">
+        <QueryError onRetry={() => coreQueries.forEach((q) => void q.refetch())} />
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView className="flex-1 bg-bg" contentContainerClassName="gap-4 px-4 pb-16 pt-4">
+      {/* the real goal ring + streak flame + freezes + XP (T19) */}
+      <GoalRingCard />
+
+      {/* the day's rotating quest — the ring's third segment (T34) */}
+      <QuestCard />
+
+      {/* one-time reminders opt-in, once there's a streak to protect (T19) */}
+      <NotificationPromptCard />
+
+      {/* what's due */}
+      <View className="rounded-xl border border-border bg-surface p-4">
+        <Pressable
+          onPress={() => setBreakdownOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Почему столько?"
+          className="active:opacity-70"
+        >
+          <View className="flex-row items-baseline gap-2">
+            <RNText className="font-ui-bold text-4xl text-text">{dueCount}</RNText>
+            <Text variant="muted">{dueCount === 1 ? 'card due' : 'cards due'}</Text>
+            <Ionicons name="information-circle-outline" size={16} color={tokens.textMuted} />
+          </View>
+          {dueCount > 0 && <Text variant="caption">{splitLine(reviewDue, newToday)}</Text>}
+          {backlog !== null && (
+            <Text variant="caption" className="mt-0.5">
+              {backlog}
+            </Text>
+          )}
+        </Pressable>
+        {dueCount > 0 ? (
+          <Pressable
+            // T14: the default action is the unified daily session (mixed modes).
+            onPress={() => router.push('/review/daily')}
+            accessibilityRole="button"
+            accessibilityLabel="Start review session"
+            className="mt-4 flex-row items-center justify-center gap-2 rounded-xl bg-accent py-3.5 active:opacity-80"
+          >
+            <Ionicons name="play" size={16} color={tokens.bg} />
+            <Text className="font-ui-medium text-bg">Start session</Text>
+          </Pressable>
+        ) : (
+          <Text variant="muted" className="mt-3">
+            Всё повторено — nothing due. Reading adds new words to review.
+          </Text>
+        )}
+      </View>
+
+      <DueBreakdownSheet open={breakdownOpen} onClose={() => setBreakdownOpen(false)} />
+
+      {/* speaking practice (T12) — production cards are due only to this session */}
+      {pronDueCount > 0 && (
+        <Pressable
+          onPress={() => router.push('/review/pronunciation')}
+          accessibilityRole="button"
+          accessibilityLabel="Start pronunciation practice"
+          className="rounded-xl border border-border bg-surface p-4 active:bg-surface-2"
+        >
+          <View className="flex-row items-center justify-between gap-3">
+            <View className="flex-1 gap-0.5">
+              <Text variant="caption" className="uppercase tracking-wider">
+                Speaking
+              </Text>
+              <Text className="font-ui-medium">
+                {pronDueCount === 1 ? '1 phrase' : `${pronDueCount} phrases`} to pronounce
+              </Text>
+            </View>
+            <View className="h-10 w-10 items-center justify-center rounded-full bg-surface-2">
+              <Ionicons name="mic-outline" size={18} color={tokens.accent} />
+            </View>
+          </View>
+        </Pressable>
+      )}
+
+      {/* speak-your-choice dialogue (T27) — until its first finished run */}
+      {dialogueTarget && (
+        <Pressable
+          onPress={() => {
+            track('dialogue_opened', {
+              packId: dialogueTarget.packId,
+              dialogueId: dialogueTarget.id,
+              from: 'today',
+              ...classificationEventProps(
+                classification.get(dialogueTarget.packId) ?? { category: 'stories', genre: null },
+              ),
+            });
+            router.push(`/dialogue/${dialogueTarget.packId}/${dialogueTarget.id}`);
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={`Play the dialogue ${dialogueTarget.titleRu}`}
+          className="rounded-xl border border-border bg-surface p-4 active:bg-surface-2"
+        >
+          <View className="flex-row items-center justify-between gap-3">
+            <View className="flex-1 gap-0.5">
+              <Text variant="caption" className="uppercase tracking-wider">
+                Диалог
+              </Text>
+              <RNText className="font-reading text-xl text-text" numberOfLines={1}>
+                {dialogueTarget.titleRu}
+              </RNText>
+              <Text variant="caption" numberOfLines={1}>
+                Answer out loud — the story follows your voice
+              </Text>
+            </View>
+            <View className="h-10 w-10 items-center justify-center rounded-full bg-surface-2">
+              <Ionicons name="chatbubbles-outline" size={18} color={tokens.accent} />
+            </View>
+          </View>
+        </Pressable>
+      )}
+
+      {/* blind speaking scenario (T62) — always the next thing to say out loud */}
+      {scenarioTarget && (
+        <Pressable
+          onPress={() => {
+            track('scenario_opened', {
+              familyId: scenarioTarget.familyId,
+              level: scenarioTarget.level,
+              from: 'today',
+            });
+            router.push(`/scenario/${scenarioTarget.packId}/${scenarioTarget.id}`);
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={`Play the scenario ${scenarioTarget.titleRu}`}
+          className="rounded-xl border border-border bg-surface p-4 active:bg-surface-2"
+        >
+          <View className="flex-row items-center justify-between gap-3">
+            <View className="flex-1 gap-0.5">
+              <Text variant="caption" className="uppercase tracking-wider">
+                Сценарий · {scenarioTarget.level}
+              </Text>
+              <RNText className="font-reading text-xl text-text" numberOfLines={1}>
+                {scenarioTarget.titleRu}
+              </RNText>
+              <Text variant="caption" numberOfLines={1}>
+                {isResumable(scenarioTarget)
+                  ? 'Continue where you left off'
+                  : scenarioTarget.bestStats
+                    ? 'Your weakest run — try for a clean one'
+                    : 'Someone talks, you answer — no text'}
+              </Text>
+            </View>
+            <View className="h-10 w-10 items-center justify-center rounded-full bg-surface-2">
+              <Ionicons name="radio-outline" size={18} color={tokens.accent} />
+            </View>
+          </View>
+        </Pressable>
+      )}
+
+      {/* M18/M19 (T70/T75, TORFL_A2 §3): one row per ACTIVE level (exam date set or deck items due), nearest exam date first, no date → A1 then A2; each → its hub */}
+      {activeLevels.length > 0 && (
+        <View
+          className="gap-3 rounded-xl border border-border bg-surface p-4"
+          testID="today-torfl-card"
+        >
+          {activeLevels.map((level, idx) => {
+            const t = torflLevels[level];
+            const sfx = level === 'A2' ? '-a2' : '';
+            const chip = profileFor(level).chipLabel;
+            return (
+              <React.Fragment key={level}>
+                {idx > 0 && <View className="h-px bg-border" />}
+                <Pressable
+                  onPress={() => {
+                    router.push({ pathname: '/torfl', params: { from: 'today', level } });
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Открыть подготовку к ${chip}`}
+                  className="flex-row items-center justify-between gap-3 active:opacity-70"
+                >
+                  <View className="flex-1 gap-0.5">
+                    <Text variant="caption" className="uppercase tracking-wider">
+                      {chip}
+                    </Text>
+                    <Text className="font-ui-medium" testID={`today-torfl-countdown${sfx}`}>
+                      {countdownLabel(dates[level], examDates[level].today)}
+                    </Text>
+                  </View>
+                  <View className="h-10 w-10 items-center justify-center rounded-full bg-surface-2">
+                    <Ionicons name="ribbon-outline" size={18} color={tokens.accent} />
+                  </View>
+                </Pressable>
+                {t.deckDue > 0 && (
+                  <Pressable
+                    onPress={() => router.push(drillHref({ source: 'deck', level }))}
+                    accessibilityRole="button"
+                    testID={`today-torfl-deck${sfx}`}
+                    className="flex-row items-center gap-3 rounded-lg bg-surface-2 px-3 py-3 active:opacity-70"
+                  >
+                    <Ionicons name="albums-outline" size={18} color={tokens.accent} />
+                    <Text className="flex-1 font-ui-medium">Работа над ошибками · {t.deckDue}</Text>
+                    <Ionicons name="play" size={14} color={tokens.accent} />
+                  </Pressable>
+                )}
+                {t.step && t.step.kind !== 'deck' && (
+                  <Pressable
+                    onPress={() => {
+                      const action = t.action;
+                      if (action?.kind === 'drill' && action.source === 'set') {
+                        router.push(
+                          drillHref({
+                            source: 'set',
+                            packId: action.packId,
+                            examId: action.examId,
+                            topic: action.topic,
+                            level,
+                          }),
+                        );
+                      } else {
+                        router.push({ pathname: '/torfl', params: { from: 'today', level } });
+                      }
+                    }}
+                    accessibilityRole="button"
+                    testID={`today-torfl-step${sfx}`}
+                    className="flex-row items-center gap-3 rounded-lg border border-accent/40 px-3 py-3 active:opacity-70"
+                  >
+                    <Ionicons name="compass-outline" size={18} color={tokens.accent} />
+                    <View className="flex-1 gap-0.5">
+                      <Text variant="caption" className="uppercase tracking-wider">
+                        Тренировка дня
+                      </Text>
+                      <Text className="font-ui-medium" numberOfLines={2}>
+                        {describeStep(t.step).title}
+                      </Text>
+                    </View>
+                  </Pressable>
+                )}
+              </React.Fragment>
+            );
+          })}
+        </View>
+      )}
+
+      {/* continue on the path (T17) — current node's next uncompleted step */}
+      {path.data?.current && <PathContinueCard node={path.data.current} />}
+
+      {/* where I left off */}
+      {continueTarget && (
+        <Pressable
+          onPress={() =>
+            router.push(`/reader/${continueTarget.packId}/${continueTarget.storyId}?from=today`)
+          }
+          accessibilityRole="button"
+          accessibilityLabel={`Continue reading ${continueTarget.title}`}
+          className="rounded-xl border border-border bg-surface p-4 active:bg-surface-2"
+        >
+          <Text variant="caption" className="uppercase tracking-wider">
+            Continue reading
+          </Text>
+          <View className="mt-2 flex-row items-center justify-between gap-3">
+            <RNText className="flex-1 font-reading text-xl text-text" numberOfLines={1}>
+              {continueTarget.title}
+            </RNText>
+            <Ionicons name="chevron-forward" size={18} color={tokens.textMuted} />
+          </View>
+        </Pressable>
+      )}
+    </ScrollView>
+  );
+}
+
+function PathContinueCard({ node }: { node: PathNode }) {
+  const router = useRouter();
+  const { tokens } = useAppTheme();
+  const step = nextStepInfo(node);
+  const subtitle = isUnit(node)
+    ? `${node.pack.titleRu} · ${node.stepsDone}/${node.stepsTotal}`
+    : node.pack.titleRu;
+  return (
+    <Pressable
+      onPress={() => {
+        track('path_continue_tapped', { packId: node.pack.id, kind: node.kind });
+        router.push(step.route as never);
+      }}
+      accessibilityRole="button"
+      accessibilityLabel={`Continue the path: ${step.label}`}
+      className="rounded-xl border border-border bg-surface p-4 active:bg-surface-2"
+    >
+      <Text variant="caption" className="uppercase tracking-wider">
+        Путь
+      </Text>
+      <View className="mt-2 flex-row items-center justify-between gap-3">
+        <View className="flex-1 gap-0.5">
+          <RNText className="font-ui-medium text-base text-text" numberOfLines={1}>
+            {step.label}
+          </RNText>
+          <Text variant="caption" numberOfLines={1}>
+            {subtitle}
+          </Text>
+        </View>
+        <View className="h-10 w-10 items-center justify-center rounded-full bg-surface-2">
+          <Ionicons
+            name={node.kind === 'checkpoint' ? 'flag-outline' : 'trail-sign-outline'}
+            size={18}
+            color={tokens.accent}
+          />
+        </View>
+      </View>
+    </Pressable>
+  );
+}

@@ -1,0 +1,376 @@
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+
+import { normalizeRu, toFtsQuery } from '../normalize';
+import {
+  audioTracks,
+  exerciseSpecs,
+  journalPrompts,
+  lessons,
+  packs,
+  sentences,
+  stories,
+  tokens,
+  wordStamps,
+} from '../schema';
+import type { SumrakDB } from '../types';
+
+export type PackRow = typeof packs.$inferSelect;
+export type StoryRow = typeof stories.$inferSelect;
+export type SentenceRow = typeof sentences.$inferSelect;
+export type TokenRow = typeof tokens.$inferSelect;
+export type AudioTrackRow = typeof audioTracks.$inferSelect;
+export type WordStampRow = typeof wordStamps.$inferSelect;
+
+export interface StoryListItem extends StoryRow {
+  packTitleEn: string;
+  packTitleRu: string;
+  sentenceCount: number;
+}
+
+export interface SentenceWithTokens extends SentenceRow {
+  tokens: TokenRow[];
+}
+
+export interface StoryDetail {
+  pack: PackRow;
+  story: StoryRow;
+  sentences: SentenceWithTokens[];
+  audio: AudioTrackRow[];
+}
+
+/** A resolved user-data content reference (bank item → its source sentence). */
+export interface ResolvedSentence {
+  sentence: SentenceRow;
+  story: StoryRow | null;
+}
+
+/** One sentence with ≥1 matching token — a global-search result row (T24). */
+export interface SentenceSearchHit {
+  packId: string;
+  packTitleRu: string;
+  level: string;
+  storyId: string;
+  storyTitleRu: string;
+  sentenceId: string;
+  /** Scroll target for the reader deep link (T04 restore path). */
+  orderIdx: number;
+  ru: string;
+  /** Distinct matched token surfaces, for match highlighting in the snippet. */
+  matchedTexts: string[];
+}
+
+export interface TokenSearchHit {
+  packId: string;
+  sentenceId: string;
+  tokenIndex: number;
+  storyId: string;
+  text: string;
+  lemma: string | null;
+  translation: string | null;
+  pos: string | null;
+  level: string | null;
+}
+
+/**
+ * Read access to everything that arrived in packs. Content rows are
+ * disposable (rebuilt on reimport) — nothing here mutates; writes happen
+ * only in the importer.
+ */
+export function createContentRepo(db: SumrakDB) {
+  return {
+    async listPacks(): Promise<(PackRow & { storyCount: number })[]> {
+      // NB: written as literal SQL with explicit qualification — interpolating
+      // drizzle columns into a correlated subquery renders them UNQUALIFIED
+      // ("pack_id" = "id"), silently correlating against the wrong table.
+      const rows = await db
+        .select({
+          pack: packs,
+          storyCount: sql<number>`(SELECT COUNT(*) FROM stories WHERE stories.pack_id = packs.id)`,
+        })
+        .from(packs)
+        .orderBy(asc(packs.id));
+      return rows.map((r) => ({ ...r.pack, storyCount: r.storyCount }));
+    },
+
+    async getPack(packId: string): Promise<PackRow | null> {
+      const rows = await db.select().from(packs).where(eq(packs.id, packId)).limit(1);
+      return rows[0] ?? null;
+    },
+
+    async listStories(): Promise<StoryListItem[]> {
+      const rows = await db
+        .select({
+          story: stories,
+          packTitleEn: packs.titleEn,
+          packTitleRu: packs.titleRu,
+          sentenceCount: sql<number>`(SELECT COUNT(*) FROM sentences WHERE sentences.pack_id = stories.pack_id AND sentences.story_id = stories.id)`,
+        })
+        .from(stories)
+        .innerJoin(packs, eq(stories.packId, packs.id))
+        .orderBy(asc(stories.packId), asc(stories.orderIdx));
+      return rows.map((r) => ({
+        ...r.story,
+        packTitleEn: r.packTitleEn,
+        packTitleRu: r.packTitleRu,
+        sentenceCount: r.sentenceCount,
+      }));
+    },
+
+    /** Full reader payload: pack, story, ordered sentences with ordered tokens, audio tracks. */
+    async getStoryDetail(packId: string, storyId: string): Promise<StoryDetail | null> {
+      const packRows = await db.select().from(packs).where(eq(packs.id, packId)).limit(1);
+      const pack = packRows[0];
+      if (!pack) return null;
+      const storyRows = await db
+        .select()
+        .from(stories)
+        .where(and(eq(stories.packId, packId), eq(stories.id, storyId)))
+        .limit(1);
+      const story = storyRows[0];
+      if (!story) return null;
+
+      const sentenceRows = await db
+        .select()
+        .from(sentences)
+        .where(and(eq(sentences.packId, packId), eq(sentences.storyId, storyId)))
+        .orderBy(asc(sentences.orderIdx));
+      const tokenRows = await db
+        .select()
+        .from(tokens)
+        .where(and(eq(tokens.packId, packId), eq(tokens.storyId, storyId)))
+        .orderBy(asc(tokens.tokenIndex));
+      const audio = await db
+        .select()
+        .from(audioTracks)
+        .where(and(eq(audioTracks.packId, packId), eq(audioTracks.storyId, storyId)));
+
+      const bySentence = new Map<string, TokenRow[]>();
+      for (const tok of tokenRows) {
+        const list = bySentence.get(tok.sentenceId) ?? [];
+        list.push(tok);
+        bySentence.set(tok.sentenceId, list);
+      }
+      return {
+        pack,
+        story,
+        sentences: sentenceRows.map((s) => ({ ...s, tokens: bySentence.get(s.id) ?? [] })),
+        audio,
+      };
+    },
+
+    /**
+     * T69 «Тексты»: `packId/storyId` keys of the stories that carry at least
+     * one audio track, across the given packs (the audio icon on a text row).
+     */
+    async listStoryKeysWithAudio(packIds: readonly string[]): Promise<Set<string>> {
+      if (packIds.length === 0) return new Set();
+      const rows = await db
+        .selectDistinct({ packId: audioTracks.packId, storyId: audioTracks.storyId })
+        .from(audioTracks)
+        .where(inArray(audioTracks.packId, [...packIds]));
+      return new Set(rows.map((r) => `${r.packId}/${r.storyId}`));
+    },
+
+    /** All audio tracks of a pack — sync (T07) uses this to find not-yet-downloaded audio. */
+    async listAudioTracksForPack(packId: string): Promise<AudioTrackRow[]> {
+      return db.select().from(audioTracks).where(eq(audioTracks.packId, packId));
+    },
+
+    /**
+     * Record where a track's audio file landed in app storage (T07 downloads
+     * audio after import when Wi-Fi-only deferred it; T10 plays from this).
+     */
+    async setAudioLocalUri(packId: string, file: string, localUri: string): Promise<void> {
+      await db
+        .update(audioTracks)
+        .set({ localUri })
+        .where(and(eq(audioTracks.packId, packId), eq(audioTracks.file, file)));
+    },
+
+    /**
+     * Resolve a stable sentence ref held by user data (bank item encounter).
+     * Sentence ids are unique pack-wide; the authoring pipeline keeps them
+     * globally distinct in practice, so first match wins.
+     */
+    async resolveSentence(sentenceId: string): Promise<ResolvedSentence | null> {
+      const rows = await db.select().from(sentences).where(eq(sentences.id, sentenceId)).limit(1);
+      const sentence = rows[0];
+      if (!sentence) return null;
+      const storyRows = await db
+        .select()
+        .from(stories)
+        .where(and(eq(stories.packId, sentence.packId), eq(stories.id, sentence.storyId)))
+        .limit(1);
+      return { sentence, story: storyRows[0] ?? null };
+    },
+
+    async getSentenceTokens(packId: string, sentenceId: string): Promise<TokenRow[]> {
+      return db
+        .select()
+        .from(tokens)
+        .where(and(eq(tokens.packId, packId), eq(tokens.sentenceId, sentenceId)))
+        .orderBy(asc(tokens.tokenIndex));
+    },
+
+    /** T81: every distinct surface form (normalized) the packs show for a lemma — listening form-tolerant grading. */
+    async findTokenFormsByLemma(lemma: string): Promise<string[]> {
+      const rows = await db
+        .selectDistinct({ textNorm: tokens.textNorm })
+        .from(tokens)
+        .where(and(eq(tokens.lemmaNorm, normalizeRu(lemma)), eq(tokens.isPunct, false)));
+      return rows.map((r) => r.textNorm);
+    },
+
+    /** All sentences containing a lemma (ё/е-tolerant) — cloze generation (T13). */
+    async findSentencesWithLemma(lemma: string): Promise<SentenceRow[]> {
+      const norm = normalizeRu(lemma);
+      return db
+        .selectDistinct({
+          packId: sentences.packId,
+          id: sentences.id,
+          storyId: sentences.storyId,
+          orderIdx: sentences.orderIdx,
+          ru: sentences.ru,
+          en: sentences.en,
+          grammarTopics: sentences.grammarTopics,
+        })
+        .from(sentences)
+        .innerJoin(
+          tokens,
+          and(eq(tokens.packId, sentences.packId), eq(tokens.sentenceId, sentences.id)),
+        )
+        .where(eq(tokens.lemmaNorm, norm));
+    },
+
+    /** FTS5 search over token lemma/text (already ё-folded in the index). */
+    async searchTokens(query: string, limit = 50): Promise<TokenSearchHit[]> {
+      const match = toFtsQuery(query);
+      if (!match) return [];
+      const rows = await db.all<{
+        pack_id: string;
+        sentence_id: string;
+        token_index: number;
+        story_id: string;
+        text: string;
+        lemma: string | null;
+        translation: string | null;
+        pos: string | null;
+        level: string | null;
+      }>(sql`
+        SELECT t.pack_id, t.sentence_id, t.token_index, t.story_id,
+               t.text, t.lemma, t.translation, t.pos, t.level
+        FROM tokens_fts f
+        JOIN tokens t ON t.rowid = f.rowid
+        WHERE tokens_fts MATCH ${match}
+        ORDER BY rank
+        LIMIT ${limit}
+      `);
+      return rows.map((r) => ({
+        packId: r.pack_id,
+        sentenceId: r.sentence_id,
+        tokenIndex: r.token_index,
+        storyId: r.story_id,
+        text: r.text,
+        lemma: r.lemma,
+        translation: r.translation,
+        pos: r.pos,
+        level: r.level,
+      }));
+    },
+
+    /**
+     * Global content search (T24, V2 §7.1): FTS5 over the ё-folded token
+     * shadow columns, one row per matching SENTENCE (multiple matched tokens
+     * collapse), best-rank first, with the story/pack context and orderIdx
+     * the results screen needs for grouping and reader deep links. Matching
+     * never touches raw text columns (T03 rule).
+     */
+    async searchSentences(query: string, limit = 80): Promise<SentenceSearchHit[]> {
+      const match = toFtsQuery(query);
+      if (!match) return [];
+      const rows = await db.all<{
+        pack_id: string;
+        pack_title_ru: string;
+        level: string;
+        story_id: string;
+        story_title_ru: string;
+        sentence_id: string;
+        order_idx: number;
+        ru: string;
+        matched: string;
+        best_rank: number;
+      }>(sql`
+        SELECT t.pack_id, p.title_ru AS pack_title_ru, p.level,
+               t.story_id, st.title_ru AS story_title_ru,
+               t.sentence_id, s.order_idx, s.ru,
+               GROUP_CONCAT(DISTINCT t.text) AS matched,
+               MIN(rank) AS best_rank
+        FROM tokens_fts f
+        JOIN tokens t ON t.rowid = f.rowid
+        JOIN sentences s ON s.pack_id = t.pack_id AND s.id = t.sentence_id
+        JOIN stories st ON st.pack_id = t.pack_id AND st.id = t.story_id
+        JOIN packs p ON p.id = t.pack_id
+        WHERE tokens_fts MATCH ${match}
+        GROUP BY t.pack_id, t.sentence_id
+        ORDER BY best_rank
+        LIMIT ${limit}
+      `);
+      return rows.map((r) => ({
+        packId: r.pack_id,
+        packTitleRu: r.pack_title_ru,
+        level: r.level,
+        storyId: r.story_id,
+        storyTitleRu: r.story_title_ru,
+        sentenceId: r.sentence_id,
+        orderIdx: r.order_idx,
+        ru: r.ru,
+        matchedTexts: r.matched ? r.matched.split(',') : [],
+      }));
+    },
+
+    async getWordStamps(packId: string, storyId: string, trackId: string): Promise<WordStampRow[]> {
+      return db
+        .select()
+        .from(wordStamps)
+        .where(
+          and(
+            eq(wordStamps.packId, packId),
+            eq(wordStamps.storyId, storyId),
+            eq(wordStamps.trackId, trackId),
+          ),
+        )
+        .orderBy(asc(wordStamps.stampIndex));
+    },
+
+    async getLesson(packId: string) {
+      const rows = await db.select().from(lessons).where(eq(lessons.packId, packId)).limit(1);
+      return rows[0] ?? null;
+    },
+
+    async listJournalPrompts(level?: 'A1' | 'A2' | 'B1' | 'B2' | 'C1') {
+      const base = db.select().from(journalPrompts);
+      return level ? base.where(eq(journalPrompts.level, level)) : base;
+    },
+
+    /**
+     * Journal prompts with their PACK's level (T75 «Мои ответы» level rule:
+     * a TORFL prompt belongs to the level of its pack — `packs.level`).
+     */
+    async listJournalPromptsWithPackLevel() {
+      return db
+        .select({ prompt: journalPrompts, packLevel: packs.level })
+        .from(journalPrompts)
+        .innerJoin(packs, eq(packs.id, journalPrompts.packId));
+    },
+
+    async listExerciseSpecs(packId: string) {
+      return db
+        .select()
+        .from(exerciseSpecs)
+        .where(eq(exerciseSpecs.packId, packId))
+        .orderBy(asc(exerciseSpecs.orderIdx));
+    },
+  };
+}
+
+export type ContentRepo = ReturnType<typeof createContentRepo>;

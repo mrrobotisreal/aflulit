@@ -1,0 +1,246 @@
+// @sumrak/pipeline — authoring pipeline: draft markdown → validated pack.json
+// (T08: annotate + validate) → narration audio + word stamps + publish (T09).
+// The CLI lives in src/cli.ts (`pnpm pipeline …` from the repo root).
+export { alignSentence, type AlignResult } from './align.ts';
+export { annotateDrafts, runAnnotate, type AnnotateSummary } from './annotate.ts';
+export {
+  planAudioRun,
+  runAudition,
+  runFinalize,
+  runMouthOnly,
+  type AudioRunPlan,
+  type MouthOnlySummary,
+  type AudioSummary,
+  type AuditionOptions,
+  type AuditionResult,
+  type AuditionTake,
+  type FinalizeOptions,
+  type TrackReport,
+} from './audio.ts';
+export {
+  planDialogueItems,
+  runDialogueAudition,
+  runDialogueFinalize,
+  type DialogueAuditionTake,
+  type DialoguePlanOptions,
+  type DialogueRenderItem,
+  type DialogueTrackReport,
+} from './dialogue-audio.ts';
+export {
+  DEFAULT_LANGUAGE_CODE,
+  DEFAULT_MODEL_ID,
+  ElevenLabsClient,
+  ElevenLabsError,
+  OUTPUT_FORMAT,
+  isTaggedModel,
+  type ElevenLabsVoice,
+  type RenderRequest,
+  type RenderResult,
+} from './elevenlabs.ts';
+export {
+  CATEGORY_DEFAULT_REGISTER,
+  DEFAULT_VOICE,
+  REGISTERS,
+  REGISTER_SLUGS,
+  applyRegister,
+  resolveRegisterSlug,
+  type Register,
+  type RegisterSettings,
+  type RegisterSlug,
+  type ResolvedVoiceDirection,
+} from './registers.ts';
+export { resolveEnvVar } from './env.ts';
+export {
+  buildNarration,
+  SENTENCE_SEPARATOR,
+  type NarrationText,
+  type TokenSpan,
+} from './narration.ts';
+export {
+  GITHUB_TREE_FILE_LIMIT,
+  MIRROR_MODELS,
+  MODELS_RELEASE_TAG,
+  ghReleaseStore,
+  releaseAssetName,
+  MODELS_MANIFEST_FILE,
+  mirrorFilePath,
+  runModelsMirror,
+  type MirrorModel,
+  type MirrorModelReport,
+  type MirrorOptions,
+  type MirrorSummary,
+} from './models.ts';
+export {
+  finalizeLine,
+  providerVoiceOf,
+  renderLine,
+  RequestPacer,
+  REQUEST_GAP_MS,
+  type FinalizedLine,
+  type LineRenderSpec,
+  type RenderedLine,
+} from './line-audio.ts';
+export {
+  MOUTH_HYSTERESIS_DB,
+  MOUTH_LADDER_DB,
+  ROUND_VOWELS,
+  isRoundVowelWord,
+  mouthTrackForFile,
+  mouthTrackFromPcm,
+  mouthTrackLength,
+  parseWav16,
+  visemesFromLevels,
+  type MouthTrackInput,
+} from './mouth-track.ts';
+export { encodeOpus, probeDurationMs, OPUS_BITRATE } from './opus.ts';
+export {
+  SCENE_DIR,
+  packFileList,
+  runPublish,
+  sceneFiles,
+  type PublishOptions,
+  type PublishSummary,
+} from './publish.ts';
+export {
+  CONFUSED_STABILITY_DELTA,
+  CONFUSED_STYLE_DELTA,
+  DEFAULT_CUES,
+  HINT_SPEED,
+  SCENARIO_BASE_SETTINGS,
+  attachLineAudio,
+  auditionRepresentatives,
+  carriedScenarioAudio,
+  coachFile,
+  planScenarioItems,
+  recomputeMouthTracks,
+  runScenarioAudition,
+  runScenarioFinalize,
+  steerVariant,
+  type CuesByCharacter,
+  type MouthOnlyReport,
+  type ScenarioAuditionTake,
+  type ScenarioFinalizeOptions,
+  type ScenarioPlanOptions,
+  type ScenarioRenderItem,
+  type ScenarioTrackReport,
+  type ScenarioVariant,
+} from './scenario-audio.ts';
+export {
+  alignCharacters,
+  mapAlignmentToStamps,
+  type CharAlignment,
+  type StampResult,
+} from './stamps.ts';
+export { assemblePack, isPunctText } from './assemble.ts';
+export { expectColumn, renderBranchMap, renderScenarioBranchMap } from './branch-map.ts';
+export {
+  CONTENT_POS,
+  COVERAGE_STOP_LEMMAS,
+  glossaryCoverage,
+  lemmaKey,
+  renderCoverageReport,
+  type CoverageGap,
+  type CoverageReport,
+} from './coverage.ts';
+export { assembleScenario, type SentenceAssembler } from './scenario-assemble.ts';
+export {
+  CharacterCuesSchema,
+  ScenarioDraftCharacterSchema,
+  ScenarioFrontmatterSchema,
+  ScenarioMetaSchema,
+  draftScenarioSentences,
+  parseScenarioDraft,
+  slugifyEn,
+  type CharacterCues,
+  type DraftExpect,
+  type DraftGlossaryEntry,
+  type DraftNudge,
+  type DraftReject,
+  type DraftRetry,
+  type DraftScenarioTurn,
+  type DraftSlot,
+  type DraftSlotOption,
+  type DraftTurnTerminator,
+  type ParsedScenarioDraft,
+  type ScenarioDraftCharacter,
+  type ScenarioFrontmatter,
+  type ScenarioMeta,
+} from './scenario-draft.ts';
+export {
+  TRANSLIT_MAX_CANDIDATES,
+  TRANSLIT_RULES,
+  mergeTranslit,
+  transliterate,
+  type TranslitRule,
+} from './translit.ts';
+export {
+  DialogueFrontmatterSchema,
+  DialogueMetaSchema,
+  parseDialogueDraft,
+  sniffDraftKind,
+  type DialogueFrontmatter,
+  type DraftKind,
+  type DialogueMeta,
+  type DraftChoiceAlt,
+  type DraftDialogueChoice,
+  type DraftDialogueNode,
+  type DraftNodeTerminator,
+  type ParsedDialogueDraft,
+} from './dialogue-draft.ts';
+export {
+  parseDraft,
+  TABLE_COLUMNS,
+  type DraftSentence,
+  type DraftTokenRow,
+  type ParsedDraft,
+} from './draft.ts';
+export { DraftError, formatIssue, type DraftIssue } from './errors.ts';
+export {
+  ExamFrontmatterSchema,
+  parseExamDraft,
+  parseIssuePath,
+  type ParsedExamDraft,
+} from './exam-draft.ts';
+export {
+  renderExamReports,
+  renderMatrixMap,
+  renderOfficialShape,
+  renderRefTable,
+  renderTopicCensus,
+} from './exam-report.ts';
+export { EXAM_TOPICS, EXAM_TOPIC_KIND } from './exam-topics.ts';
+export { ExtrasFrontmatterSchema, loadExtras, parseExtras, type PackExtras } from './extras.ts';
+export {
+  FrontmatterSchema,
+  PackMetaSchema,
+  StoryMetaSchema,
+  VoiceDirectionSchema,
+  VoiceSettingsSchema,
+  type Frontmatter,
+  type PackMeta,
+  type StoryMeta,
+  type VoiceDirection,
+  type VoiceSettings,
+} from './frontmatter.ts';
+export { runValidate, type ValidateResult } from './validate.ts';
+export {
+  THRESHOLDS as STAMP_THRESHOLDS,
+  analyseTrack,
+  assertOnlyTimestampsChanged,
+  auditPack,
+  auditTrack,
+  formatAuditTable,
+  lemmaLint,
+  pythonAligner,
+  refineWords,
+  pauseEdges,
+  noiseFloorDb,
+  restampPack,
+  restampTrack,
+  structuralChecks,
+  wordsOfStory,
+  type AlignedWord,
+  type Aligner,
+  type PackAudit,
+  type TrackAudit,
+} from './stamp-audit.ts';

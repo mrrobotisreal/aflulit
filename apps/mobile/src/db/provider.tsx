@@ -1,0 +1,129 @@
+import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
+import * as React from 'react';
+import { Text, View } from 'react-native';
+
+import migrations from '../../drizzle/migrations';
+import { initMotivation } from '@/features/motivation/service';
+import { setWidgetRefresher } from '@/features/motivation/widget-bus';
+import { refreshWidgetSnapshot } from '@/features/motivation/widget-sync';
+import { refreshInstalledAsr } from '@/features/pronunciation/asr-manager';
+import { refreshInstalledAssist } from '@/features/pronunciation/assist-manager';
+import { hydrateTtsFromDb } from '@/features/tts/service';
+import { hydrateAmbientCursorsFromDb } from '@/store/ambient-cursors';
+import { hydrateAmbientPrefsFromDb } from '@/store/ambient-prefs';
+import { hydrateDailyPrefsFromDb } from '@/store/daily-prefs';
+import { hydrateFsrsPrefsFromDb } from '@/store/fsrs-prefs';
+import { hydrateQueuePrefsFromDb } from '@/store/queue-prefs';
+import { pruneRecordings } from '@/features/scenario/recordings/prune';
+import { hydrateScenarioPrefsFromDb } from '@/features/scenario/store/scenario-prefs';
+import { hydrateGamePrefsFromDb } from '@/store/game-prefs';
+import { hydrateGoalPrefsFromDb } from '@/store/goal-prefs';
+import { hydrateBankPrefsFromDb } from '@/store/bank-prefs';
+import { hydrateLibraryPrefsFromDb } from '@/store/library-prefs';
+import { hydrateLookupPrefsFromDb } from '@/store/lookup-prefs';
+import { hydrateMotionPrefsFromDb } from '@/store/motion-prefs';
+import { hydrateNotificationPrefsFromDb } from '@/store/notification-prefs';
+import { hydrateReaderPrefsFromDb } from '@/store/reader-prefs';
+import { hydrateThemeFromDb } from '@/store/theme';
+
+import { logError } from '@/services/error-log';
+
+import { runBootstrap } from './bootstrap';
+import { db, repos } from './index';
+
+/**
+ * Gates the app on the database being ready: applies drizzle migrations
+ * (bundled .sql via drizzle/migrations.js), then runs the idempotent
+ * bootstrap (analytics sink, theme-setting migration, fixture pack
+ * auto-import), then hydrates the theme store from the settings table.
+ * Children render only in the 'ready' state, so every screen can assume
+ * repositories work.
+ */
+export function DbProvider({ children }: { children: React.ReactNode }) {
+  const { success, error: migrationError } = useMigrations(db, migrations);
+  const [ready, setReady] = React.useState(false);
+  const [bootError, setBootError] = React.useState<Error | null>(null);
+
+  React.useEffect(() => {
+    if (!success) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        await runBootstrap(db, repos);
+        await hydrateThemeFromDb();
+        // T39: configures the live FSRS scheduler — must precede any grading.
+        await hydrateFsrsPrefsFromDb();
+        // T82: the daily new-word budget + sibling bury — before any queue is built.
+        await hydrateQueuePrefsFromDb();
+        await hydrateReaderPrefsFromDb();
+        await hydrateLibraryPrefsFromDb();
+        await hydrateBankPrefsFromDb();
+        await hydrateAmbientPrefsFromDb();
+        await hydrateAmbientCursorsFromDb();
+        await hydrateLookupPrefsFromDb();
+        await hydrateGamePrefsFromDb();
+        // T62: «Сценарии» run prefs (subtitles, hold-to-talk, rescue, endpointing, bed).
+        await hydrateScenarioPrefsFromDb();
+        await hydrateMotionPrefsFromDb();
+        await hydrateDailyPrefsFromDb();
+        await hydrateGoalPrefsFromDb();
+        await hydrateNotificationPrefsFromDb();
+        // Registers the real SpeechService (Piper/system) — T05's popup
+        // speaker and all readback surfaces are live from here on.
+        await hydrateTtsFromDb();
+        // ASR install state for Settings + the pronunciation game's gate
+        // (T12). The recognizer itself loads lazily at session start.
+        await refreshInstalledAsr();
+        // T59: the optional Whisper assist model — same scan, plus the
+        // `scenario.assistModel` mirror row scenario code gates on.
+        await refreshInstalledAssist();
+        // T63: the recordings prune at app start (§10.1) — off the critical
+        // path, never awaited; rows stay, only stale audio goes.
+        void pruneRecordings('start');
+        // T19: register the motivation bus, consume freezes for days missed
+        // while the app was closed, sweep achievements, replan reminders.
+        // T40: install the widget snapshot writer before the boot evaluation requests a refresh.
+        setWidgetRefresher(refreshWidgetSnapshot);
+        await initMotivation();
+        if (!cancelled) setReady(true);
+      } catch (err) {
+        console.error('[db] bootstrap failed', err);
+        logError('db', err, { fatal: true });
+        if (!cancelled) setBootError(err instanceof Error ? err : new Error(String(err)));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [success]);
+
+  React.useEffect(() => {
+    if (migrationError) logError('db', migrationError, { fatal: true });
+  }, [migrationError]);
+
+  if (migrationError || bootError) {
+    // Pre-theme, pre-navigation surface — deliberately plain RN styles.
+    return (
+      <View
+        style={{
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: '#0B0B0E',
+          padding: 24,
+        }}
+      >
+        <Text style={{ color: '#E8E6E3', fontSize: 16, marginBottom: 8 }}>
+          Database failed to initialize
+        </Text>
+        <Text style={{ color: '#9A97A0', fontSize: 13, textAlign: 'center' }}>
+          {(migrationError ?? bootError)?.message}
+        </Text>
+      </View>
+    );
+  }
+
+  if (!ready) return null; // splash screen still covers startup
+
+  return <>{children}</>;
+}
